@@ -1,0 +1,31 @@
+:root {
+  --bg:          #0b0d14;
+  --bg-2:        #13151f;
+  --bg-3:        #1a1d2a;
+  --border:      #252836;
+  --text:        #8892a4;
+  --text-h:      #eef2ff;
+  --accent:      #818cf8;
+  --accent-2:    #a5b4fc;
+  --accent-glow: rgba(129,140,248,0.35);
+  --orange:      #f97316;
+  --green:       #22c55e;
+
+  --sans: 'Inter', system-ui, sans-serif;
+  --mono: 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+
+  font: 16px/1.5 var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body { margin: 0; }
+
+#root { min-height: 100svh; }
+
+h1, h2, h3 { color: var(--text-h); margin: 0; font-weight: 600; }
+p { margin: 0; }
+button { font-family: var(--sans); cursor: pointer; }

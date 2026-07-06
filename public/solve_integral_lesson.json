@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Solve: ∫₁⁴ (2x + 1) dx",
+    "layout": "single-calc",
+    "steps": [
+      { "func": "calc-clear" },
+      { "func": "calc-step", "inputs": { "latex": "\\int_1^4 (2x+1)\\,dx" } },
+      { "func": "calc-step", "inputs": { "latex": "= \\Big[ x^2 + x \\Big]_1^4" } },
+      { "func": "calc-step", "inputs": { "latex": "= \\bigl(4^2 + 4\\bigr) - \\bigl(1^2 + 1\\bigr)" } },
+      { "func": "calc-step", "inputs": { "latex": "= 20 - 2" } },
+      { "func": "calc-step", "inputs": { "latex": "= \\boxed{18}" } }
+    ]
+  }
+]

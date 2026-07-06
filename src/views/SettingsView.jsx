@@ -1,0 +1,108 @@
+import { u } from '../i18n/uiText.js'
+
+const LANGUAGES = [
+  { code: 'en', label: 'English', flag: '🇺🇸' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'es', label: 'Español',  flag: '🇪🇸', comingSoon: true },
+  { code: 'de', label: 'Deutsch',  flag: '🇩🇪', comingSoon: true },
+  { code: 'zh', label: '中文',      flag: '🇨🇳', comingSoon: true },
+]
+
+const TEXT_SIZES = ['small', 'normal', 'large']
+
+const PLANS = [
+  { id: 'free', label: { en: 'Free', fr: 'Gratuit' }, price: '$0', features: { en: ['4 included lessons', '4 basic tools', 'Custom lessons (3/mo)'], fr: ['4 leçons incluses', '4 outils de base', 'Leçons personnalisées (3/mois)'] } },
+  { id: 'pro',  label: { en: 'Pro ⭐', fr: 'Pro ⭐' }, price: '$4.99/mo', features: { en: ['All lessons', 'All tools', 'Unlimited custom lessons', 'Progress tracking', 'Ad-free'], fr: ['Toutes les leçons', 'Tous les outils', 'Leçons personnalisées illimitées', 'Suivi de progression', 'Sans publicité'] }, highlight: true },
+]
+
+export default function SettingsView({ lang, onLang, theme, onTheme, textSize, onTextSize, muted, onMuted, plan, onPlan, adminMode, onAdminMode }) {
+  return (
+    <div className="section-view settings-view">
+      <p className="section-sub">{u(lang, 'settingsSub')}</p>
+
+      {/* Language */}
+      <div className="settings-block">
+        <h3 className="settings-block-title">{u(lang, 'langTitle')}</h3>
+        <div className="settings-lang-grid">
+          {LANGUAGES.map(l => (
+            <button
+              key={l.code}
+              className={`lang-option${lang === l.code ? ' lang-option--active' : ''}${l.comingSoon ? ' lang-option--soon' : ''}`}
+              onClick={() => !l.comingSoon && onLang(l.code)}
+              disabled={l.comingSoon}
+            >
+              <span className="lang-flag">{l.flag}</span>
+              <span className="lang-name">{l.label}</span>
+              {l.comingSoon && <span className="soon-badge">{lang === 'fr' ? 'Bientôt' : 'Soon'}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Theme */}
+      <div className="settings-block">
+        <h3 className="settings-block-title">{u(lang, 'themeTitle')}</h3>
+        <div className="settings-row">
+          <button className={`theme-btn${theme === 'dark'  ? ' theme-btn--active' : ''}`} onClick={() => onTheme('dark')}>{u(lang, 'dark')}</button>
+          <button className={`theme-btn${theme === 'light' ? ' theme-btn--active' : ''}`} onClick={() => onTheme('light')}>{u(lang, 'light')}</button>
+        </div>
+      </div>
+
+      {/* Text size */}
+      <div className="settings-block">
+        <h3 className="settings-block-title">{u(lang, 'textSize')}</h3>
+        <div className="settings-row">
+          {TEXT_SIZES.map(s => (
+            <button key={s} className={`theme-btn${textSize === s ? ' theme-btn--active' : ''}`} onClick={() => onTextSize(s)}>
+              {u(lang, s)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Sound */}
+      <div className="settings-block">
+        <h3 className="settings-block-title">{u(lang, 'sound')}</h3>
+        <div className="settings-row">
+          <button className={`theme-btn${!muted ? ' theme-btn--active' : ''}`} onClick={() => onMuted(false)}>{u(lang, 'soundOn')}</button>
+          <button className={`theme-btn${ muted ? ' theme-btn--active' : ''}`} onClick={() => onMuted(true)}>{u(lang, 'soundOff')}</button>
+        </div>
+      </div>
+
+      {/* Subscription */}
+      <div className="settings-block">
+        <h3 className="settings-block-title">{u(lang, 'subscription')}</h3>
+        <div className="plan-cards">
+          {PLANS.map(p => (
+            <button
+              key={p.id}
+              className={`plan-card${plan === p.id ? ' plan-card--active' : ''}${p.highlight ? ' plan-card--highlight' : ''}`}
+              onClick={() => onPlan(p.id)}
+            >
+              <div className="plan-header">
+                <span className="plan-name">{p.label[lang] ?? p.label.en}</span>
+                <span className="plan-price">{p.price}</span>
+              </div>
+              <ul className="plan-features">
+                {(p.features[lang] ?? p.features.en).map((f, i) => <li key={i}>✓ {f}</li>)}
+              </ul>
+              {plan === p.id && <span className="plan-current">{lang === 'fr' ? 'Plan actuel' : 'Current plan'}</span>}
+            </button>
+          ))}
+        </div>
+        {plan === 'free' && <p className="plan-note">{u(lang, 'planNote')}</p>}
+      </div>
+
+      {/* Admin / Developer */}
+      <div className="settings-block">
+        <h3 className="settings-block-title">{u(lang, 'adminTitle')}</h3>
+        <p className="plan-note" style={{ marginBottom: 12 }}>{u(lang, 'adminDesc')}</p>
+        <div className="settings-row">
+          <button className={`theme-btn${adminMode ? ' theme-btn--active' : ''}`}  onClick={() => onAdminMode(true)}>{u(lang, 'adminOn')}</button>
+          <button className={`theme-btn${!adminMode ? ' theme-btn--active' : ''}`} onClick={() => onAdminMode(false)}>{u(lang, 'adminOff')}</button>
+        </div>
+      </div>
+
+    </div>
+  )
+}

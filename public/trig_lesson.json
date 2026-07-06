@@ -1,0 +1,320 @@
+[
+  {
+    "title": "The Right Triangle",
+    "layout": "single-geo",
+    "steps": [
+      {
+        "func": "geo-create-polygon",
+        "inputs": {
+          "shapeId": "tri",
+          "shape-type": "right-triangle",
+          "values": "3,4",
+          "flipX": "false",
+          "flipY": "false"
+        }
+      },
+      {
+        "func": "geo-show-angles",
+        "inputs": { "shapeId": "tri" }
+      },
+      {
+        "func": "cmt-geo",
+        "inputs": { "text": "θ", "shapeId": "tri", "vertexIndex": 0, "color": "#fbbf24" }
+      },
+      {
+        "func": "cmt-geo",
+        "inputs": { "text": "90°", "shapeId": "tri", "vertexIndex": 1, "color": "#94a3b8" }
+      }
+    ]
+  },
+  {
+    "title": "Naming the Sides",
+    "layout": "single-geo",
+    "steps": [
+      {
+        "func": "geo-create-polygon",
+        "inputs": {
+          "shapeId": "tri",
+          "shape-type": "right-triangle",
+          "values": "3,4",
+          "flipX": "false",
+          "flipY": "false"
+        }
+      },
+      {
+        "func": "geo-show-angles",
+        "inputs": { "shapeId": "tri" }
+      },
+      {
+        "func": "geo-highlight-angle",
+        "inputs": { "shapeId": "tri", "vertexIndex": "0", "color": "#fbbf24" }
+      },
+      {
+        "func": "cmt-geo",
+        "inputs": { "text": "θ", "shapeId": "tri", "vertexIndex": 0, "color": "#fbbf24" }
+      },
+      {
+        "func": "geo-highlight-edge",
+        "inputs": { "shapeId": "tri", "edgeIndex": "2", "color": "#a855f7" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Hypotenuse", "shapeId": "tri", "edgeIndex": 2, "color": "#a855f7" }
+      },
+      {
+        "func": "geo-show-arrow",
+        "inputs": { "shapeId": "tri", "from": "corner:0", "to": "edge:1", "color": "#f97316" }
+      },
+      {
+        "func": "geo-highlight-edge",
+        "inputs": { "shapeId": "tri", "edgeIndex": "1", "color": "#f97316" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Opposite", "shapeId": "tri", "edgeIndex": 1, "color": "#f97316" }
+      },
+      {
+        "func": "geo-highlight-edge",
+        "inputs": { "shapeId": "tri", "edgeIndex": "0", "color": "#22c55e" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Adjacent", "shapeId": "tri", "edgeIndex": 0, "color": "#22c55e" }
+      }
+    ]
+  },
+  {
+    "title": "SOH — Sine",
+    "layout": "text-geo",
+    "steps": [
+      {
+        "func": "geo-create-polygon",
+        "inputs": {
+          "shapeId": "tri",
+          "shape-type": "right-triangle",
+          "values": "3,4",
+          "flipX": "false",
+          "flipY": "false"
+        }
+      },
+      {
+        "func": "text-create",
+        "inputs": {
+          "boxId": "formula",
+          "title": "Sine — SOH",
+          "content": "$\\sin(\\theta) = \\dfrac{\\textcolor{#f97316}{\\text{Opposite}}}{\\textcolor{#a855f7}{\\text{Hypotenuse}}}$",
+          "isList": false,
+          "color": "#e879f9"
+        }
+      },
+      {
+        "func": "geo-highlight-angle",
+        "inputs": { "shapeId": "tri", "vertexIndex": "0", "color": "#fbbf24" }
+      },
+      {
+        "func": "cmt-geo",
+        "inputs": { "text": "θ", "shapeId": "tri", "vertexIndex": 0, "color": "#fbbf24" }
+      },
+      {
+        "func": "geo-show-arrow",
+        "inputs": { "shapeId": "tri", "from": "corner:0", "to": "corner:1", "color": "#f97316" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Opposite", "shapeId": "tri", "edgeIndex": 1, "color": "#f97316" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Hypotenuse", "shapeId": "tri", "edgeIndex": 2, "color": "#a855f7" }
+      }
+    ]
+  },
+  {
+    "title": "CAH — Cosine",
+    "layout": "text-geo",
+    "steps": [
+      {
+        "func": "geo-create-polygon",
+        "inputs": {
+          "shapeId": "tri",
+          "shape-type": "right-triangle",
+          "values": "3,4",
+          "flipX": "false",
+          "flipY": "false"
+        }
+      },
+      {
+        "func": "text-create",
+        "inputs": {
+          "boxId": "formula",
+          "title": "Cosine — CAH",
+          "content": "$\\cos(\\theta) = \\dfrac{\\textcolor{#22c55e}{\\text{Adjacent}}}{\\textcolor{#a855f7}{\\text{Hypotenuse}}}$",
+          "isList": false,
+          "color": "#06b6d4"
+        }
+      },
+      {
+        "func": "cmt-geo",
+        "inputs": { "text": "θ", "shapeId": "tri", "vertexIndex": 0, "color": "#fbbf24" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Adjacent", "shapeId": "tri", "edgeIndex": 0, "color": "#22c55e" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Hypotenuse", "shapeId": "tri", "edgeIndex": 2, "color": "#a855f7" }
+      },
+      {
+        "func": "geo-show-arrow",
+        "inputs": { "shapeId": "tri", "from": "corner:0", "to": "corner:1", "color": "#22c55e" }
+      },
+      {
+        "func": "geo-show-arrow",
+        "inputs": { "shapeId": "tri", "from": "corner:2", "to": "corner:0", "color": "#a855f7" }
+      },
+      {
+        "func": "geo-highlight-angle",
+        "inputs": { "shapeId": "tri", "vertexIndex": "0", "color": "#fbbf24" }
+      }
+    ]
+  },
+  {
+    "title": "TOA — Tangent",
+    "layout": "text-geo",
+    "steps": [
+      {
+        "func": "geo-create-polygon",
+        "inputs": {
+          "shapeId": "tri",
+          "shape-type": "right-triangle",
+          "values": "3,4",
+          "flipX": "false",
+          "flipY": "false"
+        }
+      },
+      {
+        "func": "text-create",
+        "inputs": {
+          "boxId": "formula",
+          "title": "Tangent — TOA",
+          "content": "$\\tan(\\theta) = \\dfrac{\\textcolor{#f97316}{\\text{Opposite}}}{\\textcolor{#22c55e}{\\text{Adjacent}}}$",
+          "isList": false,
+          "color": "#a855f7"
+        }
+      },
+      {
+        "func": "cmt-geo",
+        "inputs": { "text": "θ", "shapeId": "tri", "vertexIndex": 0, "color": "#fbbf24" }
+      },
+      {
+        "func": "geo-show-arrow",
+        "inputs": { "shapeId": "tri", "from": "corner:0", "to": "edge:1", "color": "#f97316" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Opposite", "shapeId": "tri", "edgeIndex": 1, "color": "#f97316" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Adjacent", "shapeId": "tri", "edgeIndex": 0, "color": "#22c55e" }
+      },
+      {
+        "func": "geo-show-arrow",
+        "inputs": { "shapeId": "tri", "from": "corner:0", "to": "corner:1", "color": "#22c55e" }
+      },
+      {
+        "func": "geo-highlight-angle",
+        "inputs": { "shapeId": "tri", "vertexIndex": "0", "color": "#fbbf24" }
+      }
+    ]
+  },
+  {
+    "title": "Example: 3-4-5",
+    "layout": "text-geo",
+    "steps": [
+      {
+        "func": "geo-create-polygon",
+        "inputs": {
+          "shapeId": "tri",
+          "shape-type": "right-triangle",
+          "values": "3,4",
+          "flipX": "false",
+          "flipY": "false"
+        }
+      },
+      {
+        "func": "text-create",
+        "inputs": {
+          "boxId": "nums",
+          "title": "3-4-5 Triangle",
+          "content": "$\\sin(\\theta) = \\dfrac{4}{5} = 0.80$|$\\cos(\\theta) = \\dfrac{3}{5} = 0.60$|$\\tan(\\theta) = \\dfrac{4}{3} \\approx 1.33$",
+          "isList": true,
+          "color": "#fbbf24"
+        }
+      },
+      {
+        "func": "cmt-geo",
+        "inputs": { "text": "θ", "shapeId": "tri", "vertexIndex": 0, "color": "#fbbf24" }
+      },
+      {
+        "func": "cmt-geo",
+        "inputs": { "text": "90°", "shapeId": "tri", "vertexIndex": 1, "color": "#94a3b8" }
+      },
+      {
+        "func": "geo-show-angles",
+        "inputs": { "shapeId": "tri" }
+      },
+      {
+        "func": "geo-label-sides",
+        "inputs": { "shapeId": "tri", "labels": "3,4,5" }
+      }
+    ]
+  },
+  {
+    "title": "SOH CAH TOA",
+    "layout": "text-geo",
+    "steps": [
+      {
+        "func": "geo-create-polygon",
+        "inputs": {
+          "shapeId": "tri",
+          "shape-type": "right-triangle",
+          "values": "3,4",
+          "flipX": "false",
+          "flipY": "false"
+        }
+      },
+      {
+        "func": "text-create",
+        "inputs": {
+          "boxId": "summary",
+          "title": "SOH CAH TOA",
+          "content": "SOH: $\\sin(\\theta) = \\frac{\\textcolor{#f97316}{\\text{Opp}}}{\\textcolor{#a855f7}{\\text{Hyp}}}$|CAH: $\\cos(\\theta) = \\frac{\\textcolor{#22c55e}{\\text{Adj}}}{\\textcolor{#a855f7}{\\text{Hyp}}}$|TOA: $\\tan(\\theta) = \\frac{\\textcolor{#f97316}{\\text{Opp}}}{\\textcolor{#22c55e}{\\text{Adj}}}$",
+          "isList": true,
+          "color": "#6366f1"
+        }
+      },
+      {
+        "func": "cmt-geo",
+        "inputs": { "text": "θ", "shapeId": "tri", "vertexIndex": 0, "color": "#fbbf24" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Opp", "shapeId": "tri", "edgeIndex": 1, "color": "#f97316" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Adj", "shapeId": "tri", "edgeIndex": 0, "color": "#22c55e" }
+      },
+      {
+        "func": "cmt-geo-edge",
+        "inputs": { "text": "Hyp", "shapeId": "tri", "edgeIndex": 2, "color": "#a855f7" }
+      },
+      {
+        "func": "geo-show-angles",
+        "inputs": { "shapeId": "tri" }
+      }
+    ]
+  }
+]

@@ -1,0 +1,84 @@
+[
+  {
+    "title": "What Is an Integral?",
+    "layout": "text-graph",
+    "steps": [
+      { "func": "graph-set-viewport",  "inputs": { "xMin": -0.5, "xMax": 3.5, "yMin": -0.5, "yMax": 10 } },
+      { "func": "graph-plot-function", "inputs": { "expr": "x^{2}", "id": "f1" } },
+      { "func": "text-create",         "inputs": { "boxId": "intro", "title": "The Integral", "content": "An integral measures the total area trapped between a curve and the x-axis.|$\\int_a^b f(x)\\,dx$", "isList": false, "color": "#6366f1" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "f(x) = x²",              "funcId": "f1", "x": "2.5", "color": "#a855f7" } },
+      { "func": "graph-shade-area",    "inputs": { "funcId": "f1", "a": 0, "b": 3 } },
+      { "func": "cmt-graph-area",      "inputs": { "text": "This area = the integral","funcId": "f1", "x": "2",   "color": "#a855f7" } }
+    ]
+  },
+  {
+    "title": "Reading the Notation",
+    "layout": "text-graph",
+    "steps": [
+      { "func": "graph-set-viewport",  "inputs": { "xMin": -0.5, "xMax": 3, "yMin": -0.5, "yMax": 5 } },
+      { "func": "graph-plot-function", "inputs": { "expr": "x^{2}", "id": "f1" } },
+      { "func": "text-create",         "inputs": { "boxId": "notation", "title": "Notation", "content": "$\\int_a^b f(x)\\,dx$|$a$ — lower limit|$b$ — upper limit|$f(x)$ — the function|$dx$ — infinitely thin slice", "isList": true, "color": "#6366f1" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "a = 0",     "funcId": "f1", "x": "0",   "color": "#22c55e" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "b = 2",     "funcId": "f1", "x": "2",   "color": "#f97316" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "f(x) = x²", "funcId": "f1", "x": "1.5", "color": "#a855f7" } },
+      { "func": "graph-shade-area",    "inputs": { "funcId": "f1", "a": 0, "b": 2 } }
+    ]
+  },
+  {
+    "title": "Riemann Sums — 4 Rectangles",
+    "layout": "text-graph",
+    "steps": [
+      { "func": "graph-set-viewport",  "inputs": { "xMin": -0.5, "xMax": 3, "yMin": -0.5, "yMax": 5 } },
+      { "func": "graph-plot-function", "inputs": { "expr": "x^{2}", "id": "f1" } },
+      { "func": "text-create",         "inputs": { "boxId": "riemann", "title": "Riemann Sum", "content": "Approximate the area with $n$ thin rectangles:|$\\displaystyle\\int_a^b f(x)\\,dx\\approx\\sum_{i=1}^n f(x_i)\\,\\Delta x$|Width of each: $\\Delta x = \\dfrac{b-a}{n}$", "isList": false, "color": "#f97316" } },
+      { "func": "graph-riemann-sum",   "inputs": { "funcId": "f1", "a": 0, "b": 2, "n": 4, "method": "midpoint" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "4 rectangles", "funcId": "f1", "x": "1.25", "color": "#f97316" } }
+    ]
+  },
+  {
+    "title": "More Rectangles → Exact Area",
+    "layout": "single-graph",
+    "steps": [
+      { "func": "graph-set-viewport",  "inputs": { "xMin": -0.5, "xMax": 3, "yMin": -0.5, "yMax": 5 } },
+      { "func": "graph-plot-function", "inputs": { "expr": "x^{2}", "id": "f1" } },
+      { "func": "graph-riemann-sum",   "inputs": { "funcId": "f1", "a": 0, "b": 2, "n": 20, "method": "midpoint" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "n = 20 → near-exact", "funcId": "f1", "x": "1.75", "color": "#fbbf24" } }
+    ]
+  },
+  {
+    "title": "The Antiderivative",
+    "layout": "text-graph",
+    "steps": [
+      { "func": "graph-set-viewport",  "inputs": { "xMin": -0.5, "xMax": 3, "yMin": -1, "yMax": 9 } },
+      { "func": "graph-plot-function", "inputs": { "expr": "x^{2}", "id": "f1" } },
+      { "func": "graph-plot-function", "inputs": { "expr": "x^{3}/3", "id": "F1" } },
+      { "func": "text-create",         "inputs": { "boxId": "antideriv", "title": "Power Rule", "content": "$\\int x^n\\,dx = \\dfrac{x^{n+1}}{n+1} + C$|So for $x^2$:|$\\int x^2\\,dx = \\dfrac{x^3}{3} + C$|The antiderivative $F(x)$ lets us compute exact areas.", "isList": false, "color": "#a855f7" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "f(x) = x²",   "funcId": "f1", "x": "2.5", "color": "#6366f1" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "F(x) = x³/3", "funcId": "F1", "x": "2.5", "color": "#a855f7" } }
+    ]
+  },
+  {
+    "title": "Computing ∫₀² x² dx",
+    "layout": "text-graph",
+    "steps": [
+      { "func": "graph-set-viewport",  "inputs": { "xMin": -0.5, "xMax": 3, "yMin": -0.5, "yMax": 5 } },
+      { "func": "graph-plot-function", "inputs": { "expr": "x^{2}", "id": "f1" } },
+      { "func": "text-create",         "inputs": { "boxId": "calc", "title": "Step by Step", "content": "$\\int_0^2 x^2\\,dx = \\left[\\dfrac{x^3}{3}\\right]_0^2$|$= \\dfrac{2^3}{3} - \\dfrac{0^3}{3}$|$= \\dfrac{8}{3} \\approx 2.67$", "isList": false, "color": "#22c55e" } },
+      { "func": "graph-shade-area",    "inputs": { "funcId": "f1", "a": 0, "b": 2 } },
+      { "func": "cmt-graph-area",      "inputs": { "text": "Area = 8/3 ≈ 2.67", "funcId": "f1", "x": "1", "color": "#22c55e" } }
+    ]
+  },
+  {
+    "title": "Example: ∫₀^π sin(x) dx",
+    "layout": "text-graph",
+    "steps": [
+      { "func": "graph-set-viewport",  "inputs": { "xMin": -0.5, "xMax": 4.2, "yMin": -1.5, "yMax": 2 } },
+      { "func": "graph-plot-function", "inputs": { "expr": "\\sin(x)", "id": "f1" } },
+      { "func": "text-create",         "inputs": { "boxId": "sine", "title": "sin(x) from 0 to π", "content": "$\\int_0^{\\pi}\\sin(x)\\,dx = \\Big[-\\cos(x)\\Big]_0^{\\pi}$|$= -\\cos(\\pi) + \\cos(0)$|$= -(-1) + 1 = 2$", "isList": false, "color": "#f97316" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "a = 0",    "funcId": "f1", "x": "0",       "color": "#22c55e" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "b = π",    "funcId": "f1", "x": "3.14159", "color": "#f97316" } },
+      { "func": "cmt-graph-func",      "inputs": { "text": "peak = 1", "funcId": "f1", "x": "1.5708",  "color": "#fbbf24" } },
+      { "func": "graph-shade-area",    "inputs": { "funcId": "f1", "a": 0, "b": 3.14159 } }
+    ]
+  }
+]

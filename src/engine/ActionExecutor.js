@@ -242,7 +242,13 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     }
 
     case 'ggb-show-area-measures': {
-      await geoEngine.showAreaMeasures(geoRef, action.id, action.opts ?? {})
+      // Shapes can live in either registry — geometryEngine's (geo-create-polygon,
+      // SVG-ish 2D canvas) or threeEngine's (geo3d-create-2d, flat Three.js canvas).
+      if (geoEngine.getShapeIds().includes(action.id)) {
+        await geoEngine.showAreaMeasures(geoRef, action.id, action.opts ?? {})
+      } else {
+        await threeEngine.showAreaMeasures3D(threeRef, action.id, action.opts ?? {})
+      }
       break
     }
 
@@ -1990,6 +1996,75 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     // never short-circuits to "the answer". Works on whatever equation is on screen.
     case 'full-solve-current': {
       if (!state) break
+
+      // ── Phase 0 (pre): resolve any fraction sub-term that's itself a PRODUCT
+      // (e.g. (B + b) × h, from an area-formula-style equation) into a single
+      // plain number, one arithmetic step at a time — group sum first, then
+      // each multiplication — so Phase 0 below sees an ordinary numeric
+      // sub-term instead of silently reading its unused dummy coefficient.
+      for (const frac of [...state.left, ...state.right].filter(t => t.isFraction)) {
+        for (const key of ['numeratorTerms', 'denominatorTerms']) {
+          const subs = frac[key] ?? []
+          for (let si = 0; si < subs.length; si++) {
+            const sub = subs[si]
+            if (!Array.isArray(sub.factors)) continue
+            const stillSymbolic = sub.factors.some(f =>
+              f.symbolicLabel !== undefined || (f.terms ?? []).some(s => s.symbolicLabel !== undefined)
+            )
+            if (stillSymbolic) continue   // not fully substituted yet — leave for the algebra solver
+
+            const sideClass = key === 'numeratorTerms' ? 'frac-num' : 'frac-den'
+            const wrap = () => getWrap(refs(), frac.side, frac.cellIndex)
+
+            // Step 1: collapse any parenthesized SUM factor into one number, e.g. (6+4) → 10
+            for (let fi = 0; fi < sub.factors.length; fi++) {
+              const f = sub.factors[fi]
+              if (!Array.isArray(f.terms) || f.terms.length < 2) continue
+              const outEls = [...(wrap()?.querySelectorAll(`.${sideClass} [data-pos^="${si}_${fi}_"]`) ?? [])]
+              // eslint-disable-next-line no-await-in-loop
+              if (outEls.length) await gsap.to(outEls, { opacity: 0, scale: 0.6, duration: 0.25, ease: 'power2.in' }).then()
+              const total = f.terms.reduce((acc, t) => acc + (t.sign === '-' ? -t.coefficient : t.coefficient), 0)
+              sub.factors[fi] = { sign: total >= 0 ? '+' : '-', coefficient: Math.abs(total), variable: null, degree: 0 }
+              flushSync(() => setState(state.snapshot()))
+              const newEl = wrap()?.querySelector(`.${sideClass} [data-pos="${si}_${fi}"]`)
+              if (newEl) {
+                gsap.set(newEl, { opacity: 0, scale: 0.5 })
+                // eslint-disable-next-line no-await-in-loop
+                await gsap.to(newEl, { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(1.6)' }).then()
+              }
+              // eslint-disable-next-line no-await-in-loop
+              await wait(0.35)
+            }
+
+            // Step 2: multiply factors together two at a time, e.g. 10 × 3 → 30
+            while (sub.factors.length > 1) {
+              const [f0, f1, ...rest] = sub.factors
+              const v0 = (f0.sign === '-' ? -1 : 1) * f0.coefficient
+              const v1 = (f1.sign === '-' ? -1 : 1) * f1.coefficient
+              const product = v0 * v1
+              const outEls = [...(wrap()?.querySelectorAll(`.${sideClass} [data-pos^="${si}_"]`) ?? [])]
+              // eslint-disable-next-line no-await-in-loop
+              if (outEls.length) await gsap.to(outEls, { opacity: 0, scale: 0.6, duration: 0.25, ease: 'power2.in' }).then()
+              sub.factors = [{ sign: product >= 0 ? '+' : '-', coefficient: Math.abs(product), variable: null, degree: 0 }, ...rest]
+              flushSync(() => setState(state.snapshot()))
+              const newEl = wrap()?.querySelector(`.${sideClass} [data-pos="${si}_0"]`)
+              if (newEl) {
+                gsap.set(newEl, { opacity: 0, scale: 0.5 })
+                // eslint-disable-next-line no-await-in-loop
+                await gsap.to(newEl, { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(1.6)' }).then()
+              }
+              // eslint-disable-next-line no-await-in-loop
+              await wait(0.35)
+            }
+
+            // Step 3: fold the single remaining factor into a plain numeric sub-term
+            const final = sub.factors[0]
+            subs[si] = { sign: final.sign, coefficient: final.coefficient, variable: null, degree: 0 }
+            frac[key] = [...subs]
+            flushSync(() => setState(state.snapshot()))
+          }
+        }
+      }
 
       // ── Phase 0: simplify any purely-numeric fraction (combine num, combine den, divide) ──
       const isNumericSub = s => !s.variable && s.symbolicLabel === undefined

@@ -935,7 +935,7 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                                         const varKey = `var_${label}`
                                         return (
                                           <div key={varKey} className="lb-step-inp-row">
-                                            <label className="lb-step-inp-lbl">{label} =</label>
+                                            <label className="lb-step-inp-lbl lb-step-inp-lbl--varname">{label} =</label>
                                             <input
                                               className="lb-input"
                                               type="text"

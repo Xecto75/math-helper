@@ -3116,6 +3116,12 @@
   min-width: 64px;
   flex-shrink: 0;
 }
+/* Replace Variable's per-label inputs (a/A, b/B, ...) — case IS the identity,
+   so never uppercase these or two different variables become indistinguishable. */
+.lb-step-inp-lbl--varname {
+  text-transform: none;
+  letter-spacing: normal;
+}
 
 .lb-add-step-btn {
   margin: 10px 16px 4px;

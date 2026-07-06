@@ -359,23 +359,19 @@ export function showMeasure(geoRef, id, opts = {}) {
     return display.animateEdgeHighlight(lineId, 0.5)
   }
 
-  // ── Polygon: height (vertical drop from top vertex to base) ────────────────
+  // ── Polygon: height (vertical drop between the two parallel sides) ────────
   const verts = entry.vertices
   if (!verts?.length) return Promise.resolve()
-  const topY  = Math.max(...verts.map(v => v[1]))
-  const baseY = Math.min(...verts.map(v => v[1]))
-  // Pick the leftmost vertex sitting at the top edge
-  const top   = verts.filter(v => Math.abs(v[1] - topY) < 1e-6)
-                     .reduce((a, b) => (b[0] < a[0] ? b : a))
-  const x     = r4(top[0])
+  const { x: rawX, topY, baseY } = pickHeightLineX(verts)
+  const x     = r4(rawX)
   display.addEdgeHighlight(lineId, x, r4(topY), x, r4(baseY), { color, strokeWidth: opts.thickness ?? 3, dashed: true })
 
   const h      = parseFloat((topY - baseY).toFixed(1))
   const vp     = display.getViewport() ?? { xMin: -8, xMax: 8 }
   const offset = (vp.xMax - vp.xMin) * 0.02
-  const mx     = r4(x + offset)   // start just right of the line
+  const mx     = r4(x - offset)   // sit just left of the line
   const my     = r4((topY + baseY) / 2)
-  display.addLabel(`radlbl__${id}`, mx, my, measureLabel(opts.label, h, 'h'), { color, anchor: 'start' })
+  display.addLabel(`radlbl__${id}`, mx, my, measureLabel(opts.label, h, 'h'), { color, anchor: 'end' })
   return display.animateEdgeHighlight(lineId, 0.5)
 }
 
@@ -398,21 +394,39 @@ function labelEdge(display, entry, id, edgeIndex, text, color) {
   display.addLabel(`am${id}_${edgeIndex}`, r4(mx + sign * nx * offset), r4(my + sign * ny * offset), text, { color, anchor })
 }
 
+// Pick the x for a vertical height line so it always stays INSIDE the shape.
+// For a trapeze/parallelogram (two vertices at both the top and the base),
+// dropping from the WIDER edge can land outside the narrower one — instead,
+// drop from the SHORTER of the two parallel edges (both are centered on the
+// same axis by construction, so this is always safely inside). Triangles only
+// have a single apex, so there's no ambiguity there.
+function pickHeightLineX(verts) {
+  const topY  = Math.max(...verts.map(v => v[1]))
+  const baseY = Math.min(...verts.map(v => v[1]))
+  const topVerts  = verts.filter(v => Math.abs(v[1] - topY)  < 1e-6)
+  const baseVerts = verts.filter(v => Math.abs(v[1] - baseY) < 1e-6)
+  if (topVerts.length === 2 && baseVerts.length === 2) {
+    const topLen  = Math.abs(topVerts[1][0]  - topVerts[0][0])
+    const baseLen = Math.abs(baseVerts[1][0] - baseVerts[0][0])
+    const shortSet = topLen <= baseLen ? topVerts : baseVerts
+    return { x: shortSet.reduce((a, b) => (b[0] < a[0] ? b : a))[0], topY, baseY }
+  }
+  const top = topVerts.reduce((a, b) => (b[0] < a[0] ? b : a))
+  return { x: top[0], topY, baseY }
+}
+
 // Dashed vertical line from the top vertex to the base, with a label — the
 // same visual as showMeasure's polygon branch, factored out for reuse.
 function drawHeightLine(display, entry, id, color, thickness, labelText) {
   const verts = entry.vertices
-  const topY  = Math.max(...verts.map(v => v[1]))
-  const baseY = Math.min(...verts.map(v => v[1]))
-  const top   = verts.filter(v => Math.abs(v[1] - topY) < 1e-6)
-                     .reduce((a, b) => (b[0] < a[0] ? b : a))
-  const x      = r4(top[0])
+  const { x: rawX, topY, baseY } = pickHeightLineX(verts)
+  const x      = r4(rawX)
   const lineId = `amh__${id}`
   display.addEdgeHighlight(lineId, x, r4(topY), x, r4(baseY), { color, strokeWidth: thickness, dashed: true })
 
   const vp     = display.getViewport() ?? { xMin: -8, xMax: 8 }
   const offset = (vp.xMax - vp.xMin) * 0.02
-  display.addLabel(`amhlbl__${id}`, r4(x + offset), r4((topY + baseY) / 2), labelText, { color, anchor: 'start' })
+  display.addLabel(`amhlbl__${id}`, r4(x - offset), r4((topY + baseY) / 2), labelText, { color, anchor: 'end' })
   return display.animateEdgeHighlight(lineId, 0.5)
 }
 

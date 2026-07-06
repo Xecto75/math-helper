@@ -108,6 +108,7 @@ FUNCTIONS [positional args]:
   S2x:[id]                                              — remove shape
   S2f:[id]                                              — flip horizontal
   S2r:[id]                                              — rotate 90° CCW
+  gM:[id,clr]                                           — show ALL area-formula measures (dashed height + relevant side labels — square→s, rectangle→l+h, parallelogram→b+h, trapeze→B+b+h, triangle→b+h, circle→r). Same function as geo_canvas's gM — works on geo2d shapes too.
 
 SHAPE TYPES & VALS:
   triangle         vals="a,b,c"          (3 side lengths)
@@ -240,7 +241,7 @@ EXAMPLE — circle area:
     doc: `GRAPH LAYOUTS: sg=single-graph  tg=text-graph  ge=graph-equation
 
 FUNCTIONS [positional args]:
-  fp:[expr,id]                  — plot f(x); id is required (e.g. "f", "g")
+  fp:[expr,id,hideLabel]        — plot f(x); id is required (e.g. "f", "g"). Auto-shows a "f(x) = expr" label near the curve unless hideLabel=1 — don't also call fn for the same curve unless you want a different x position or custom text.
   fx:[id]                       — remove function
   fs:[id,a,b]                   — shade area under curve from a to b
   fi:[f1,f2]                    — mark intersection points of two functions

@@ -9,7 +9,7 @@ import { parseEquation, parseSymbolicEquation, parseRichEquation } from './parse
 import { EquationState }  from './EquationState.js'
 import { MathObject }     from './MathObject.js'
 import { generateScript, generateDistributeScript } from './solveScript.js'
-import { nextFuncId }     from './desmosEngine.js'
+import { nextFuncId, getFunctionIds } from './desmosEngine.js'
 import { getSideLengths } from './geometryEngine.js'
 import { resolveColor }   from './palette.js'
 import { t }              from '../i18n/translations.js'
@@ -343,15 +343,22 @@ export function demoGeoClear() {
 // ════════════════════════════════════════════════════════════════════════════════
 
 // ── graph-plot-function ───────────────────────────────────────────────────────
-export function demoGraphPlotFunction(exprRaw, idRaw) {
-  const expr = (exprRaw || 'x^2 - 2*x - 1').trim()
-  const id   = (idRaw || '').trim() || nextFuncId()
+// Auto-labels the curve as "f(x) = <expr>" (or g/h/… — whichever letter isn't
+// already taken) unless hideLabel is "1".
+export function demoGraphPlotFunction(exprRaw, idRaw, hideLabelRaw) {
+  const expr        = (exprRaw || 'x^2 - 2*x - 1').trim()
+  const existingCount = getFunctionIds().length
+  const id          = (idRaw || '').trim() || nextFuncId()
+  const hideLabel   = String(hideLabelRaw ?? '').trim() === '1'
   const script = [
     { type: 'showTitle',     text: `plotFunction("${id}", "${expr}")` },
     { type: 'showNarration', text: `Trace "${id}" : f(x) = ${expr}` },
     { type: 'ggb-plot-function', id, expr, opts: { thickness: 3 } },
-    { type: 'showNarration', text: `Courbe "${id}" tracée.` },
   ]
+  if (!hideLabel) {
+    script.push({ type: 'ggb-name-func', id, funcId: id, label: `${id}(x) = ${expr}`, x: 3 + existingCount * 1.5 })
+  }
+  script.push({ type: 'showNarration', text: `Courbe "${id}" tracée.` })
   return { snapshot: null, script }
 }
 

@@ -342,10 +342,10 @@ export const CATEGORIES = [
       },
       {
         id: 'geo-show-area-measures', label: 'Show Area Measures',
-        description: 'Every measurement needed for the area formula, tailored per shape: square→s, rectangle→l+h, parallelogram→b+h, trapeze→B+b+h, triangle→b+h, circle→r',
-        status: 'ready', useGeo: true,
+        description: 'Every measurement needed for the area formula, tailored per shape: square→s, rectangle→l+h, parallelogram→b+h, trapeze→B+b+h, triangle→b+h, circle→r. Works with shapes from either Create Shape (geo-create-polygon) or Create 2D Shape (geo3d-create-2d).',
+        status: 'ready', useGeo: true, use3D: true,
         inputs: [
-          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
+          { id: 'shapeId', label: 'Shape ID (must match the shape\'s own ID)', type: 'text', default: 'shape1' },
           { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
         ],
       },
@@ -419,11 +419,16 @@ export const CATEGORIES = [
       {
         id: 'graph-plot-function',
         label: 'plotFunction',
-        description: 'Trace f(x) sur le graphique',
+        description: 'Trace f(x) sur le graphique — étiquette "f(x) = …" (ou g/h/…) affichée automatiquement, sauf si masquée',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'expr', label: 'f(x)', type: 'text', default: 'x^2 - 2*x - 1', placeholder: 'ex: x^2 + 1' },
           { id: 'id',   label: 'ID (optionnel)', type: 'text', default: '', placeholder: 'auto' },
+          { id: 'hideLabel', label: 'Hide label', type: 'select', default: '0',
+            options: [
+              { value: '0', label: 'Show (default)' },
+              { value: '1', label: 'Hide' },
+            ] },
         ],
       },
       {

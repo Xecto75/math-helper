@@ -131,6 +131,7 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
         el,
         defaultColor: color,
         worldPos:  new THREE.Vector3(x, y, z),
+        align:     style.align ?? 'center',   // 'left' | 'center' | 'right' — horizontal anchor at worldPos
         fadeStart: style.fadeIn ? performance.now() : null,
         fadeDur:   style.fadeIn ?? 0,
       })
@@ -368,7 +369,8 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
         const v = lbl.worldPos.clone().project(cam)
         const x = (v.x + 1) / 2 * W
         const y = (-v.y + 1) / 2 * H
-        lbl.el.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
+        const hAnchor = lbl.align === 'left' ? '0%' : lbl.align === 'right' ? '-100%' : '-50%'
+        lbl.el.style.transform = `translate(calc(${hAnchor} + ${x}px), calc(-50% + ${y}px))`
         let opacity = v.z > 1 ? 0 : 1
         if (lbl.fadeOutStart !== undefined) {
           opacity *= Math.max(0, 1 - (nowMs - lbl.fadeOutStart) / lbl.fadeOutDur)

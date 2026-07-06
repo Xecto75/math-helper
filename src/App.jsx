@@ -476,7 +476,7 @@ export default function App() {
       case 'eq-racine-des-bords':     return demoRacineDesBords(inputs.eq)
       case 'eq-disparition-exposant': return demoDisparitionExposant(inputs.eq, inputs.newDegree)
       case 'eq-apply-inverse-trig':   return demoApplyInverseTrig(inputs.trig)
-      case 'graph-plot-function':     return demoGraphPlotFunction(inputs.expr, inputs.id)
+      case 'graph-plot-function':     return demoGraphPlotFunction(inputs.expr, inputs.id, inputs.hideLabel)
       case 'graph-remove-function':   return demoGraphRemoveFunction(inputs.funcId)
       case 'graph-shade-area':        return demoGraphShadeArea(inputs.funcId, inputs.a, inputs.b)
       case 'graph-find-intersections':return demoGraphFindIntersections(inputs.f1, inputs.f2)

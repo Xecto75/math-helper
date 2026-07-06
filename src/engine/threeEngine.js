@@ -596,6 +596,151 @@ export async function labelSides3D(threeRef, id, customLabels = []) {
   return new Promise(resolve => setTimeout(resolve, 440))
 }
 
+// ── Show Area Measures (2D flat shapes) ───────────────────────────────────────
+// Same idea as geometryEngine.js's showAreaMeasures, but for shapes created via
+// geo3d-create-2d (the Three.js flat-shape system, a separate registry/canvas).
+
+function sideLength3D(verts, i) {
+  const [x1, y1] = verts[i], [x2, y2] = verts[(i + 1) % verts.length]
+  return parseFloat(Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2).toFixed(2))
+}
+
+function shapeHeight3D(verts) {
+  const ys = verts.map(v => v[1])
+  return parseFloat((Math.max(...ys) - Math.min(...ys)).toFixed(2))
+}
+
+// Label one edge with arbitrary text — same placement math as labelSides3D,
+// for a single side instead of all of them.
+function labelEdge3D(display, entry, gx, gy, avgEdge, ppu, edgeIndex, text, color, labelId) {
+  const verts = entry.vertices
+  const n     = verts.length
+  const [x1, y1] = verts[edgeIndex], [x2, y2] = verts[(edgeIndex + 1) % n]
+  const lx = (x1 + x2) / 2, ly = (y1 + y2) / 2
+  const edgeDx = x2 - x1, edgeDy = y2 - y1
+  const eLen   = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy) || 1
+  const nx = -edgeDy / eLen, ny = edgeDx / eLen
+  const [ox, oy] = verts[(edgeIndex + 2) % n]
+  const cross  = edgeDx * (oy - ly) - edgeDy * (ox - lx)
+  const sign   = cross > 0 ? -1 : 1
+  const offset = avgEdge * 0.14
+  const fontSize = Math.round(Math.max(14, Math.min(36, avgEdge * ppu * 0.16)))
+  display.addLabel3D(labelId, lx + gx + sign * nx * offset, ly + gy + sign * ny * offset, 0.05, text, { color, fontSize, fadeIn: 400 })
+}
+
+// Dashed vertical line from the top vertex down to the base, parented to the
+// shape's own group (so it inherits the group's position automatically).
+// Pick the x for a vertical height line so it always stays INSIDE the shape.
+// For a trapeze/parallelogram (two vertices at both the top and the base),
+// dropping from the WIDER edge can land outside the narrower one — instead,
+// drop from the SHORTER of the two parallel edges (both are centered on the
+// same axis by construction, so this is always safely inside). Triangles only
+// have a single apex, so there's no ambiguity there.
+function pickHeightLineX3D(verts) {
+  const topY  = Math.max(...verts.map(v => v[1]))
+  const baseY = Math.min(...verts.map(v => v[1]))
+  const topVerts  = verts.filter(v => Math.abs(v[1] - topY)  < 1e-6)
+  const baseVerts = verts.filter(v => Math.abs(v[1] - baseY) < 1e-6)
+  if (topVerts.length === 2 && baseVerts.length === 2) {
+    const topLen  = Math.abs(topVerts[1][0]  - topVerts[0][0])
+    const baseLen = Math.abs(baseVerts[1][0] - baseVerts[0][0])
+    const shortSet = topLen <= baseLen ? topVerts : baseVerts
+    return { x: shortSet.reduce((a, b) => (b[0] < a[0] ? b : a))[0], topY, baseY }
+  }
+  const top = topVerts.reduce((a, b) => (b[0] < a[0] ? b : a))
+  return { x: top[0], topY, baseY }
+}
+
+function drawDashedHeightLine3D(display, id, verts, color) {
+  const { x, topY, baseY } = pickHeightLineX3D(verts)
+
+  const dashN   = 6
+  const totalLen = topY - baseY
+  const segLen  = totalLen / (dashN * 2 - 1)
+  const halfT   = 0.04
+  const hex     = resolveHex(color)
+  const group   = new THREE.Group()
+
+  for (let i = 0; i < dashN; i++) {
+    const y0 = baseY + i * segLen * 2
+    const quadGeo = new THREE.BufferGeometry()
+    quadGeo.setAttribute('position', new THREE.Float32BufferAttribute([
+      x - halfT, y0,          0.06,
+      x + halfT, y0,          0.06,
+      x - halfT, y0 + segLen, 0.06,
+      x + halfT, y0 + segLen, 0.06,
+    ], 3))
+    quadGeo.setIndex([0, 1, 2, 1, 3, 2])
+    const mat = new THREE.MeshBasicMaterial({ color: hex, side: THREE.DoubleSide })
+    group.add(new THREE.Mesh(quadGeo, mat))
+  }
+  addChildToGroup(display, id, `amh_${id}`, group)
+  return { x, midY: (topY + baseY) / 2 }
+}
+
+export async function showAreaMeasures3D(threeRef, id, opts = {}) {
+  const display = threeRef?.current
+  if (!display) return
+  const entry = registry.get(id)
+  if (!entry) return
+
+  const color = opts.color ? `#${resolveHex(opts.color).toString(16).padStart(6, '0')}` : '#6495ed'
+
+  if (entry.isCircle) {
+    const r = entry.radius ?? 0
+    const group = display.getObject(id)
+    const gx = group?.position.x ?? 0, gy = group?.position.y ?? 0
+    const angle = (opts.angle ?? 35) * Math.PI / 180
+    const ex = r * Math.cos(angle), ey = r * Math.sin(angle)
+    display.addLabel3D(`amlbl_${id}`, gx + ex / 2, gy + ey / 2, 0.05, `r = ${parseFloat(r.toFixed(2))}`, { color, fadeIn: 400 })
+    return
+  }
+
+  const verts = entry.vertices
+  if (!verts?.length) return
+  const n = verts.length
+
+  let avgEdge = 0
+  for (let i = 0; i < n; i++) avgEdge += sideLength3D(verts, i)
+  avgEdge /= n
+  const ppu   = display.getPixelsPerUnit?.() ?? 50
+  const group = display.getObject(id)
+  const gx    = group?.position.x ?? 0, gy = group?.position.y ?? 0
+
+  const h = shapeHeight3D(verts)
+  const fontSize = Math.round(Math.max(14, Math.min(36, avgEdge * ppu * 0.16)))
+  const withHeightLine = () => {
+    const { x, midY } = drawDashedHeightLine3D(display, id, verts, color)
+    display.addLabel3D(`amhlbl_${id}`, x + gx - avgEdge * 0.06, midY + gy, 0.05, `h = ${h}`, { color, fontSize, align: 'right', fadeIn: 400 })
+  }
+
+  switch (entry.type) {
+    case 'square':
+      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `s = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      break
+    case 'rectangle':
+      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `l = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 1, `h = ${sideLength3D(verts, 1)}`, color, `am_${id}_1`)
+      break
+    case 'parallelogram':
+      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `b = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      withHeightLine()
+      break
+    case 'trapeze':
+      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `B = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 2, `b = ${sideLength3D(verts, 2)}`, color, `am_${id}_2`)
+      withHeightLine()
+      break
+    case 'triangle':
+    case 'right-triangle':
+      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `b = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      withHeightLine()
+      break
+    default:
+      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `s = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+  }
+}
+
 export function showAngles3D(threeRef, id, colorRaw) {
   const display = threeRef?.current
   if (!display?.isReady()) return Promise.resolve()

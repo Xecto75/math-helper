@@ -103,6 +103,11 @@ FUNCTIONS [positional args]:
   S2a:[id,color]                                        — show all interior angle arcs
   S2A:[id,angleIndex,color]                             — pop+recolor one angle arc
   S2E:[id,edgeIndex,color]                              — animated highlight on one edge
+  S2tk:[id,edgeIndex,ticks,color]                       — congruent-side tick mark(s) at an edge's midpoint (ticks=1-3; use a different count for a different equal-side pair)
+  S2tx:[id,edgeIndex]                                    — remove tick mark(s) from an edge
+  S2d:[id,edgeIndex,parts,color,showLabels]             — mark the points de partage that split an edge into "parts" equal sections (parts=3 → 2 points at 1/3, 2/3)
+  S2dx:[id,edgeIndex,parts]                              — remove division points from an edge
+  S2c with type="line": a genuine line SEGMENT (not an infinite line) — vals=[length]; e0 is its only edge, v0/v1 its endpoints
   S2w:[id,arrowId,from,to,color]                        — draw animated arrow inside shape
   S2W:[id,arrowId]                                      — remove arrow
   S2x:[id]                                              — remove shape
@@ -166,6 +171,13 @@ FUNCTIONS [positional args]:
   S3t:[labelId,text,x,y]       — floating text label at world position (y<0 = below shape)
   S3x:[id]                     — remove shape by id
   S3C:[]                       — clear all shapes and labels
+  S3m:[id,clr]                 — label exactly the dimensions needed for THIS shape's VOLUME formula (auto-detects by type — cube→a, sphere→r, cone/cylinder→r+h, rectangular-prism→l+w+h, pyramid→a+h, tetrahedron/octahedron→a, torus→R+r). Prefer this over manually writing S3t volume labels.
+  S3mx:[id]                    — remove volume-measure labels
+  S2E:[id,edgeIndex,color]     — highlight one edge. On cube/rectangular-prism ("box"/"prism"/"rectangular-prism"), edgeIndex is 0-11 (one of the 12 box edges); doesn't work on curved solids (sphere/cone/cylinder/torus).
+  S2Ex:[id,edgeIndex]          — remove one edge's highlight
+  S2F:[id,faceIndex,color]     — highlight one FACE (translucent panel) — cube/rectangular-prism only. faceIndex: 0=+X 1=-X 2=top 3=bottom 4=+Z 5=-Z
+  S2Fx:[id,faceIndex]          — remove one face's highlight
+  S2v:[zoom,panX,panY,distance,duration,preset]  — camera control. preset (3D only, optional): "front"|"back"|"top"|"bottom"|"side"|"corner" jumps to that viewing angle — use it to look straight at a highlighted face.
 
 SHAPE TYPES & PARAMS:
   cube             a=side length
@@ -181,12 +193,17 @@ SHAPE TYPES & PARAMS:
 color: numeric index (0–7)
 The shape auto-spins; no camera control needed.
 Use S3t for volume/surface-area formulas below the shape.
+Face/edge highlighting (S2E/S2F) only works on box-shaped solids (cube, prism,
+rectangular-prism) — curved and other polyhedra solids aren't supported yet.
 
 EXAMPLE — cube with volume:
 [["Cube","s3",[["S3c","box","cube",3,"","",1],["S3t","lbl","V = a³ = {{ 3**3 }} units³",0,-4]]]]
 
 EXAMPLE — cylinder:
 [["Cylinder","s3",[["S3c","cyl","cylinder",2,5,"",3],["S3t","lbl2","V = πr²h = {{ pi * 4 * 5 }}",0,-5]]]]
+
+EXAMPLE — highlight a face + an edge on a rectangular prism:
+[["Surface Area","s3",[["S3c","box","rectangular-prism",4,3,2,1],["S2F","box",2,3],["S2E","box",0,4]]]]
 `,
   },
 
@@ -247,6 +264,14 @@ FUNCTIONS [positional args]:
   fi:[f1,f2]                    — mark intersection points of two functions
   fa:[x,y,id,funcId,label,showCoords]  — add point (funcId/label/showCoords optional)
   fap:[id]                      — remove point
+  fsc:[slope,intercept,coeff,count,xMin,xMax,clr,id]  — scatter plot: points scattered around y=slope·x+intercept; coeff=spread (0=all on the line). Use for correlation/regression lessons.
+  fscx:[id]                     — remove scatter plot
+  fsg:[x1,y1,x2,y2,clr,id]      — finite line SEGMENT between two points (NOT infinite like y=mx+b) — use for geometry constructions drawn on the graph
+  fsgx:[id]                     — remove segment
+  fst:[id,ticks,clr]            — congruent-side tick mark(s) (1-3) at a segment's midpoint; different tick count = different equal-side pair
+  fstx:[id]                     — remove segment tick
+  fsd:[id,parts,clr,showLabels] — mark the points de partage that split a segment into "parts" equal sections
+  fsdx:[id]                     — remove segment division points
   fv:[cx,cy,range]              — center view at (cx,cy) with given range
   fV:[xMin,xMax,yMin,yMax]      — set exact viewport bounds
   fn:[id,lbl,x]                 — floating label on a curve at x position
@@ -282,6 +307,7 @@ EXAMPLE — derivative:
     doc: `TABLE LAYOUTS: sq=single-grid  tq=text-grid
 
 FUNCTIONS [positional args]:
+  Tt:[data,hdr,gId,clr]          — EASIEST way to create a table: data is a literal 2D array, e.g. "[[2,2,3],[5,5,6],[4,4,4]]" — size is auto-detected, don't also pass cols/rows. Prefer this over Tc.
   Tc:[gId,cols,rows,hdr,vals]    — create grid (hdr=0/1; vals: rows sep by |, cells by ,)
   Tx:[id]                        — erase grid (fade out)
   Ta:[id,vals]                   — append column (vals: top-to-bottom comma list)
@@ -292,6 +318,7 @@ FUNCTIONS [positional args]:
   TV:[id,changes]                — update multiple cells "col,row,val|col,row,val"
 
 EXAMPLE:
+[["3x3 Table","sq",[["Tt","[[2,2,3],[5,5,6],[4,4,4]]"]]]]
 [["Grade Table","sq",[["Tc","t1",3,4,1,"Name,Score,Grade|Alice,95,A|Bob,82,B|Carol,78,B+"],["Tv","t1",2,3,"A-"]]]]
 `,
   },

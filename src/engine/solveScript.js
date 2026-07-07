@@ -402,7 +402,7 @@ export function generateQuadraticScript(state, script) {
       `$${v} = \\dfrac{-b \\pm \\sqrt{b^2-4ac}}{2a}$`,
       'où $\\Delta = b^2-4ac$ est le **discriminant** : son signe indique le nombre de solutions (2, 1 ou 0).',
     ],
-    isList: false, color: 'amber',
+    isList: false,
   })
   script.push({ type: 'pause', seconds: 2.5 })
 
@@ -414,42 +414,32 @@ export function generateQuadraticScript(state, script) {
   const frac = (sign, numeratorTerms, denominatorTerms) =>
     ({ sign, isFraction: true, numeratorTerms, denominatorTerms, coefficient: 1, variable: null, degree: 1 })
 
-  const negB      = -b
-  const fourAC    = 4 * a * c
-  const bSquared  = b * b
+  const negB = -b
 
-  // Δ = b² − 4ac  (shown with the actual substituted numbers — base, not yet squared)
+  // Δ = b² − 4ac  (substituted with the real numbers, not yet evaluated) — from
+  // here on, every further reduction reuses the SAME generic step-by-step
+  // engine as any other equation (full-solve-current: square the term, then
+  // combine the two constants) instead of hand-jumping to the answer. The "Δ ="
+  // label on the left never gets torn down — only its right side animates.
   script.push({
     type: 'replaceEquation',
     left:  [vTerm('Δ')],
     right: [
       cst(Math.abs(b), { degree: 2, negBase: b < 0 }),
-      cst(-fourAC),
+      cst(-4 * a * c),
     ],
   })
-  script.push({ type: 'pause', seconds: 0.7 })
-
-  // Δ = <b²> − <4ac>  (both sides evaluated, still two terms)
-  script.push({
-    type: 'replaceEquation',
-    left:  [vTerm('Δ')],
-    right: [cst(bSquared), cst(-fourAC)],
-  })
-  script.push({ type: 'pause', seconds: 0.6 })
-
-  // Δ = <disc>  (combined)
-  script.push({
-    type: 'replaceEquation',
-    left:  [vTerm('Δ')],
-    right: [cst(disc)],
-  })
+  script.push({ type: 'pause', seconds: 0.5 })
+  script.push({ type: 'full-solve-current' })
   script.push({ type: 'pause', seconds: 0.8 })
 
   if (disc > 1e-9) {
     const x1 = (negB + sqrtDisc) / (2 * a)
     const x2 = (negB - sqrtDisc) / (2 * a)
 
-    // x = (−b ± √Δ) / 2a  — with √Δ still showing the radical
+    // x = (−b ± √Δ) / 2a — Δ substituted as a real number, still under the
+    // radical. full-solve-current resolves √Δ in place (Phase 0e below) but
+    // leaves the ± untouched — choosing a side is exactly what x₁/x₂ do next.
     script.push({
       type: 'replaceEquation',
       left:  [vTerm(v)],
@@ -458,33 +448,18 @@ export function generateQuadraticScript(state, script) {
         [cst(2 * a)],
       )],
     })
-    script.push({ type: 'pause', seconds: 0.8 })
-
-    // x = (−b ± √Δ) / 2a  — radical resolved
-    script.push({
-      type: 'replaceEquation',
-      left:  [vTerm(v)],
-      right: [frac('+',
-        [cst(negB), { sign: '+', coefficient: sqrtDisc, variable: null, degree: 0, pmOperator: true }],
-        [cst(2 * a)],
-      )],
-    })
+    script.push({ type: 'pause', seconds: 0.6 })
+    script.push({ type: 'full-solve-current' })
     script.push({ type: 'pause', seconds: 0.9 })
 
-    // ── Branch 1: x₁ ──
+    // ── Branch 1: x₁ — definite '+', no more ambiguity, safe to fully reduce ──
     script.push({
       type: 'replaceEquation',
       left:  [vTerm(`${v}₁`)],
       right: [frac('+', [cst(negB), cst(sqrtDisc)], [cst(2 * a)])],
     })
-    script.push({ type: 'pause', seconds: 0.6 })
-    script.push({
-      type: 'replaceEquation',
-      left:  [vTerm(`${v}₁`)],
-      right: [frac('+', [cst(negB + sqrtDisc)], [cst(2 * a)])],
-    })
     script.push({ type: 'pause', seconds: 0.5 })
-    script.push({ type: 'replaceEquation', left: [vTerm(`${v}₁`)], right: [cst(x1)] })
+    script.push({ type: 'full-solve-current' })
     script.push({ type: 'pause', seconds: 0.9 })
 
     // ── Branch 2: x₂ ──
@@ -493,14 +468,8 @@ export function generateQuadraticScript(state, script) {
       left:  [vTerm(`${v}₂`)],
       right: [frac('+', [cst(negB), cst(-sqrtDisc)], [cst(2 * a)])],
     })
-    script.push({ type: 'pause', seconds: 0.6 })
-    script.push({
-      type: 'replaceEquation',
-      left:  [vTerm(`${v}₂`)],
-      right: [frac('+', [cst(negB - sqrtDisc)], [cst(2 * a)])],
-    })
     script.push({ type: 'pause', seconds: 0.5 })
-    script.push({ type: 'replaceEquation', left: [vTerm(`${v}₂`)], right: [cst(x2)] })
+    script.push({ type: 'full-solve-current' })
     script.push({ type: 'pause', seconds: 0.6 })
 
     script.push({ type: 'showAnswer', text: `${v}₁ = ${fmt(x1)}     ${v}₂ = ${fmt(x2)}` })
@@ -511,8 +480,8 @@ export function generateQuadraticScript(state, script) {
       left:  [vTerm(v)],
       right: [frac('+', [cst(negB)], [cst(2 * a)])],
     })
-    script.push({ type: 'pause', seconds: 0.7 })
-    script.push({ type: 'replaceEquation', left: [vTerm(v)], right: [cst(x)] })
+    script.push({ type: 'pause', seconds: 0.6 })
+    script.push({ type: 'full-solve-current' })
     script.push({ type: 'pause', seconds: 0.8 })
     script.push({ type: 'text-add-item', id: 'quad-formula', text: '$\\Delta = 0$ → une seule solution' })
     script.push({ type: 'showAnswer', text: `${v} = ${fmt(x)}` })

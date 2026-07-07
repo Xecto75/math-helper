@@ -288,6 +288,127 @@ export async function removePoint(calc, id) {
   await fadeOut(calc, ids, e.fadeProps ?? { pointOpacity: 1 })
 }
 
+// Scatter plot: N points scattered around the line y = slope·x + intercept.
+// coeff controls the scatter amount — 0 = every point sits exactly on the
+// line, larger values spread points further from it (teaches correlation
+// strength). Points are plotted as one literal Desmos point-list expression.
+export async function addScatterPlot(calc, id, { slope, intercept, coeff, xMin, xMax, count }, opts = {}) {
+  const color = opts.color ? rgbToHex(opts.color) : '#60a5fa'
+  const n     = Math.max(2, Math.round(count ?? 20))
+  const lo    = Math.min(xMin ?? -5, xMax ?? 5)
+  const hi    = Math.max(xMin ?? -5, xMax ?? 5)
+  const spread = coeff ?? 1
+
+  const pairs = []
+  for (let i = 0; i < n; i++) {
+    const x = lo + Math.random() * (hi - lo)
+    const noise = (Math.random() * 2 - 1) * spread
+    const y = slope * x + intercept + noise
+    pairs.push(`(${x.toFixed(3)},${y.toFixed(3)})`)
+  }
+
+  const cId = `sc_${id}`
+  calc.setExpression({
+    id: cId, latex: pairs.join(','), color,
+    pointSize: 8, pointOpacity: 0,
+  })
+  registry.set(`sc::${id}`, { calcId: cId, fadeProps: { pointOpacity: 1 } })
+  await fadeIn(calc, [cId], { pointOpacity: 1 })
+}
+
+export async function removeScatterPlot(calc, id) {
+  const e = registry.get(`sc::${id}`)
+  if (!e) return
+  registry.delete(`sc::${id}`)
+  await fadeOut(calc, [e.calcId], e.fadeProps ?? { pointOpacity: 1 })
+}
+
+// ── Line segment (finite — NOT an infinite line like y=mx+b) ─────────────────
+export async function addSegment(calc, id, x1, y1, x2, y2, opts = {}) {
+  const color = opts.color ? rgbToHex(opts.color) : '#60a5fa'
+  const cId   = `seg_${id}`
+  calc.setExpression({ id: cId, latex: makeSegment(x1, y1, x2, y2), color, lineWidth: opts.thickness ?? 3, lineOpacity: 0 })
+  registry.set(`seg::${id}`, { x1, y1, x2, y2, calcId: cId, fadeProps: { lineOpacity: 1 } })
+  await fadeIn(calc, [cId], { lineOpacity: 1 })
+}
+
+export async function removeSegment(calc, id) {
+  const e = registry.get(`seg::${id}`)
+  if (!e) return
+  registry.delete(`seg::${id}`)
+  await fadeOut(calc, [e.calcId], e.fadeProps ?? { lineOpacity: 1 })
+}
+
+// Congruent-side tick mark(s) at a segment's midpoint — same notation as the
+// geometry-canvas version, but computed from a segment added via addSegment.
+export async function showSegmentTick(calc, id, ticksRaw, colorRaw) {
+  const seg = registry.get(`seg::${id}`)
+  if (!seg) return
+  const { x1, y1, x2, y2 } = seg
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
+  const dx = x2 - x1, dy = y2 - y1
+  const len = Math.sqrt(dx * dx + dy * dy) || 1
+  const ux = dx / len, uy = dy / len
+  const nx = -uy, ny = ux
+
+  const ticks   = Math.max(1, Math.min(3, Math.round(ticksRaw ?? 1)))
+  const tickLen = Math.min(len * 0.25, 0.6)
+  const spacing = tickLen * 0.9
+  const color   = colorRaw ? rgbToHex(colorRaw) : '#60a5fa'
+  const calcIds = []
+
+  for (let k = 0; k < ticks; k++) {
+    const off = (k - (ticks - 1) / 2) * spacing
+    const cx = mx + ux * off, cy = my + uy * off
+    const ax = cx - nx * tickLen / 2, ay = cy - ny * tickLen / 2
+    const bx = cx + nx * tickLen / 2, by = cy + ny * tickLen / 2
+    const tid = `segtick_${id}_${k}`
+    calc.setExpression({ id: tid, latex: makeSegment(ax, ay, bx, by), color, lineWidth: 3, lineOpacity: 0 })
+    calcIds.push(tid)
+  }
+  registry.set(`segtick::${id}`, { calcIds, fadeProps: { lineOpacity: 1 } })
+  await fadeIn(calc, calcIds, { lineOpacity: 1 })
+}
+
+export async function removeSegmentTick(calc, id) {
+  const e = registry.get(`segtick::${id}`)
+  if (!e) return
+  registry.delete(`segtick::${id}`)
+  await fadeOut(calc, e.calcIds, e.fadeProps ?? { lineOpacity: 1 })
+}
+
+// Points de partage — mark the (parts-1) points that split a segment into
+// "parts" equal sections, optionally labeled P1, P2, …
+export async function divideSegmentGraph(calc, id, partsRaw, colorRaw, showLabelsRaw) {
+  const seg = registry.get(`seg::${id}`)
+  if (!seg) return
+  const { x1, y1, x2, y2 } = seg
+  const parts      = Math.max(2, Math.round(partsRaw ?? 2))
+  const showLabels = showLabelsRaw === true || String(showLabelsRaw).trim() === 'true'
+  const color      = colorRaw ? rgbToHex(colorRaw) : '#a855f7'
+  const calcIds    = []
+
+  for (let k = 1; k < parts; k++) {
+    const t  = k / parts
+    const px = x1 + (x2 - x1) * t, py = y1 + (y2 - y1) * t
+    const pid = `segdiv_${id}_${k}`
+    calc.setExpression({
+      id: pid, latex: `(${px.toFixed(6)},${py.toFixed(6)})`, color,
+      showLabel: showLabels, label: showLabels ? `P${k}` : '', pointOpacity: 0,
+    })
+    calcIds.push(pid)
+  }
+  registry.set(`segdiv::${id}`, { calcIds, fadeProps: { pointOpacity: 1 } })
+  await fadeIn(calc, calcIds, { pointOpacity: 1 })
+}
+
+export async function removeDivideSegmentGraph(calc, id) {
+  const e = registry.get(`segdiv::${id}`)
+  if (!e) return
+  registry.delete(`segdiv::${id}`)
+  await fadeOut(calc, e.calcIds, e.fadeProps ?? { pointOpacity: 1 })
+}
+
 export async function addVerticalLine(calc, id, xVal, opts = {}) {
   const color = opts.color ? rgbToHex(opts.color) : '#f87171'
   const cId   = `vl_${id}`

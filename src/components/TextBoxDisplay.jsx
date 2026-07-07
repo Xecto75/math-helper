@@ -23,7 +23,9 @@ function TextBox({ box }) {
     return () => cancelAnimationFrame(id)
   }, [])
 
-  const accent = (box.color && box.color !== '') ? box.color : '#60a5fa'
+  // No accent set → neutral gray, not a color pulled out of thin air. Only a
+  // real accent color (tied to a specific matching element) should show here.
+  const accent = (box.color && box.color !== '') ? box.color : 'var(--text)'
   const count  = box.items.length
   const scale  = count <= 1 ? 2.0 : count <= 2 ? 1.5 : count <= 3 ? 1.2 : 1.0
   return (

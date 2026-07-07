@@ -1,8 +1,12 @@
 /**
  * Function registry — every animation the system can play.
  *
- * status: 'ready' = wired up and demoed here
- *         'soon'  = placeholder, not yet implemented
+ * status: 'ready'  = wired up and demoed here
+ *         'soon'   = placeholder, not yet implemented
+ *         'legacy' = fully working, but hidden from "Add function" — only
+ *                    reachable by old saved lessons that already use it (e.g.
+ *                    the pre-Three.js SVG shape engine, kept for backward
+ *                    compat but not selectable on any new page/layout)
  *
  * For 'ready' functions the `inputs[].default` field pre-fills a working
  * example so you can hit Lancer immediately.
@@ -161,6 +165,20 @@ export const CATEGORIES = [
     defaultOpen: false,
     functions: [
       {
+        id: 'table-create', label: 'Create Table',
+        description: 'Simplest way to make a table — give one 2D array, size is auto-detected (no need to also specify rows/cols)',
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'data', label: 'Data (2D array)', type: 'text',
+            default: '[[2,2,3],[5,5,6],[4,4,4]]',
+            placeholder: '[[2,2,3],[5,5,6],[4,4,4]]' },
+          { id: 'headerRow', label: 'First row is a header', type: 'select', default: 'false',
+            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
+          { id: 'gridId', label: 'Table ID', type: 'text', default: 'table1' },
+          { id: 'color',  label: 'Line color (optional)', type: 'color-name', default: '' },
+        ],
+      },
+      {
         id: 'tab-create-grid', label: 'createGrid',
         description: 'Create an animated grid with values',
         status: 'ready', useTable: true,
@@ -247,168 +265,6 @@ export const CATEGORIES = [
     ],
   },
 
-  // ── Géométrie ────────────────────────────────────────────────────────────
-  // 2D shape engine (GeometryDisplay / geometryEngine.js) — each independently testable.
-  {
-    id: 'geometrie',
-    label: 'Géométrie',
-    defaultOpen: false,
-    functions: [
-      {
-        id: 'geo-create-polygon', label: 'Create Shape',
-        description: 'Draw a polygon or circle from side lengths / dimensions',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1', placeholder: 'shape1' },
-          { id: 'shape-type', label: 'Type', type: 'select', default: 'triangle',
-            options: [
-              { value: 'triangle',       label: 'Triangle' },
-              { value: 'right-triangle', label: 'Right triangle' },
-              { value: 'rectangle',      label: 'Rectangle' },
-              { value: 'square',         label: 'Square' },
-              { value: 'parallelogram',  label: 'Parallelogram' },
-              { value: 'trapeze',        label: 'Trapeze' },
-              { value: 'pentagon',       label: 'Pentagon' },
-              { value: 'hexagon',        label: 'Hexagon' },
-              { value: 'octagon',        label: 'Octagon' },
-              { value: 'regular-polygon', label: 'Regular polygon' },
-              { value: 'circle',         label: 'Circle' },
-            ] },
-          { id: 'values', label: 'Values (comma-separated)', type: 'text', default: '5,4,3',
-            placeholder: 'triangle="a,b,c"  rectangle="w,h"  square="s"  trapeze="aTop,bBot,h"  circle="r"' },
-          { id: 'fillColor',   label: 'Fill color (optional)',   type: 'color-name', default: '' },
-          { id: 'borderColor', label: 'Border color (optional)', type: 'color-name', default: '' },
-          { id: 'flipX', label: 'Flip X', type: 'select', default: 'false',
-            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
-          { id: 'flipY', label: 'Flip Y', type: 'select', default: 'false',
-            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
-        ],
-      },
-      {
-        id: 'geo-erase-shape', label: 'Erase Shape',
-        description: 'Remove a shape and its labels',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
-        ],
-      },
-      {
-        id: 'geo-move-shape', label: 'Move Shape',
-        description: 'Animate a shape sliding by (dx, dy)',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'shapeId', label: 'Shape ID', type: 'text',   default: 'shape1' },
-          { id: 'dx',      label: 'dx',       type: 'number', default: 3 },
-          { id: 'dy',      label: 'dy',       type: 'number', default: 2 },
-        ],
-      },
-      {
-        id: 'geo-highlight-shape', label: 'Highlight Shape',
-        description: 'Pulse a shape’s outline/fill briefly',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
-        ],
-      },
-      {
-        id: 'geo-label-sides', label: 'Label Sides',
-        description: 'Label every side — blank or "a=" auto-fills the computed length',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
-          { id: 'labels',  label: 'Labels (comma-separated, blank = length only)',
-            type: 'text', default: 'a=,b=,c=', placeholder: 'a=,b=,c=' },
-        ],
-      },
-      {
-        id: 'geo-show-angles', label: 'Show Angles',
-        description: 'Draw arcs + degree labels at every interior angle',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
-          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
-        ],
-      },
-      {
-        id: 'geo-show-measure', label: 'Show Measure',
-        description: 'Height line for polygons (top vertex → base), radius line for circles',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
-          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
-          { id: 'angle',   label: 'Angle (circles only, degrees)', type: 'number', default: 35 },
-          { id: 'label',   label: 'Label override (optional)', type: 'text', default: '' },
-        ],
-      },
-      {
-        id: 'geo-show-area-measures', label: 'Show Area Measures',
-        description: 'Every measurement needed for the area formula, tailored per shape: square→s, rectangle→l+h, parallelogram→b+h, trapeze→B+b+h, triangle→b+h, circle→r. Works with shapes from either Create Shape (geo-create-polygon) or Create 2D Shape (geo3d-create-2d).',
-        status: 'ready', useGeo: true, use3D: true,
-        inputs: [
-          { id: 'shapeId', label: 'Shape ID (must match the shape\'s own ID)', type: 'text', default: 'shape1' },
-          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
-        ],
-      },
-      {
-        id: 'geo-highlight-edge', label: 'Highlight Edge',
-        description: 'Flash one edge by index',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'shapeId',   label: 'Shape ID',  type: 'text',   default: 'shape1' },
-          { id: 'edgeIndex', label: 'Edge index', type: 'number', default: 0 },
-          { id: 'color',     label: 'Color',     type: 'color-name', default: 'amber' },
-        ],
-      },
-      {
-        id: 'geo-highlight-angle', label: 'Highlight Angle',
-        description: 'Flash the angle arc at one vertex',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'shapeId',     label: 'Shape ID',    type: 'text',   default: 'shape1' },
-          { id: 'vertexIndex', label: 'Vertex index', type: 'number', default: 0 },
-          { id: 'color',       label: 'Color',       type: 'color-name', default: 'amber' },
-        ],
-      },
-      {
-        id: 'geo-show-arrow', label: 'Show Arrow',
-        description: 'Draw an arrow between two shape corners/points',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
-          { id: 'arrowId', label: 'Arrow ID (optional)', type: 'text', default: '' },
-          { id: 'from',    label: 'From (e.g. corner:0)', type: 'text', default: 'corner:0' },
-          { id: 'to',      label: 'To (e.g. corner:2)',   type: 'text', default: 'corner:2' },
-          { id: 'color',   label: 'Color', type: 'color-name', default: 'amber' },
-        ],
-      },
-      {
-        id: 'geo-remove-arrow', label: 'Remove Arrow',
-        description: 'Remove a previously drawn arrow',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'arrowId', label: 'Arrow ID', type: 'text', default: '' },
-        ],
-      },
-      {
-        id: 'geo-add-text', label: 'Add Floating Text',
-        description: 'Place a small LaTeX label anywhere on the canvas',
-        status: 'ready', useGeo: true,
-        inputs: [
-          { id: 'labelId', label: 'Label ID', type: 'text', default: 'lbl1' },
-          { id: 'text',    label: 'Text',     type: 'text', default: 'A = \\pi r^2' },
-          { id: 'x',       label: 'X',        type: 'number', default: 0 },
-          { id: 'y',       label: 'Y',        type: 'number', default: -4 },
-        ],
-      },
-      {
-        id: 'geo-clear', label: 'Clear All Shapes',
-        description: 'Remove every shape, label, and highlight',
-        status: 'ready', useGeo: true,
-        inputs: [],
-      },
-    ],
-  },
-
   // ── Graphiques ────────────────────────────────────────────────────────────
   // Desmos graphing engine functions — each independently testable.
   {
@@ -483,6 +339,90 @@ export const CATEGORIES = [
         inputs: [
           { id: 'id', label: 'Point ID', type: 'text', default: '', placeholder: 'same ID used in addPoint' },
         ],
+      },
+      {
+        id: 'graph-scatter-plot',
+        label: 'scatterPlot',
+        description: 'Nuage de points dispersés autour de y = pente·x + ordonnée — coeff contrôle la dispersion (0 = tous sur la droite)',
+        status: 'ready', useGraph: true,
+        inputs: [
+          { id: 'slope',     label: 'Pente (m)',       type: 'number', default: 1 },
+          { id: 'intercept', label: 'Ordonnée à l\'origine (b)', type: 'number', default: 0 },
+          { id: 'coeff',     label: 'Dispersion (coefficient)', type: 'number', default: 1 },
+          { id: 'count',     label: 'Nombre de points', type: 'number', default: 20 },
+          { id: 'xMin',      label: 'x min', type: 'number', default: -5 },
+          { id: 'xMax',      label: 'x max', type: 'number', default: 5 },
+          { id: 'color',     label: 'Couleur (optionnel)', type: 'color-name', default: '' },
+          { id: 'id',        label: 'ID', type: 'text', default: 'nuage1' },
+        ],
+      },
+      {
+        id: 'graph-remove-scatter-plot',
+        label: 'removeScatterPlot',
+        description: 'Supprime un nuage de points par son ID',
+        status: 'ready', useGraph: true,
+        inputs: [
+          { id: 'id', label: 'ID', type: 'text', default: 'nuage1' },
+        ],
+      },
+      {
+        id: 'graph-add-segment',
+        label: 'addSegment',
+        description: 'Trace un segment de droite FINI entre deux points (pas une droite infinie)',
+        status: 'ready', useGraph: true,
+        inputs: [
+          { id: 'x1', label: 'x1', type: 'number', default: 0 },
+          { id: 'y1', label: 'y1', type: 'number', default: 0 },
+          { id: 'x2', label: 'x2', type: 'number', default: 4 },
+          { id: 'y2', label: 'y2', type: 'number', default: 0 },
+          { id: 'color', label: 'Couleur (optionnel)', type: 'color-name', default: '' },
+          { id: 'id', label: 'ID', type: 'text', default: 'seg1' },
+        ],
+      },
+      {
+        id: 'graph-remove-segment',
+        label: 'removeSegment',
+        description: 'Supprime un segment par son ID',
+        status: 'ready', useGraph: true,
+        inputs: [{ id: 'id', label: 'ID', type: 'text', default: 'seg1' }],
+      },
+      {
+        id: 'graph-segment-tick',
+        label: 'segmentTick',
+        description: 'Marque de côtés égaux (1 à 3 tirets perpendiculaires) au milieu d\'un segment — change le nombre pour marquer une autre paire égale',
+        status: 'ready', useGraph: true,
+        inputs: [
+          { id: 'id',    label: 'Segment ID', type: 'text',   default: 'seg1' },
+          { id: 'ticks', label: 'Nombre de tirets (1-3)', type: 'number', default: 1, min: 1, max: 3 },
+          { id: 'color', label: 'Couleur', type: 'color-name', default: 'blue' },
+        ],
+      },
+      {
+        id: 'graph-remove-segment-tick',
+        label: 'removeSegmentTick',
+        description: 'Supprime la marque de côté égal d\'un segment',
+        status: 'ready', useGraph: true,
+        inputs: [{ id: 'id', label: 'Segment ID', type: 'text', default: 'seg1' }],
+      },
+      {
+        id: 'graph-divide-segment',
+        label: 'divideSegment',
+        description: 'Marque les points de partage qui séparent un segment en N sections égales',
+        status: 'ready', useGraph: true,
+        inputs: [
+          { id: 'id',    label: 'Segment ID', type: 'text', default: 'seg1' },
+          { id: 'parts', label: 'Sections (N)', type: 'number', default: 2, min: 2 },
+          { id: 'color', label: 'Couleur', type: 'color-name', default: 'purple' },
+          { id: 'showLabels', label: 'Afficher les étiquettes (P1, P2…)', type: 'select', default: 'false',
+            options: [{ value: 'false', label: 'Non' }, { value: 'true', label: 'Oui' }] },
+        ],
+      },
+      {
+        id: 'graph-remove-divide-segment',
+        label: 'removeDivideSegment',
+        description: 'Supprime les points de partage d\'un segment',
+        status: 'ready', useGraph: true,
+        inputs: [{ id: 'id', label: 'Segment ID', type: 'text', default: 'seg1' }],
       },
       {
         id: 'graph-adjust-view',
@@ -1125,12 +1065,69 @@ export const CATEGORIES = [
       {
         id: 'geo3d-highlight-edge',
         label: 'Highlight Edge',
-        description: 'Draw a colored line over one edge of a flat shape (animated draw-in)',
+        description: 'Draw a colored line over one edge (or several one after another — e.g. "0,1,2") — works on flat 2D shapes (edge = side index) AND cube/rectangular-prism 3D solids (edge = 0-11, one of the 12 box edges)',
         status: 'ready', use3D: true,
         inputs: [
           { id: 'id',        label: 'ID',     type: 'text',       default: 'shape1' },
-          { id: 'edgeIndex', label: 'Edge #', type: 'number',     default: 0 },
+          { id: 'edgeIndex', label: 'Edge # (comma-sep for several)', type: 'text', default: '0' },
           { id: 'color',     label: 'Color',  type: 'color-name', default: 'orange' },
+        ],
+      },
+      {
+        id: 'geo3d-remove-edge-highlight',
+        label: 'Remove Edge Highlight',
+        description: 'Remove one or more edges\' highlight (flat shape or 3D solid) — comma-sep for several, e.g. "0,1,2"',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id',        label: 'ID',     type: 'text',   default: 'shape1' },
+          { id: 'edgeIndex', label: 'Edge # (comma-sep for several)', type: 'text', default: '0' },
+        ],
+      },
+      {
+        id: 'geo3d-show-tick',
+        label: 'Show Equal-Side Tick',
+        description: 'Congruent-side tick mark(s) crossing the middle of an edge (or several at once, comma-sep — e.g. "0,1") — use a different tick count to mark a different pair of equal sides. Auto-added when a shape has congruent sides, so you usually won\'t need this manually.',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id',        label: 'ID',       type: 'text',       default: 'shape1' },
+          { id: 'edgeIndex', label: 'Edge # (comma-sep for several)', type: 'text', default: '0' },
+          { id: 'ticks',     label: 'Tick count (1-3)', type: 'number', default: 1, min: 1, max: 3 },
+          { id: 'color',     label: 'Color',    type: 'color-name', default: 'blue' },
+        ],
+      },
+      {
+        id: 'geo3d-remove-tick',
+        label: 'Remove Equal-Side Tick',
+        description: 'Remove the tick mark(s) from one or more edges (comma-sep for several)',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id',        label: 'ID',     type: 'text',   default: 'shape1' },
+          { id: 'edgeIndex', label: 'Edge # (comma-sep for several)', type: 'text', default: '0' },
+        ],
+      },
+      {
+        id: 'geo3d-divide-segment',
+        label: 'Divide Segment',
+        description: 'Mark the points that split an edge into N equal sections (points de partage) — e.g. parts=3 marks the two points at 1/3 and 2/3',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id',          label: 'ID',       type: 'text',       default: 'shape1' },
+          { id: 'edgeIndex',   label: 'Edge #',   type: 'number',     default: 0 },
+          { id: 'parts',       label: 'Parts (N)', type: 'number',    default: 2, min: 2 },
+          { id: 'color',       label: 'Color',    type: 'color-name', default: 'purple' },
+          { id: 'showLabels',  label: 'Show labels (P1, P2…)', type: 'select', default: 'false',
+            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
+        ],
+      },
+      {
+        id: 'geo3d-remove-divide-segment',
+        label: 'Remove Divide Segment',
+        description: 'Remove the division points from one edge',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id',        label: 'ID',       type: 'text',   default: 'shape1' },
+          { id: 'edgeIndex', label: 'Edge #',   type: 'number', default: 0 },
+          { id: 'parts',     label: 'Parts (N)', type: 'number', default: 2 },
         ],
       },
       {
@@ -1168,7 +1165,7 @@ export const CATEGORIES = [
       {
         id: 'geo3d-set-view',
         label: 'Set View',
-        description: 'Zoom or pan the 2D/3D camera (zoom>1 = zoom in, <1 = zoom out)',
+        description: 'Zoom/pan the 2D/3D camera, or jump to a named viewing angle (3D only) — e.g. "top" to look straight down at a highlighted top face',
         status: 'ready', use3D: true,
         inputs: [
           { id: 'zoom',     label: 'Zoom (1 = default)', type: 'number', default: 1 },
@@ -1176,6 +1173,16 @@ export const CATEGORIES = [
           { id: 'panY',     label: 'Pan Y',              type: 'number', default: 0 },
           { id: 'distance', label: 'Camera distance (3D only, blank = auto)', type: 'text', default: '' },
           { id: 'duration', label: 'Duration (s)',        type: 'number', default: 0.3 },
+          { id: 'preset',   label: 'View angle (3D only, optional)', type: 'select', default: '',
+            options: [
+              { value: '',       label: '— keep current angle —' },
+              { value: 'front',  label: 'Front' },
+              { value: 'back',   label: 'Back' },
+              { value: 'top',    label: 'Top' },
+              { value: 'bottom', label: 'Bottom' },
+              { value: 'side',   label: 'Side' },
+              { value: 'corner', label: 'Corner (3/4 view)' },
+            ] },
         ],
       },
       {
@@ -1204,6 +1211,161 @@ export const CATEGORIES = [
         inputs: [
           { id: 'id', label: 'ID', type: 'text', default: 'shape1' },
         ],
+      },
+      // ── Legacy SVG shape engine (GeometryDisplay / geometryEngine.js) — kept
+      // for existing lessons that already use it; prefer "Create 2D Shape"
+      // (geo3d-create-2d) above for new lessons.
+      {
+        id: 'geo-create-polygon', label: 'Create Shape (legacy SVG)',
+        description: 'Draw a polygon or circle from side lengths / dimensions',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1', placeholder: 'shape1' },
+          { id: 'shape-type', label: 'Type', type: 'select', default: 'triangle',
+            options: [
+              { value: 'triangle',       label: 'Triangle' },
+              { value: 'right-triangle', label: 'Right triangle' },
+              { value: 'rectangle',      label: 'Rectangle' },
+              { value: 'square',         label: 'Square' },
+              { value: 'parallelogram',  label: 'Parallelogram' },
+              { value: 'trapeze',        label: 'Trapeze' },
+              { value: 'pentagon',       label: 'Pentagon' },
+              { value: 'hexagon',        label: 'Hexagon' },
+              { value: 'octagon',        label: 'Octagon' },
+              { value: 'regular-polygon', label: 'Regular polygon' },
+              { value: 'circle',         label: 'Circle' },
+            ] },
+          { id: 'values', label: 'Values (comma-separated)', type: 'text', default: '5,4,3',
+            placeholder: 'triangle="a,b,c"  rectangle="w,h"  square="s"  trapeze="aTop,bBot,h"  circle="r"' },
+          { id: 'fillColor',   label: 'Fill color (optional)',   type: 'color-name', default: '' },
+          { id: 'borderColor', label: 'Border color (optional)', type: 'color-name', default: '' },
+          { id: 'flipX', label: 'Flip X', type: 'select', default: 'false',
+            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
+          { id: 'flipY', label: 'Flip Y', type: 'select', default: 'false',
+            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
+        ],
+      },
+      {
+        id: 'geo-erase-shape', label: 'Erase Shape (legacy SVG)',
+        description: 'Remove a shape and its labels',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
+        ],
+      },
+      {
+        id: 'geo-move-shape', label: 'Move Shape (legacy SVG)',
+        description: 'Animate a shape sliding by (dx, dy)',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text',   default: 'shape1' },
+          { id: 'dx',      label: 'dx',       type: 'number', default: 3 },
+          { id: 'dy',      label: 'dy',       type: 'number', default: 2 },
+        ],
+      },
+      {
+        id: 'geo-highlight-shape', label: 'Highlight Shape (legacy SVG)',
+        description: 'Pulse a shape’s outline/fill briefly',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
+        ],
+      },
+      {
+        id: 'geo-label-sides', label: 'Label Sides (legacy SVG)',
+        description: 'Label every side — blank or "a=" auto-fills the computed length',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
+          { id: 'labels',  label: 'Labels (comma-separated, blank = length only)',
+            type: 'text', default: 'a=,b=,c=', placeholder: 'a=,b=,c=' },
+        ],
+      },
+      {
+        id: 'geo-show-angles', label: 'Show Angles (legacy SVG)',
+        description: 'Draw arcs + degree labels at every interior angle',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
+          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id: 'geo-show-measure', label: 'Show Measure (legacy SVG)',
+        description: 'Height line for polygons (top vertex → base), radius line for circles',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
+          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
+          { id: 'angle',   label: 'Angle (circles only, degrees)', type: 'number', default: 35 },
+          { id: 'label',   label: 'Label override (optional)', type: 'text', default: '' },
+        ],
+      },
+      {
+        id: 'geo-show-area-measures', label: 'Show Area Measures',
+        description: 'Every measurement needed for the area formula, tailored per shape: square→s, rectangle→l+h, parallelogram→b+h, trapeze→B+b+h, triangle→b+h, circle→r. Works with shapes from either Create Shape (geo-create-polygon) or Create 2D Shape (geo3d-create-2d).',
+        status: 'ready', useGeo: true, use3D: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID (must match the shape\'s own ID)', type: 'text', default: 'shape1' },
+          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id: 'geo-highlight-edge', label: 'Highlight Edge (legacy SVG)',
+        description: 'Flash one edge by index, or several one after another — e.g. "0,1,2" instead of calling this 3 times',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId',   label: 'Shape ID',  type: 'text',   default: 'shape1' },
+          { id: 'edgeIndex', label: 'Edge index (comma-sep for several)', type: 'text', default: '0' },
+          { id: 'color',     label: 'Color',     type: 'color-name', default: 'amber' },
+        ],
+      },
+      {
+        id: 'geo-highlight-angle', label: 'Highlight Angle (legacy SVG)',
+        description: 'Flash the angle arc at one vertex',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId',     label: 'Shape ID',    type: 'text',   default: 'shape1' },
+          { id: 'vertexIndex', label: 'Vertex index', type: 'number', default: 0 },
+          { id: 'color',       label: 'Color',       type: 'color-name', default: 'amber' },
+        ],
+      },
+      {
+        id: 'geo-show-arrow', label: 'Show Arrow (legacy SVG)',
+        description: 'Draw an arrow between two shape corners/points',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
+          { id: 'arrowId', label: 'Arrow ID (optional)', type: 'text', default: '' },
+          { id: 'from',    label: 'From (e.g. corner:0)', type: 'text', default: 'corner:0' },
+          { id: 'to',      label: 'To (e.g. corner:2)',   type: 'text', default: 'corner:2' },
+          { id: 'color',   label: 'Color', type: 'color-name', default: 'amber' },
+        ],
+      },
+      {
+        id: 'geo-remove-arrow', label: 'Remove Arrow (legacy SVG)',
+        description: 'Remove a previously drawn arrow',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'arrowId', label: 'Arrow ID', type: 'text', default: '' },
+        ],
+      },
+      {
+        id: 'geo-add-text', label: 'Add Floating Text (legacy SVG)',
+        description: 'Place a small LaTeX label anywhere on the canvas',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'labelId', label: 'Label ID', type: 'text', default: 'lbl1' },
+          { id: 'text',    label: 'Text',     type: 'text', default: 'A = \\pi r^2' },
+          { id: 'x',       label: 'X',        type: 'number', default: 0 },
+          { id: 'y',       label: 'Y',        type: 'number', default: -4 },
+        ],
+      },
+      {
+        id: 'geo-clear', label: 'Clear All Shapes (legacy SVG)',
+        description: 'Remove every shape, label, and highlight',
+        status: 'legacy', useGeo: true,
+        inputs: [],
       },
     ],
   },
@@ -1251,6 +1413,67 @@ export const CATEGORIES = [
           { id: 'text',    label: 'Text',     type: 'text',   default: 'A = πr²' },
           { id: 'x',       label: 'x',        type: 'number', default: 0 },
           { id: 'y',       label: 'y',        type: 'number', default: -4 },
+        ],
+      },
+      {
+        id: 'geo3d-show-volume-measures',
+        label: 'Show Volume Measures',
+        description: 'Labels exactly the dimensions needed for THIS shape\'s volume formula: cube→a, sphere→r, cone/cylinder→r+h, rectangular-prism→l+w+h, pyramid→a+h, tetrahedron/octahedron→a, torus→R+r',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id',    label: 'ID', type: 'text', default: 'shape1' },
+          { id: 'color', label: 'Color (optional)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id: 'geo3d-remove-volume-measures',
+        label: 'Remove Volume Measures',
+        description: 'Remove the volume-measure labels from a shape',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id', label: 'ID', type: 'text', default: 'shape1' },
+        ],
+      },
+      {
+        id: 'geo3d-highlight-edge',
+        label: 'Highlight Edge',
+        description: 'Draw a colored line over one edge of a cube/rectangular-prism (edge = 0-11, one of the 12 box edges), or several one after another — e.g. "0,1,2"',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id',        label: 'ID',     type: 'text',       default: 'shape1' },
+          { id: 'edgeIndex', label: 'Edge # (comma-sep for several)', type: 'text', default: '0' },
+          { id: 'color',     label: 'Color',  type: 'color-name', default: 'orange' },
+        ],
+      },
+      {
+        id: 'geo3d-remove-edge-highlight',
+        label: 'Remove Edge Highlight',
+        description: 'Remove one or more edges\' highlight — comma-sep for several, e.g. "0,1,2"',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id',        label: 'ID',     type: 'text',   default: 'shape1' },
+          { id: 'edgeIndex', label: 'Edge # (comma-sep for several)', type: 'text', default: '0' },
+        ],
+      },
+      {
+        id: 'geo3d-highlight-face',
+        label: 'Highlight Face',
+        description: 'Translucent colored panel on one face of a cube/rectangular-prism — faces: 0=+X 1=-X 2=top 3=bottom 4=+Z 5=-Z',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id',        label: 'ID',      type: 'text',       default: 'shape1' },
+          { id: 'faceIndex', label: 'Face # (0-5)', type: 'number', default: 0, min: 0, max: 5 },
+          { id: 'color',     label: 'Color',   type: 'color-name', default: 'orange' },
+        ],
+      },
+      {
+        id: 'geo3d-remove-face-highlight',
+        label: 'Remove Face Highlight',
+        description: 'Remove one face\'s highlight panel',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'id',        label: 'ID',      type: 'text',   default: 'shape1' },
+          { id: 'faceIndex', label: 'Face # (0-5)', type: 'number', default: 0 },
         ],
       },
       {

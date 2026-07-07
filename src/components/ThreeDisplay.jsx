@@ -193,7 +193,7 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       lbl.el.style.color = lbl.defaultColor
     },
 
-    adjustView3D({ zoom = null, panX = 0, panY = 0, distance = null, duration = 0.3 } = {}) {
+    adjustView3D({ zoom = null, panX = 0, panY = 0, distance = null, duration = 0.3, preset = null } = {}) {
       const el   = containerRef.current
       const asp  = el ? el.clientWidth / (el.clientHeight || 1) : 1.33
       const ease = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
@@ -229,14 +229,30 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
         const persp = perspCamRef.current
         if (!persp) return
         const pos      = persp.position
+        const fromPos  = pos.clone()
         const fromDist = pos.length() || 1
         const toDist   = distance ?? (zoom != null ? fromDist / zoom : fromDist)
-        const dir      = pos.clone().normalize()
-        const t0       = performance.now()
-        const tick     = () => {
+
+        // Presets change the VIEWING ANGLE (a new direction to look from);
+        // without a preset, zoom/distance just move along the current direction.
+        const PRESETS = {
+          front:  [0, 0, 1],
+          back:   [0, 0, -1],
+          top:    [0, 1, 0.0001],
+          bottom: [0, -1, 0.0001],
+          side:   [1, 0, 0],
+          corner: [1, 1, 1],
+        }
+        const toDir = preset && PRESETS[preset]
+          ? new THREE.Vector3(...PRESETS[preset]).normalize()
+          : fromPos.clone().normalize()
+        const toPos = toDir.multiplyScalar(toDist)
+
+        const t0   = performance.now()
+        const tick = () => {
           const p = ease(Math.min((performance.now() - t0) / dur, 1))
-          const d = fromDist + (toDist - fromDist) * p
-          pos.copy(dir.clone().multiplyScalar(d))
+          pos.lerpVectors(fromPos, toPos, p)
+          persp.lookAt(0, 0, 0)
           if (p < 1) requestAnimationFrame(tick)
         }
         requestAnimationFrame(tick)

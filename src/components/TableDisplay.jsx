@@ -321,11 +321,6 @@ const TableDisplay = forwardRef(function TableDisplay(_, ref) {
         preserveAspectRatio="xMidYMid meet"
         style={{ width: '100%', height: '100%' }}
       >
-        <rect width={SVG_W} height={SVG_H} fill="var(--bg-2)" rx="6" />
-
-        {/* Viewport border */}
-        <rect x={1} y={1} width={SVG_W-2} height={SVG_H-2}
-          fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={1.5} rx="5" />
 
         {Object.entries(lines).map(([id, l]) => {
           const len = Math.hypot(l.x2 - l.x1, l.y2 - l.y1) || 1

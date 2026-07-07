@@ -47,16 +47,22 @@ import {
   demoShowAngles, demoShowArrow, demoRemoveArrow, demoHighlightAngle, demoGeoHighlightEdge,
   demoGraphPlotFunction, demoGraphRemoveFunction, demoGraphShadeArea,
   demoGraphFindIntersections, demoGraphAddPoint, demoGraphRemovePoint, demoGraphAdjustView,
+  demoGraphScatterPlot, demoGraphRemoveScatterPlot,
+  demoGraphAddSegment, demoGraphRemoveSegment, demoGraphSegmentTick, demoGraphRemoveSegmentTick,
+  demoGraphDivideSegment, demoGraphRemoveDivideSegment,
   demoGraphSetViewport, demoGraphNameFunc, demoGraphTangent,
   demoGraphAddHorizontalLine, demoGraphMarkRoots, demoGraphShowProjection, demoGraphPlotDerivative,
   demoGraphRiemannSum, demoGraphDrawVector, demoGraphDrawAngle, demoGraphTransformFunction,
   demoGraphBatchAddPoints, demoGraphBatchShowProjections, demoGraphTrigCircle,
   demoGeo3dCreate, demoGeo3dRemove, demoGeo3dClear,
   demoGeo3dMove, demoGeo3dHighlight, demoGeo3dLabelSides,
-  demoGeo3dShowAngles, demoGeo3dHighlightAngle, demoGeo3dHighlightEdge,
+  demoGeo3dShowAngles, demoGeo3dHighlightAngle, demoGeo3dHighlightEdge, demoGeo3dRemoveEdgeHighlight,
+  demoGeo3dHighlightFace, demoGeo3dRemoveFaceHighlight,
+  demoGeo3dShowTick, demoGeo3dRemoveTick, demoGeo3dDivideSegment, demoGeo3dRemoveDivideSegment,
   demoGeo3dShowArrow, demoGeo3dRemoveArrow, demoGeo3dClearHighlights, demoGeo3dSetView, demoGeo3dAddText,
+  demoGeo3dShowVolumeMeasures, demoGeo3dRemoveVolumeMeasures,
   demoGeo2dFlip, demoGeo2dRotate,
-  demoTableCreateGrid, demoTableEraseGrid, demoTableAddColumn,
+  demoTableCreate, demoTableCreateGrid, demoTableEraseGrid, demoTableAddColumn,
   demoTableRemoveColumn, demoTableAddRow, demoTableRemoveRow,
   demoTableChangeValue, demoTableChangeValues,
   demoAddCommentGraph, demoAddCommentGraphFunc, demoAddCommentGraphArea,
@@ -482,6 +488,14 @@ export default function App() {
       case 'graph-find-intersections':return demoGraphFindIntersections(inputs.f1, inputs.f2)
       case 'graph-add-point':              return demoGraphAddPoint(inputs.x, inputs.y, inputs.id, inputs.funcId, inputs.label, inputs.showCoords)
       case 'graph-remove-point':           return demoGraphRemovePoint(inputs.id)
+      case 'graph-scatter-plot':           return demoGraphScatterPlot(inputs.slope, inputs.intercept, inputs.coeff, inputs.count, inputs.xMin, inputs.xMax, inputs.color, inputs.id)
+      case 'graph-remove-scatter-plot':    return demoGraphRemoveScatterPlot(inputs.id)
+      case 'graph-add-segment':           return demoGraphAddSegment(inputs.x1, inputs.y1, inputs.x2, inputs.y2, inputs.color, inputs.id)
+      case 'graph-remove-segment':         return demoGraphRemoveSegment(inputs.id)
+      case 'graph-segment-tick':           return demoGraphSegmentTick(inputs.id, inputs.ticks, inputs.color)
+      case 'graph-remove-segment-tick':    return demoGraphRemoveSegmentTick(inputs.id)
+      case 'graph-divide-segment':         return demoGraphDivideSegment(inputs.id, inputs.parts, inputs.color, inputs.showLabels)
+      case 'graph-remove-divide-segment':  return demoGraphRemoveDivideSegment(inputs.id)
       case 'graph-adjust-view':            return demoGraphAdjustView(inputs.cx, inputs.cy, inputs.range)
       case 'graph-set-viewport':           return demoGraphSetViewport(inputs.xMin, inputs.xMax, inputs.yMin, inputs.yMax)
       case 'graph-name-func':              return demoGraphNameFunc(inputs.funcId, inputs.label, inputs.x0, inputs.y0)
@@ -497,6 +511,7 @@ export default function App() {
       case 'graph-draw-vector':       return demoGraphDrawVector(inputs.x1, inputs.y1, inputs.x2, inputs.y2)
       case 'graph-draw-angle':        return demoGraphDrawAngle(inputs.ax, inputs.ay, inputs.bx, inputs.by, inputs.cx, inputs.cy, inputs.color)
       case 'graph-transform-function':return demoGraphTransformFunction(inputs.funcId, inputs.transformType, inputs.value)
+      case 'table-create':            return demoTableCreate(inputs.data, inputs.headerRow, inputs.gridId, inputs.color)
       case 'tab-create-grid':         return demoTableCreateGrid(inputs.cols, inputs.rows, inputs.values, inputs.headerRow, inputs.gridId)
       case 'tab-erase-grid':          return demoTableEraseGrid(inputs.gridId)
       case 'tab-add-column':          return demoTableAddColumn(inputs.values, inputs.gridId)
@@ -558,11 +573,20 @@ export default function App() {
       case 'geo3d-show-angles':       return demoGeo3dShowAngles(inputs.id, inputs.color)
       case 'geo3d-highlight-angle':   return demoGeo3dHighlightAngle(inputs.id, inputs.angleIndex, inputs.color)
       case 'geo3d-highlight-edge':    return demoGeo3dHighlightEdge(inputs.id, inputs.edgeIndex, inputs.color)
+      case 'geo3d-remove-edge-highlight': return demoGeo3dRemoveEdgeHighlight(inputs.id, inputs.edgeIndex)
+      case 'geo3d-highlight-face':    return demoGeo3dHighlightFace(inputs.id, inputs.faceIndex, inputs.color)
+      case 'geo3d-remove-face-highlight': return demoGeo3dRemoveFaceHighlight(inputs.id, inputs.faceIndex)
+      case 'geo3d-show-tick':         return demoGeo3dShowTick(inputs.id, inputs.edgeIndex, inputs.ticks, inputs.color)
+      case 'geo3d-remove-tick':       return demoGeo3dRemoveTick(inputs.id, inputs.edgeIndex)
+      case 'geo3d-divide-segment':    return demoGeo3dDivideSegment(inputs.id, inputs.edgeIndex, inputs.parts, inputs.color, inputs.showLabels)
+      case 'geo3d-remove-divide-segment': return demoGeo3dRemoveDivideSegment(inputs.id, inputs.edgeIndex, inputs.parts)
       case 'geo3d-show-arrow':        return demoGeo3dShowArrow(inputs.id, inputs.arrowId, inputs.from, inputs.to, inputs.color)
       case 'geo3d-remove-arrow':      return demoGeo3dRemoveArrow(inputs.id, inputs.arrowId)
       case 'geo3d-clear-highlights':  return demoGeo3dClearHighlights(inputs.id)
-      case 'geo3d-set-view':          return demoGeo3dSetView(inputs.zoom, inputs.panX, inputs.panY, inputs.distance, inputs.duration)
+      case 'geo3d-set-view':          return demoGeo3dSetView(inputs.zoom, inputs.panX, inputs.panY, inputs.distance, inputs.duration, inputs.preset)
       case 'geo3d-add-text':       return demoGeo3dAddText(inputs.labelId, inputs.text, inputs.x, inputs.y)
+      case 'geo3d-show-volume-measures': return demoGeo3dShowVolumeMeasures(inputs.id, inputs.color)
+      case 'geo3d-remove-volume-measures': return demoGeo3dRemoveVolumeMeasures(inputs.id)
       case 'geo3d-clear':          return demoGeo3dClear()
       default: throw new Error(`Unknown function: "${funcId}"`)
     }

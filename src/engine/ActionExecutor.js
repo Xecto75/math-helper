@@ -366,6 +366,47 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       break
     }
 
+    case 'ggb-3d-remove-edge-highlight': {
+      threeEngine.removeEdgeHighlight3D(threeRef, action.id, action.edgeIndex)
+      await wait(0.1)
+      break
+    }
+
+    case 'ggb-3d-highlight-face': {
+      await threeEngine.highlightFace3D(threeRef, action.id, action.faceIndex, action.color)
+      break
+    }
+
+    case 'ggb-3d-remove-face-highlight': {
+      threeEngine.removeFaceHighlight3D(threeRef, action.id, action.faceIndex)
+      await wait(0.1)
+      break
+    }
+
+    case 'ggb-3d-show-tick': {
+      threeEngine.showEqualTick3D(threeRef, action.id, action.edgeIndex, action.ticks, action.color)
+      await wait(0.2)
+      break
+    }
+
+    case 'ggb-3d-remove-tick': {
+      threeEngine.removeEqualTick3D(threeRef, action.id, action.edgeIndex)
+      await wait(0.1)
+      break
+    }
+
+    case 'ggb-3d-divide-segment': {
+      threeEngine.divideSegment3D(threeRef, action.id, action.edgeIndex, action.parts, action.color, action.showLabels)
+      await wait(0.2)
+      break
+    }
+
+    case 'ggb-3d-remove-divide-segment': {
+      threeEngine.removeDivideSegment3D(threeRef, action.id, action.edgeIndex, action.parts)
+      await wait(0.1)
+      break
+    }
+
     case 'ggb-3d-show-arrow': {
       await threeEngine.showArrow3D(threeRef, action.id, action.arrowId, action.from, action.to, action.color)
       break
@@ -389,6 +430,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         panY:     action.panY     ?? 0,
         distance: action.distance ?? null,
         duration: action.duration ?? 0.8,
+        preset:   action.preset   || null,
       })
       break
     }
@@ -400,6 +442,18 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
 
     case 'ggb-3d-remove-text': {
       threeEngine.removeText3D(threeRef, action.id)
+      break
+    }
+
+    case 'ggb-3d-show-volume-measures': {
+      threeEngine.showVolumeMeasures3D(threeRef, action.id, action.opts ?? {})
+      await wait(0.2)
+      break
+    }
+
+    case 'ggb-3d-remove-volume-measures': {
+      threeEngine.removeVolumeMeasures3D(threeRef, action.id)
+      await wait(0.1)
       break
     }
 
@@ -417,6 +471,54 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     case 'ggb-remove-point': {
       const calc = graphApi(); if (!calc) break
       await graphEngine.removePoint(calc, action.id)
+      break
+    }
+
+    case 'ggb-scatter-plot': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.addScatterPlot(calc, action.id, action.params, action.opts ?? {})
+      break
+    }
+
+    case 'ggb-remove-scatter-plot': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.removeScatterPlot(calc, action.id)
+      break
+    }
+
+    case 'ggb-add-segment': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.addSegment(calc, action.id, action.x1, action.y1, action.x2, action.y2, action.opts ?? {})
+      break
+    }
+
+    case 'ggb-remove-segment': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.removeSegment(calc, action.id)
+      break
+    }
+
+    case 'ggb-segment-tick': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.showSegmentTick(calc, action.id, action.ticks, action.color)
+      break
+    }
+
+    case 'ggb-remove-segment-tick': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.removeSegmentTick(calc, action.id)
+      break
+    }
+
+    case 'ggb-divide-segment-graph': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.divideSegmentGraph(calc, action.id, action.parts, action.color, action.showLabels)
+      break
+    }
+
+    case 'ggb-remove-divide-segment-graph': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.removeDivideSegmentGraph(calc, action.id)
       break
     }
 
@@ -1527,7 +1629,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         title:  action.title  ?? null,
         items:  action.items  ?? [],
         isList: action.isList ?? false,
-        color:  action.color  ?? '#a855f7',
+        color:  action.color  || null,
       })
       await wait(0.2)
       break
@@ -2066,6 +2168,37 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         }
       }
 
+      // ── Phase 0e: resolve a bare numeric √ sub-term inside a fraction (√Δ → its
+      // value), e.g. the quadratic formula's radical once Δ is known. Safe to run
+      // unconditionally — the VALUE of √Δ never depends on which ± branch is
+      // eventually chosen, so this never pre-empts the x₁/x₂ split below.
+      for (const frac of [...state.left, ...state.right].filter(t => t.isFraction)) {
+        for (const key of ['numeratorTerms', 'denominatorTerms']) {
+          const subs = frac[key] ?? []
+          for (let si = 0; si < subs.length; si++) {
+            const sub = subs[si]
+            if (!sub.isSqrt || sub.symbolicLabel !== undefined) continue
+            const sideClass = key === 'numeratorTerms' ? 'frac-num' : 'frac-den'
+            const wrap = () => getWrap(refs(), frac.side, frac.cellIndex)
+            const val  = Math.round(Math.sqrt(sub.coefficient) * 10000) / 10000
+
+            const outEl = wrap()?.querySelector(`.${sideClass} [data-pos="${si}"]`)
+            // eslint-disable-next-line no-await-in-loop
+            if (outEl) await gsap.to(outEl, { opacity: 0, scale: 0.6, duration: 0.25, ease: 'power2.in' }).then()
+            subs[si] = { ...sub, coefficient: val, isSqrt: false }
+            flushSync(() => setState(state.snapshot()))
+            const newEl = wrap()?.querySelector(`.${sideClass} [data-pos="${si}"]`)
+            if (newEl) {
+              gsap.set(newEl, { opacity: 0, scale: 0.5 })
+              // eslint-disable-next-line no-await-in-loop
+              await gsap.to(newEl, { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(1.6)' }).then()
+            }
+            // eslint-disable-next-line no-await-in-loop
+            await wait(0.35)
+          }
+        }
+      }
+
       // ── Phase 0: simplify any purely-numeric fraction (combine num, combine den, divide) ──
       const isNumericSub = s => !s.variable && s.symbolicLabel === undefined
       const subVal       = s => (s.sign === '-' ? -s.coefficient : s.coefficient)
@@ -2075,6 +2208,9 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         const den = frac.denominatorTerms ?? []
         if (!num.length || !den.length) continue
         if (!num.every(isNumericSub) || !den.every(isNumericSub)) continue   // has variables → leave for algebra
+        // A lingering ± means this is still the general ±√Δ formula, not yet
+        // branched into x₁/x₂ — auto-combining now would silently pick a side.
+        if (num.some(s => s.pmOperator) || den.some(s => s.pmOperator)) continue
 
         // Combine one side's sub-terms into a single value, animating the merge.
         const combineSide = async (sideClass, subs) => {

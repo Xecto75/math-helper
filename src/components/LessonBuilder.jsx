@@ -56,15 +56,15 @@ function writeDraft(pages, editingExampleId = null) {
 const LAYOUT_OPTIONS = [
   { value: 'single-graph',    label: 'Graph only' },
   { value: 'single-3d',       label: 'Geometry only' },
-  { value: 'single-grid',     label: 'Grid only' },
+  { value: 'single-grid',     label: 'Table only' },
   { value: 'single-equation', label: 'Equation only' },
   { value: 'single-calc',     label: 'Calculation steps' },
-  { value: 'grid-graph',      label: 'Grid + Graph' },
+  { value: 'grid-graph',      label: 'Table + Graph' },
   { value: 'geo-equation',    label: 'Geometry + Equation' },
   { value: 'graph-equation',  label: 'Graph + Equation' },
   { value: 'text-graph',      label: 'Text + Graph' },
   { value: 'text-geo',        label: 'Text + Geometry' },
-  { value: 'text-grid',       label: 'Text + Grid' },
+  { value: 'text-grid',       label: 'Text + Table' },
   { value: 'text-equation',   label: 'Text + Equation' },
   { value: 'equation-text',   label: 'Equation + Text' },
 ]

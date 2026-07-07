@@ -535,6 +535,10 @@
   width: auto; height: auto;
   opacity: 1; pointer-events: auto;
 }
+.lesson-layout--grid-graph .display-slot--table::after {
+  content: ''; position: absolute; top: 24px; bottom: 24px; right: 0;
+  width: 3px; border-radius: 2px; background: var(--border);
+}
 .lesson-layout--grid-graph .display-slot--graph {
   left: calc(50% + 2px); right: 140px; top: 0; bottom: 0;
   width: auto; height: auto;
@@ -547,6 +551,10 @@
   left: 140px; right: 140px; top: 0; bottom: 38%;
   width: auto; height: auto;
   opacity: 1; pointer-events: auto;
+}
+.lesson-layout--geo-equation .display-slot--geo::after {
+  content: ''; position: absolute; left: 24px; right: 24px; bottom: 0;
+  height: 3px; border-radius: 2px; background: var(--border);
 }
 .lesson-layout--geo-equation .display-slot--equation {
   left: 100px; right: 100px; top: 62%; bottom: 0;
@@ -561,6 +569,10 @@
   left: 168px; right: 168px; top: 0; bottom: 38%;
   width: auto; height: auto;
   opacity: 1; pointer-events: auto;
+}
+.lesson-layout--graph-equation .display-slot--graph::after {
+  content: ''; position: absolute; left: 24px; right: 24px; bottom: 0;
+  height: 3px; border-radius: 2px; background: var(--border);
 }
 .lesson-layout--graph-equation .display-slot--equation {
   left: 100px; right: 100px; top: 62%; bottom: 0;
@@ -577,6 +589,13 @@
 .lesson-layout--text-mdas  .display-slot--text {
   left: 70px; width: calc(35% - 70px); top: 0; bottom: 0; height: auto;
   opacity: 1; pointer-events: auto;
+}
+.lesson-layout--text-graph .display-slot--text::after,
+.lesson-layout--text-geo   .display-slot--text::after,
+.lesson-layout--text-grid  .display-slot--text::after,
+.lesson-layout--text-mdas  .display-slot--text::after {
+  content: ''; position: absolute; top: 24px; bottom: 24px; right: 0;
+  width: 3px; border-radius: 2px; background: var(--border);
 }
 
 .lesson-layout--text-mdas .display-slot--mdas {
@@ -607,7 +626,10 @@
 .lesson-layout--text-equation .display-slot--text {
   left: 168px; right: 168px; top: 0; bottom: 38%; width: auto; height: auto;
   opacity: 1; pointer-events: auto;
-  border-bottom: 1px solid var(--border);
+}
+.lesson-layout--text-equation .display-slot--text::after {
+  content: ''; position: absolute; left: 24px; right: 24px; bottom: 0;
+  height: 3px; border-radius: 2px; background: var(--border);
 }
 .lesson-layout--text-equation .display-slot--equation {
   left: 168px; right: 168px; top: 62%; bottom: 0; width: auto; height: auto;
@@ -625,7 +647,10 @@
 .lesson-layout--equation-text .display-slot--text {
   left: 168px; right: 168px; top: 38%; bottom: 0; width: auto; height: auto;
   opacity: 1; pointer-events: auto;
-  border-top: 1px solid var(--border);
+}
+.lesson-layout--equation-text .display-slot--text::after {
+  content: ''; position: absolute; left: 24px; right: 24px; top: 0;
+  height: 3px; border-radius: 2px; background: var(--border);
 }
 
 /* Breathing room for all active slots */
@@ -1745,8 +1770,9 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.menu-dot--ready { background: var(--green); }
-.menu-dot--soon  { background: var(--border); }
+.menu-dot--ready  { background: var(--green); }
+.menu-dot--soon   { background: var(--border); }
+.menu-dot--legacy { background: var(--border); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SHARED COMPONENT STYLES  (used inside dev drawer)

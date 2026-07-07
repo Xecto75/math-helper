@@ -323,6 +323,35 @@ export function createShape3D(threeRef, id, type, a, b, c, opts = {}) {
   }
 
   display.addObject(id, group)
+
+  if (FLAT_TYPES.has(type) && !group.userData.isCircle && opts.autoTicks !== false) {
+    autoTickEqualSides(threeRef, id, group.userData.vertices)
+  }
+}
+
+// Auto-detect congruent (equal-length) sides right after a flat shape is
+// created, tick-marking each group with a distinct dash count (1, 2, 3) —
+// same visual convention as showEqualTick3D — so students immediately see
+// which sides are equal without a separate manual step. No-op for shapes
+// with no repeated side length (e.g. scalene triangles), and silently caps
+// at 3 distinct groups since that's the max the tick notation supports.
+// Pass { autoTicks: false } in opts to createShape3D to opt out.
+function autoTickEqualSides(threeRef, id, verts) {
+  const n = verts?.length ?? 0
+  if (n < 3) return
+  const groups = new Map()
+  for (let i = 0; i < n; i++) {
+    const len = sideLength3D(verts, i)
+    if (!groups.has(len)) groups.set(len, [])
+    groups.get(len).push(i)
+  }
+  let ticks = 1
+  for (const indices of groups.values()) {
+    if (indices.length < 2) continue
+    if (ticks > 3) break
+    for (const edgeIndex of indices) showEqualTick3D(threeRef, id, edgeIndex, ticks, 'orange')
+    ticks++
+  }
 }
 
 export function removeShape3D(threeRef, id) {
@@ -684,7 +713,11 @@ export async function showAreaMeasures3D(threeRef, id, opts = {}) {
   const entry = registry.get(id)
   if (!entry) return
 
-  const color = opts.color ? `#${resolveHex(opts.color).toString(16).padStart(6, '0')}` : '#6495ed'
+  // Default to orange (the app's established highlight-overlay color, same as
+  // highlightFace3D/highlightEdge3D) rather than the shape's own default blue —
+  // measure lines/labels sit right on the shape body, so matching its color
+  // makes them nearly invisible.
+  const color = opts.color ? `#${resolveHex(opts.color).toString(16).padStart(6, '0')}` : '#fb923c'
 
   if (entry.isCircle) {
     const r = entry.radius ?? 0
@@ -739,6 +772,124 @@ export async function showAreaMeasures3D(threeRef, id, opts = {}) {
     default:
       labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `s = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
   }
+}
+
+// ── Equal-side tick marks ──────────────────────────────────────────────────────
+// Classic congruent-side notation: one or more short perpendicular dashes
+// crossing the middle of an edge. Use a different "ticks" count (1, 2, 3…) to
+// mark a DIFFERENT pair of equal sides than an existing tick group.
+export function showEqualTick3D(threeRef, id, edgeIndexRaw, ticksRaw, colorRaw) {
+  const display = threeRef?.current
+  if (!display) return
+  const entry = registry.get(id)
+  if (!entry?.vertices?.length) return
+  const verts = entry.vertices
+  const n     = verts.length
+  const i     = ((Number(edgeIndexRaw) || 0) % n + n) % n
+  const [x1, y1] = verts[i], [x2, y2] = verts[(i + 1) % n]
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
+  const edgeDx = x2 - x1, edgeDy = y2 - y1
+  const eLen   = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy) || 1
+  const ux = edgeDx / eLen, uy = edgeDy / eLen   // unit vector along the edge
+  const nx = -uy, ny = ux                        // unit vector perpendicular
+
+  const ticks   = Math.max(1, Math.min(3, Math.round(ticksRaw ?? 1)))
+  const tickLen = Math.min(eLen * 0.3, 0.4)
+  const spacing = tickLen * 0.9
+  const halfT   = 0.035
+  const hex     = resolveHex(colorRaw)
+  const group   = new THREE.Group()
+
+  for (let k = 0; k < ticks; k++) {
+    const off = (k - (ticks - 1) / 2) * spacing
+    const cx = mx + ux * off, cy = my + uy * off
+    const ax = cx - nx * tickLen / 2, ay = cy - ny * tickLen / 2
+    const bx = cx + nx * tickLen / 2, by = cy + ny * tickLen / 2
+    const dx = bx - ax, dy = by - ay
+    const len = Math.sqrt(dx * dx + dy * dy) || 1
+    const ang = Math.atan2(dy, dx)
+
+    const quadGeo = new THREE.BufferGeometry()
+    quadGeo.setAttribute('position', new THREE.Float32BufferAttribute([
+      0,   halfT, 0.07,
+      0,  -halfT, 0.07,
+      len, halfT, 0.07,
+      len,-halfT, 0.07,
+    ], 3))
+    quadGeo.setIndex([0, 1, 2, 1, 3, 2])
+    const mat = new THREE.MeshBasicMaterial({ color: hex, side: THREE.DoubleSide })
+    const tickGroup = new THREE.Group()
+    tickGroup.position.set(ax, ay, 0)
+    tickGroup.rotation.z = ang
+    tickGroup.add(new THREE.Mesh(quadGeo, mat))
+    group.add(tickGroup)
+  }
+  addChildToGroup(display, id, `tick_${id}_${i}`, group)
+}
+
+export function removeEqualTick3D(threeRef, id, edgeIndexRaw) {
+  const display = threeRef?.current
+  if (!display) return
+  const entry = registry.get(id)
+  const n = entry?.vertices?.length ?? 1
+  const i = ((Number(edgeIndexRaw) || 0) % n + n) % n
+  removeChildFromGroup(display, id, `tick_${id}_${i}`)
+}
+
+// ── Divide a segment into equal sections ───────────────────────────────────────
+// Marks the (parts - 1) interior "points de partage" along one edge with small
+// dots, optionally labeled P1, P2, … — e.g. parts=3 divides the edge into
+// thirds with two markers at 1/3 and 2/3.
+export function divideSegment3D(threeRef, id, edgeIndexRaw, partsRaw, colorRaw, showLabelsRaw) {
+  const display = threeRef?.current
+  if (!display) return
+  const entry = registry.get(id)
+  if (!entry?.vertices?.length) return
+  const verts = entry.vertices
+  const n     = verts.length
+  const i     = ((Number(edgeIndexRaw) || 0) % n + n) % n
+  const [x1, y1] = verts[i], [x2, y2] = verts[(i + 1) % n]
+
+  const parts       = Math.max(2, Math.round(partsRaw ?? 2))
+  const showLabels  = showLabelsRaw === true || String(showLabelsRaw).trim() === 'true'
+  const hex         = resolveHex(colorRaw)
+  const colorCss    = `#${hex.toString(16).padStart(6, '0')}`
+  const group       = new THREE.Group()
+  const dotGeo       = new THREE.CircleGeometry(0.09, 16)
+  const dotMat       = new THREE.MeshBasicMaterial({ color: hex })
+
+  const shapeGroup = display.getObject(id)
+  const gx = shapeGroup?.position.x ?? 0, gy = shapeGroup?.position.y ?? 0
+  const edgeDx = x2 - x1, edgeDy = y2 - y1
+  const eLen   = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy) || 1
+  const nx = -edgeDy / eLen, ny = edgeDx / eLen
+
+  for (let k = 1; k < parts; k++) {
+    const t  = k / parts
+    const px = x1 + edgeDx * t, py = y1 + edgeDy * t
+    const dot = new THREE.Mesh(dotGeo.clone(), dotMat.clone())
+    dot.position.set(px, py, 0.08)
+    group.add(dot)
+    if (showLabels) {
+      display.addLabel3D(
+        `divlbl_${id}_${i}_${k}`,
+        px + gx + nx * 0.3, py + gy + ny * 0.3, 0.09,
+        `P${k}`, { color: colorCss, fontSize: 14 },
+      )
+    }
+  }
+  addChildToGroup(display, id, `divpts_${id}_${i}`, group)
+}
+
+export function removeDivideSegment3D(threeRef, id, edgeIndexRaw, partsRaw) {
+  const display = threeRef?.current
+  if (!display) return
+  const entry = registry.get(id)
+  const n = entry?.vertices?.length ?? 1
+  const i = ((Number(edgeIndexRaw) || 0) % n + n) % n
+  removeChildFromGroup(display, id, `divpts_${id}_${i}`)
+  const parts = Math.max(2, Math.round(partsRaw ?? 2))
+  for (let k = 1; k < parts; k++) display.removeLabel3D(`divlbl_${id}_${i}_${k}`)
 }
 
 export function showAngles3D(threeRef, id, colorRaw) {
@@ -940,12 +1091,152 @@ export function highlightAngle3D(threeRef, id, angleIndex, colorRaw = 'cyan') {
   })
 }
 
+// ── Box dimensions/corners/edges/faces — shared by face + edge highlighting
+// on VOLUMETRIC (non-flat) shapes. Only box-shaped solids (cube, rectangular
+// prism) have well-defined flat faces and straight edges this way; curved
+// solids (sphere, cone, cylinder, torus) and other polyhedra aren't supported.
+const BOX_VOL_TYPES = new Set(['cube', 'prism', 'box', 'rectangular-prism'])
+
+function getBoxDims(entry) {
+  if (entry.type === 'cube') { const s = entry.a ?? 2; return [s, s, s] }
+  return [entry.a ?? 3, entry.b ?? 2, entry.c ?? 1.5]
+}
+
+function boxCorners(hw, hh, hd) {
+  return [
+    [-hw, -hh, -hd], [hw, -hh, -hd], [hw, hh, -hd], [-hw, hh, -hd], // back  (z=-hd): 0,1,2,3
+    [-hw, -hh,  hd], [hw, -hh,  hd], [hw, hh,  hd], [-hw, hh,  hd], // front (z=+hd): 4,5,6,7
+  ]
+}
+
+const BOX_EDGES = [
+  [0, 1], [1, 2], [2, 3], [3, 0],   // back face
+  [4, 5], [5, 6], [6, 7], [7, 4],   // front face
+  [0, 4], [1, 5], [2, 6], [3, 7],   // connecting edges
+]
+
+// 6 faces, corner indices wound so the normal points outward
+const BOX_FACES = [
+  { corners: [1, 2, 6, 5], normal: [1, 0, 0] },   // +X right
+  { corners: [0, 4, 7, 3], normal: [-1, 0, 0] },  // -X left
+  { corners: [3, 7, 6, 2], normal: [0, 1, 0] },   // +Y top
+  { corners: [0, 1, 5, 4], normal: [0, -1, 0] },  // -Y bottom
+  { corners: [4, 5, 6, 7], normal: [0, 0, 1] },   // +Z front
+  { corners: [0, 3, 2, 1], normal: [0, 0, -1] },  // -Z back
+]
+
+function highlightEdgeVolumetric(display, id, entry, edgeIndex, colorRaw) {
+  const [w, h, d] = getBoxDims(entry)
+  const pts = boxCorners(w / 2, h / 2, d / 2)
+  const i   = ((Number(edgeIndex) || 0) % 12 + 12) % 12
+  const [ai, bi] = BOX_EDGES[i]
+  const [x1, y1, z1] = pts[ai], [x2, y2, z2] = pts[bi]
+  const color = resolveHex(colorRaw)
+  const hlId  = `eh3_${id}_${i}`
+  removeChildFromGroup(display, id, hlId)
+
+  const dx = x2 - x1, dy = y2 - y1, dz = z2 - z1
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1
+  const dir = new THREE.Vector3(dx, dy, dz).normalize()
+  const mid = new THREE.Vector3((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2)
+
+  const radius = 0.035
+  const mesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, len, 10),
+    new THREE.MeshBasicMaterial({ color }),
+  )
+  mesh.position.copy(mid)
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)
+  mesh.scale.set(0.001, 0, 0.001)
+  addChildToGroup(display, id, hlId, mesh)
+
+  return new Promise(resolve => {
+    const t0 = performance.now(), dur = 380
+    const ease = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    function tick() {
+      const t = Math.min((performance.now() - t0) / dur, 1)
+      const s = ease(t)
+      mesh.scale.set(1, s, 1)
+      if (t < 1) requestAnimationFrame(tick)
+      else resolve()
+    }
+    requestAnimationFrame(tick)
+  })
+}
+
+export function removeEdgeHighlight3D(threeRef, id, edgeIndex) {
+  const display = threeRef?.current
+  if (!display) return
+  const entry = registry.get(id)
+  if (entry && !entry.isFlat) {
+    const i = ((Number(edgeIndex) || 0) % 12 + 12) % 12
+    removeChildFromGroup(display, id, `eh3_${id}_${i}`)
+    return
+  }
+  const n = entry?.vertices?.length ?? 1
+  const i = ((Number(edgeIndex) || 0) % n + n) % n
+  removeChildFromGroup(display, id, `eh_${id}_${i}`)
+}
+
+// Highlight one flat FACE of a box-shaped volumetric solid (cube / rectangular
+// prism) — a translucent colored panel laid exactly on that face.
+export function highlightFace3D(threeRef, id, faceIndexRaw, colorRaw = 'orange') {
+  const display = threeRef?.current
+  if (!display) return Promise.resolve()
+  const entry = registry.get(id)
+  if (!entry || entry.isFlat || !BOX_VOL_TYPES.has(entry.type)) {
+    console.warn(`[highlightFace3D] Face highlighting only supports cube/prism shapes (got "${entry?.type}")`)
+    return Promise.resolve()
+  }
+  const [w, h, d] = getBoxDims(entry)
+  const pts  = boxCorners(w / 2, h / 2, d / 2)
+  const i    = ((Number(faceIndexRaw) || 0) % 6 + 6) % 6
+  const face = BOX_FACES[i]
+  const color = resolveHex(colorRaw)
+  const hlId  = `fh_${id}_${i}`
+  removeChildFromGroup(display, id, hlId)
+
+  const offset = 0.015
+  const [nx, ny, nz] = face.normal
+  const offsetPt = ([x, y, z]) => [x + nx * offset, y + ny * offset, z + nz * offset]
+  const [p0, p1, p2, p3] = face.corners.map(ci => offsetPt(pts[ci]))
+
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute([
+    ...p0, ...p1, ...p2,
+    ...p0, ...p2, ...p3,
+  ], 3))
+  const mat  = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, side: THREE.DoubleSide })
+  const mesh = new THREE.Mesh(geo, mat)
+  addChildToGroup(display, id, hlId, mesh)
+
+  return new Promise(resolve => {
+    const t0 = performance.now(), dur = 380
+    function tick() {
+      const t = Math.min((performance.now() - t0) / dur, 1)
+      mat.opacity = 0.55 * t
+      if (t < 1) requestAnimationFrame(tick)
+      else resolve()
+    }
+    requestAnimationFrame(tick)
+  })
+}
+
+export function removeFaceHighlight3D(threeRef, id, faceIndexRaw) {
+  const display = threeRef?.current
+  if (!display) return
+  const i = ((Number(faceIndexRaw) || 0) % 6 + 6) % 6
+  removeChildFromGroup(display, id, `fh_${id}_${i}`)
+}
+
 export function highlightEdge3D(threeRef, id, edgeIndex, colorRaw = 'orange') {
   const display = threeRef?.current
   if (!display) return Promise.resolve()
 
   const entry = registry.get(id)
-  if (!entry?.vertices?.length) return Promise.resolve()
+  if (!entry) return Promise.resolve()
+  if (!entry.isFlat) return highlightEdgeVolumetric(display, id, entry, edgeIndex, colorRaw)
+  if (!entry.vertices?.length) return Promise.resolve()
 
   const verts = entry.vertices
   const i     = Number(edgeIndex) % verts.length
@@ -1027,6 +1318,160 @@ export function addText3D(threeRef, id, text, x, y, opts = {}) {
 
 export function removeText3D(threeRef, id) {
   threeRef?.current?.removeLabel3D(`tx_${id}`)
+}
+
+// ── Show Volume Measures (volumetric 3D shapes) ───────────────────────────────
+// Draws one small solid/dashed 3D line per dimension actually needed for that
+// shape's VOLUME formula, with a label at its midpoint — same idea as
+// showAreaMeasures3D/gM for flat shapes (solid line = a straight measurable
+// side, dashed line = a height, matching the 2D convention), but for the
+// rotatable solids created via geo3d-create. Lines are parented to the shape's
+// own group in LOCAL coordinates (so they inherit its position automatically,
+// same pattern as highlightEdgeVolumetric); labels use world coordinates
+// (group position + local offset), same pattern as labelEdge3D.
+function makeLineMesh3D(p1, p2, hex, radius = 0.035) {
+  const [x1, y1, z1] = p1, [x2, y2, z2] = p2
+  const dx = x2 - x1, dy = y2 - y1, dz = z2 - z1
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1
+  const dir = new THREE.Vector3(dx, dy, dz).normalize()
+  const mesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, len, 10),
+    new THREE.MeshBasicMaterial({ color: hex }),
+  )
+  mesh.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2)
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)
+  return mesh
+}
+
+function makeDashedLineGroup3D(p1, p2, hex, radius = 0.03, dashN = 6) {
+  const [x1, y1, z1] = p1, [x2, y2, z2] = p2
+  const dx = x2 - x1, dy = y2 - y1, dz = z2 - z1
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1
+  const dir = new THREE.Vector3(dx, dy, dz).normalize()
+  const segLen = len / (dashN * 2 - 1)
+  const group = new THREE.Group()
+  const start = new THREE.Vector3(x1, y1, z1)
+  for (let i = 0; i < dashN; i++) {
+    const t0 = i * segLen * 2
+    const sp = start.clone().addScaledVector(dir, t0)
+    const ep = start.clone().addScaledVector(dir, t0 + segLen)
+    group.add(makeLineMesh3D([sp.x, sp.y, sp.z], [ep.x, ep.y, ep.z], hex, radius))
+  }
+  return group
+}
+
+export function showVolumeMeasures3D(threeRef, id, opts = {}) {
+  const display = threeRef?.current
+  if (!display) return
+  const entry = registry.get(id)
+  if (!entry || entry.isFlat) return
+
+  const { type, a, b, c } = entry
+  // Default to orange (same highlight-overlay convention as highlightFace3D/
+  // highlightEdge3D) — these lines sit right on the shape's surface, so the
+  // shape's own default blue would make them blend in and look invisible.
+  const hex   = opts.color ? resolveHex(opts.color) : 0xfb923c
+  const color = `#${hex.toString(16).padStart(6, '0')}`
+  const fmt   = v => parseFloat((v ?? 0).toFixed(2))
+
+  const holder = new THREE.Group()
+  const labels = []  // { pos: [x,y,z] (local), text }
+  const mid = (p1, p2, off = [0, 0, 0]) => [
+    (p1[0] + p2[0]) / 2 + off[0], (p1[1] + p2[1]) / 2 + off[1], (p1[2] + p2[2]) / 2 + off[2],
+  ]
+  const addSolid  = (p1, p2) => holder.add(makeLineMesh3D(p1, p2, hex))
+  const addDashed = (p1, p2) => holder.add(makeDashedLineGroup3D(p1, p2, hex))
+
+  switch (type) {
+    case 'cube': {
+      const s = a ?? 2, h2 = s / 2
+      const p1 = [-h2, -h2, h2], p2 = [h2, -h2, h2]
+      addSolid(p1, p2)
+      labels.push({ pos: mid(p1, p2, [0, -0.32, 0]), text: `a = ${fmt(s)}` })
+      break
+    }
+    case 'sphere': {
+      const r = a ?? 1.5
+      const p1 = [0, 0, 0], p2 = [r, 0, 0]
+      addSolid(p1, p2)
+      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: `r = ${fmt(r)}` })
+      break
+    }
+    case 'cone':
+    case 'cylinder': {
+      const r = a ?? (type === 'cone' ? 1.2 : 1), h = b ?? 2.5
+      const baseY = -h / 2, topY = h / 2
+      const rp1 = [0, baseY, 0], rp2 = [r, baseY, 0]
+      addSolid(rp1, rp2)
+      labels.push({ pos: mid(rp1, rp2, [0, -0.32, 0]), text: `r = ${fmt(r)}` })
+      const hp1 = [r, baseY, 0], hp2 = [r, topY, 0]
+      addDashed(hp1, hp2)
+      labels.push({ pos: mid(hp1, hp2, [0.38, 0, 0]), text: `h = ${fmt(h)}` })
+      break
+    }
+    case 'prism': case 'box': case 'rectangular-prism': {
+      // BoxGeometry(width, height, depth) → a = X (width/length), b = Y
+      // (height), c = Z (depth) — matches the true Three.js axis convention.
+      const w = a ?? 3, hgt = b ?? 2, d = c ?? 1.5
+      const hw = w / 2, hh = hgt / 2, hd = d / 2
+      const l1 = [-hw, -hh, hd], l2 = [hw, -hh, hd]
+      addSolid(l1, l2)
+      labels.push({ pos: mid(l1, l2, [0, -0.32, 0]), text: `l = ${fmt(w)}` })
+      const hp1 = [hw, -hh, hd], hp2 = [hw, hh, hd]
+      addDashed(hp1, hp2)
+      labels.push({ pos: mid(hp1, hp2, [0.38, 0, 0]), text: `h = ${fmt(hgt)}` })
+      const d1 = [hw, -hh, hd], d2 = [hw, -hh, -hd]
+      addSolid(d1, d2)
+      labels.push({ pos: mid(d1, d2, [0.38, -0.2, 0]), text: `d = ${fmt(d)}` })
+      break
+    }
+    case 'pyramid': case 'square-pyramid': {
+      const side = a ?? 2, h = b ?? 2.5
+      const baseY = -h / 2, topY = h / 2
+      const bp1 = [-side / 2, baseY, 0], bp2 = [side / 2, baseY, 0]
+      addSolid(bp1, bp2)
+      labels.push({ pos: mid(bp1, bp2, [0, -0.32, 0]), text: `a = ${fmt(side)}` })
+      const hp1 = [side / 2, baseY, 0], hp2 = [side / 2, topY, 0]
+      addDashed(hp1, hp2)
+      labels.push({ pos: mid(hp1, hp2, [0.38, 0, 0]), text: `h = ${fmt(h)}` })
+      break
+    }
+    case 'tetrahedron': case 'octahedron': {
+      const size = a ?? (type === 'tetrahedron' ? 1.8 : 1.6)
+      const p1 = [0, 0, 0], p2 = [size, 0, 0]
+      addSolid(p1, p2)
+      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: `a = ${fmt(size)}` })
+      break
+    }
+    case 'torus': {
+      const R = a ?? 1.5, r = b ?? 0.4
+      const p1 = [0, 0, 0], p2 = [R, 0, 0]
+      addSolid(p1, p2)
+      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: `R = ${fmt(R)}` })
+      const p3 = [R, 0, 0], p4 = [R + r, 0, 0]
+      addSolid(p3, p4)
+      labels.push({ pos: mid(p3, p4, [0, -0.3, 0]), text: `r = ${fmt(r)}` })
+      break
+    }
+    default:
+      console.warn(`[showVolumeMeasures3D] Unknown volumetric shape type: "${type}"`)
+      return
+  }
+
+  addChildToGroup(display, id, `vm_${id}`, holder)
+
+  const group = display.getObject(id)
+  const gx = group?.position.x ?? 0, gy = group?.position.y ?? 0, gz = group?.position.z ?? 0
+  labels.forEach((l, i) => {
+    display.addLabel3D(`vm_${id}_${i}`, gx + l.pos[0], gy + l.pos[1], gz + l.pos[2], l.text, { color, fontSize: 15, bold: true })
+  })
+}
+
+export function removeVolumeMeasures3D(threeRef, id) {
+  const display = threeRef?.current
+  if (!display) return
+  removeChildFromGroup(display, id, `vm_${id}`)
+  for (let i = 0; i < 5; i++) display.removeLabel3D(`vm_${id}_${i}`)
 }
 
 // ── Arrow helpers ─────────────────────────────────────────────────────────────
@@ -1175,8 +1620,10 @@ export function clearHighlights3D(threeRef, id) {
   for (let i = 0; i < 20; i++) {
     removeChildFromGroup(display, id, `ang_${id}_${i}`)
     removeChildFromGroup(display, id, `eh_${id}_${i}`)
+    removeChildFromGroup(display, id, `eh3_${id}_${i}`)
     display.resetLabelColor?.(`sl_${id}_${i}`)
   }
+  for (let i = 0; i < 6; i++) removeChildFromGroup(display, id, `fh_${id}_${i}`)
 }
 
 export function setView3D(threeRef, opts = {}) {

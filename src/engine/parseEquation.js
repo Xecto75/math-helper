@@ -419,6 +419,11 @@ function collectTerms(node, positive, out) {
     }
     if (node.op === '*') {
       const [a, b] = node.args
+      // constant * constant  e.g. 3.45 * 1000 — plain numeric product, no variable
+      if (a.type === 'ConstantNode' && b.type === 'ConstantNode') {
+        out.push({ sign, coefficient: a.value * b.value, variable: null, degree: 0 })
+        return
+      }
       // coefficient * variable  e.g. 3x, 3*x
       if (a.type === 'ConstantNode' && b.type === 'SymbolNode') {
         out.push({ sign, coefficient: a.value, variable: b.name, degree: 1 })

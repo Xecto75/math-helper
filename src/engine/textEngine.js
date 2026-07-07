@@ -12,7 +12,7 @@ export function createBox(ref, id, opts = {}) {
     title:  opts.title  ?? null,
     items:  opts.items  ?? [],
     isList: opts.isList ?? false,
-    color:  opts.color  ?? '#60a5fa',
+    color:  opts.color  || null,
   }
   registry.set(id, { ...box })
   ref?.current?.addBox(box)

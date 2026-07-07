@@ -295,14 +295,18 @@ export function demoShowArrow(shapeIdRaw, arrowIdRaw, fromRaw, toRaw, colorRaw) 
 }
 
 // ── geo-highlight-angle ───────────────────────────────────────────────────────
+// edgeIndexRaw accepts a comma-separated list (e.g. "0,1,2") to highlight
+// several edges one after another instead of calling this function repeatedly.
 export function demoGeoHighlightEdge(shapeIdRaw, edgeIndexRaw, colorRaw) {
-  const shapeId   = (shapeIdRaw || '').trim()
-  const edgeIndex = Number(edgeIndexRaw) || 0
-  const color     = (colorRaw || '#fbbf24').trim()
-  return {
-    snapshot: null,
-    script: [{ type: 'ggb-highlight-edge', shapeId: shapeId || 'shape1', edgeIndex, color }],
-  }
+  const shapeId = (shapeIdRaw || '').trim() || 'shape1'
+  const color   = (colorRaw || '#fbbf24').trim()
+  const indices = String(edgeIndexRaw ?? 0).split(',').map(s => Number(s.trim())).filter(n => !Number.isNaN(n))
+  const script  = []
+  ;(indices.length ? indices : [0]).forEach((edgeIndex, i) => {
+    if (i > 0) script.push({ type: 'pause', seconds: 0.2 })
+    script.push({ type: 'ggb-highlight-edge', shapeId, edgeIndex, color })
+  })
+  return { snapshot: null, script }
 }
 
 export function demoHighlightAngle(shapeIdRaw, vertexIndexRaw, colorRaw) {
@@ -429,6 +433,97 @@ export function demoGraphRemovePoint(idRaw) {
     { type: 'ggb-remove-point', id },
   ]
   return { snapshot: null, script }
+}
+
+// ── graph-scatter-plot ────────────────────────────────────────────────────────
+// A "nuage de points" scattered around y = slope·x + intercept — coeff
+// controls how spread out the points are (0 = perfectly on the line).
+export function demoGraphScatterPlot(slopeRaw, interceptRaw, coeffRaw, countRaw, xMinRaw, xMaxRaw, colorRaw, idRaw) {
+  const slope     = Number(slopeRaw) || 1
+  const intercept = Number(interceptRaw) || 0
+  const coeff     = Math.max(0, Number(coeffRaw) ?? 1)
+  const count     = Math.max(2, Math.round(Number(countRaw) || 20))
+  const xMin      = Number(xMinRaw) || -5
+  const xMax      = Number(xMaxRaw) || 5
+  const color     = (colorRaw || '').trim()
+  const id        = (idRaw || 'nuage1').trim()
+  const opts = {}
+  if (color) opts.color = color
+  const script = [
+    { type: 'showTitle', text: `scatterPlot("${id}", y=${slope}x+${intercept}, coeff=${coeff})` },
+    { type: 'ggb-scatter-plot', id, params: { slope, intercept, coeff, xMin, xMax, count }, opts },
+  ]
+  return { snapshot: null, script }
+}
+
+// ── graph-remove-scatter-plot ─────────────────────────────────────────────────
+export function demoGraphRemoveScatterPlot(idRaw) {
+  const id = (idRaw || 'nuage1').trim()
+  return {
+    snapshot: null,
+    script: [{ type: 'ggb-remove-scatter-plot', id }],
+  }
+}
+
+// ── graph-add-segment ─────────────────────────────────────────────────────────
+// A genuine finite line segment between two points — NOT an infinite line
+// like y=mx+b or the fh/fV horizontal/vertical lines.
+export function demoGraphAddSegment(x1Raw, y1Raw, x2Raw, y2Raw, colorRaw, idRaw) {
+  const x1 = Number(x1Raw) || 0
+  const y1 = Number(y1Raw) || 0
+  const x2 = Number(x2Raw) || 4
+  const y2 = Number(y2Raw) || 0
+  const color = (colorRaw || '').trim()
+  const id = (idRaw || 'seg1').trim()
+  const opts = {}
+  if (color) opts.color = color
+  return {
+    snapshot: null,
+    script: [
+      { type: 'showTitle', text: `addSegment("${id}", (${x1},${y1})→(${x2},${y2}))` },
+      { type: 'ggb-add-segment', id, x1, y1, x2, y2, opts },
+    ],
+  }
+}
+
+export function demoGraphRemoveSegment(idRaw) {
+  const id = (idRaw || 'seg1').trim()
+  return { snapshot: null, script: [{ type: 'ggb-remove-segment', id }] }
+}
+
+// ── graph-segment-tick ────────────────────────────────────────────────────────
+// Congruent-side tick mark(s) at a segment's midpoint (1-3 — use a different
+// count to mark a different pair of equal segments).
+export function demoGraphSegmentTick(idRaw, ticksRaw, colorRaw) {
+  const id = (idRaw || 'seg1').trim()
+  return {
+    snapshot: null,
+    script: [{ type: 'ggb-segment-tick', id, ticks: Number(ticksRaw) || 1, color: colorRaw || 'blue' }],
+  }
+}
+
+export function demoGraphRemoveSegmentTick(idRaw) {
+  const id = (idRaw || 'seg1').trim()
+  return { snapshot: null, script: [{ type: 'ggb-remove-segment-tick', id }] }
+}
+
+// ── graph-divide-segment ──────────────────────────────────────────────────────
+// Marks the (parts-1) points de partage that split a segment into equal parts.
+export function demoGraphDivideSegment(idRaw, partsRaw, colorRaw, showLabelsRaw) {
+  const id = (idRaw || 'seg1').trim()
+  return {
+    snapshot: null,
+    script: [{
+      type: 'ggb-divide-segment-graph', id,
+      parts: Number(partsRaw) || 2, color: colorRaw || 'purple',
+      showLabels: String(showLabelsRaw) === 'true',
+    }],
+  }
+}
+
+export function demoGraphRemoveDivideSegment(idRaw) {
+  const id = (idRaw || 'seg1').trim()
+  return { snapshot: null, script: [{ type: 'ggb-remove-divide-segment-graph', id }] }
 }
 
 // ── graph-adjust-view ─────────────────────────────────────────────────────────
@@ -654,6 +749,38 @@ export function demoGraphTangent(funcIdRaw, x0Raw, y0Raw) {
 // ════════════════════════════════════════════════════════════════════════════════
 // TABLES — animated grid engine demos
 // ════════════════════════════════════════════════════════════════════════════════
+
+// ── table-create ───────────────────────────────────────────────────────────────
+// Simpler entry point than tab-create-grid: give one 2D array literal, e.g.
+// [[2,2,3],[5,5,6],[4,4,4]], and the grid size (rows × cols) is auto-detected —
+// no need to specify cols/rows separately (or keep them in sync with the data).
+export function demoTableCreate(dataRaw, headerRowRaw, gridIdRaw, colorRaw) {
+  const gid = (gridIdRaw ?? '').trim() || 'table1'
+
+  let data
+  try { data = JSON.parse(dataRaw ?? '') } catch { data = null }
+  if (!Array.isArray(data) || !data.length || !Array.isArray(data[0])) {
+    throw new Error('Enter a 2D array like [[2,2,3],[5,5,6],[4,4,4]]')
+  }
+  const rows = data.length
+  const cols = data[0].length
+  if (!data.every(row => Array.isArray(row) && row.length === cols)) {
+    throw new Error('Every row must have the same number of columns.')
+  }
+  const values    = data.map(row => row.map(v => String(v)))
+  const headerRow = headerRowRaw === 'true'
+  const color     = (colorRaw || '').trim()
+  const opts      = { headerRow }
+  if (color) opts.color = resolveColor(color)
+
+  const script = [
+    { type: 'showTitle',     text: `createTable("${gid}", ${cols}×${rows})` },
+    { type: 'showNarration', text: `Creating a ${cols}×${rows} table` },
+    { type: 'table-create-grid', id: gid, cols, rows, values, opts },
+    { type: 'showNarration', text: `Table "${gid}" ready — ${cols} columns, ${rows} rows.` },
+  ]
+  return { snapshot: null, script }
+}
 
 // ── tab-create-grid ───────────────────────────────────────────────────────────
 export function demoTableCreateGrid(colsRaw, rowsRaw, valuesRaw, headerRowRaw, gridIdRaw) {
@@ -945,7 +1072,7 @@ export function demoTextCreate(boxId, title, content, isList, color) {
   const items  = (content || 'This is the first line.|Second line with $x^2 + y^2 = r^2$.')
     .split('|').map(s => s.trim()).filter(Boolean)
   const isListV = String(isList) === 'true'
-  const colorV  = (color || '#60a5fa').trim()
+  const colorV  = (color || '').trim()
   return {
     snapshot: null,
     script: [{ type: 'text-create', id, title: titleV || null, items, isList: isListV, color: colorV }],
@@ -1603,22 +1730,102 @@ export function demoGeo3dClearHighlights(idRaw) {
   }
 }
 
-export function demoGeo3dSetView(zoomRaw, panXRaw, panYRaw, distanceRaw, durationRaw) {
+export function demoGeo3dSetView(zoomRaw, panXRaw, panYRaw, distanceRaw, durationRaw, presetRaw) {
   const zoom     = parseFloat(zoomRaw)     || 1
   const panX     = parseFloat(panXRaw)     || 0
   const panY     = parseFloat(panYRaw)     || 0
   const distance = parseFloat(distanceRaw) || null
   const duration = parseFloat(durationRaw) || 0.3
+  const preset   = (presetRaw || '').trim() || null
   return {
     snapshot: null,
-    script: [{ type: 'ggb-3d-set-view', zoom, panX, panY, distance, duration }],
+    script: [{ type: 'ggb-3d-set-view', zoom, panX, panY, distance, duration, preset }],
   }
 }
 
+// edgeIndexRaw accepts a comma-separated list (e.g. "0,1,2") to highlight
+// several edges one after another instead of calling this function repeatedly.
 export function demoGeo3dHighlightEdge(idRaw, edgeIndexRaw, colorRaw) {
+  const id      = (idRaw || 'shape1').trim()
+  const color   = colorRaw || 'orange'
+  const indices = String(edgeIndexRaw ?? 0).split(',').map(s => Number(s.trim())).filter(n => !Number.isNaN(n))
+  const script  = []
+  ;(indices.length ? indices : [0]).forEach((edgeIndex, i) => {
+    if (i > 0) script.push({ type: 'pause', seconds: 0.2 })
+    script.push({ type: 'ggb-3d-highlight-edge', id, edgeIndex, color })
+  })
+  return { snapshot: null, script }
+}
+
+export function demoGeo3dRemoveEdgeHighlight(idRaw, edgeIndexRaw) {
+  const id      = (idRaw || 'shape1').trim()
+  const indices = String(edgeIndexRaw ?? 0).split(',').map(s => Number(s.trim())).filter(n => !Number.isNaN(n))
   return {
     snapshot: null,
-    script: [{ type: 'ggb-3d-highlight-edge', id: (idRaw || 'shape1').trim(), edgeIndex: Number(edgeIndexRaw ?? 0), color: colorRaw || 'orange' }],
+    script: (indices.length ? indices : [0]).map(edgeIndex => ({ type: 'ggb-3d-remove-edge-highlight', id, edgeIndex })),
+  }
+}
+
+// ── geo3d-highlight-face ──────────────────────────────────────────────────────
+// Cube / rectangular-prism only — 6 faces, indices: 0=+X 1=-X 2=+Y(top) 3=-Y(bottom) 4=+Z 5=-Z
+export function demoGeo3dHighlightFace(idRaw, faceIndexRaw, colorRaw) {
+  return {
+    snapshot: null,
+    script: [{ type: 'ggb-3d-highlight-face', id: (idRaw || 'shape1').trim(), faceIndex: Number(faceIndexRaw ?? 0), color: colorRaw || 'orange' }],
+  }
+}
+
+export function demoGeo3dRemoveFaceHighlight(idRaw, faceIndexRaw) {
+  return {
+    snapshot: null,
+    script: [{ type: 'ggb-3d-remove-face-highlight', id: (idRaw || 'shape1').trim(), faceIndex: Number(faceIndexRaw ?? 0) }],
+  }
+}
+
+// ── geo3d-show-tick ────────────────────────────────────────────────────────────
+// Congruent-side tick marks — 1, 2 or 3 dashes crossing an edge's midpoint.
+// edgeIndexRaw accepts a comma-separated list (e.g. "0,1") to mark several
+// sides with the same tick count in one call instead of calling this repeatedly.
+export function demoGeo3dShowTick(idRaw, edgeIndexRaw, ticksRaw, colorRaw) {
+  const id      = (idRaw || 'shape1').trim()
+  const ticks   = Number(ticksRaw) || 1
+  const color   = colorRaw || 'blue'
+  const indices = String(edgeIndexRaw ?? 0).split(',').map(s => Number(s.trim())).filter(n => !Number.isNaN(n))
+  return {
+    snapshot: null,
+    script: (indices.length ? indices : [0]).map(edgeIndex => ({ type: 'ggb-3d-show-tick', id, edgeIndex, ticks, color })),
+  }
+}
+
+export function demoGeo3dRemoveTick(idRaw, edgeIndexRaw) {
+  const id      = (idRaw || 'shape1').trim()
+  const indices = String(edgeIndexRaw ?? 0).split(',').map(s => Number(s.trim())).filter(n => !Number.isNaN(n))
+  return {
+    snapshot: null,
+    script: (indices.length ? indices : [0]).map(edgeIndex => ({ type: 'ggb-3d-remove-tick', id, edgeIndex })),
+  }
+}
+
+// ── geo3d-divide-segment ───────────────────────────────────────────────────────
+// Marks the (parts-1) points that split an edge into equal sections.
+export function demoGeo3dDivideSegment(idRaw, edgeIndexRaw, partsRaw, colorRaw, showLabelsRaw) {
+  return {
+    snapshot: null,
+    script: [{
+      type: 'ggb-3d-divide-segment', id: (idRaw || 'shape1').trim(),
+      edgeIndex: Number(edgeIndexRaw ?? 0), parts: Number(partsRaw) || 2,
+      color: colorRaw || 'purple', showLabels: String(showLabelsRaw) === 'true',
+    }],
+  }
+}
+
+export function demoGeo3dRemoveDivideSegment(idRaw, edgeIndexRaw, partsRaw) {
+  return {
+    snapshot: null,
+    script: [{
+      type: 'ggb-3d-remove-divide-segment', id: (idRaw || 'shape1').trim(),
+      edgeIndex: Number(edgeIndexRaw ?? 0), parts: Number(partsRaw) || 2,
+    }],
   }
 }
 
@@ -1631,4 +1838,26 @@ export function demoGeo3dAddText(labelIdRaw, textRaw, xRaw, yRaw) {
 
 export function demoGeo3dClear() {
   return { snapshot: null, script: [{ type: 'ggb-3d-clear' }] }
+}
+
+// ── geo3d-show-volume-measures ────────────────────────────────────────────────
+// Labels exactly the dimensions needed for THAT shape's volume formula —
+// cube→a, sphere→r, cone/cylinder→r,h, prism→l,w,h, pyramid→a,h,
+// tetrahedron/octahedron→a, torus→R,r.
+export function demoGeo3dShowVolumeMeasures(idRaw, colorRaw) {
+  const id = (idRaw || 'shape1').trim()
+  const color = (colorRaw || '').trim()
+  const opts = {}
+  if (color) opts.color = color
+  return {
+    snapshot: null,
+    script: [{ type: 'ggb-3d-show-volume-measures', id, opts }],
+  }
+}
+
+export function demoGeo3dRemoveVolumeMeasures(idRaw) {
+  return {
+    snapshot: null,
+    script: [{ type: 'ggb-3d-remove-volume-measures', id: (idRaw || 'shape1').trim() }],
+  }
 }

@@ -466,4 +466,204 @@ export const EXAMPLE_LESSONS = [
       },
     ],
   },
+
+  /* ─── 16. Corrélation ───────────────────────────────────────────── */
+  {
+    id: 'correlation',
+    emoji: '📊',
+    title: 'Corrélation',
+    desc: 'Nuage de points et coefficient r — lien entre deux variables',
+    color: '#eab308',
+    pages: [
+      {
+        id: u(), title: 'Qu\'est-ce que la corrélation?', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'intro', title: 'La corrélation',
+            content: 'La corrélation mesure le lien entre deux variables.|Corrélation positive : quand $x$ augmente, $y$ augmente aussi.|Corrélation négative : quand $x$ augmente, $y$ diminue.|Aucune corrélation : pas de lien clair entre les deux.',
+            isList: 'true',
+          }},
+          { id: u(), funcId: 'table-create', inputs: {
+            data: '[["x (heures d\'étude)","y (note %)"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]',
+            headerRow: 'true', gridId: 'etude1',
+          }},
+        ],
+      },
+      {
+        id: u(), title: 'Nuage de points — tendance positive', layout: 'grid-graph',
+        steps: [
+          { id: u(), funcId: 'table-create', inputs: {
+            data: '[["x (heures d\'étude)","y (note %)"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]',
+            headerRow: 'true', gridId: 'etude2',
+          }},
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '0', xMax: '8', yMin: '0', yMax: '100' } },
+          { id: u(), funcId: 'graph-add-point', inputs: { x: '1', y: '55', id: 'p1' } },
+          { id: u(), funcId: 'graph-add-point', inputs: { x: '2', y: '62', id: 'p2' } },
+          { id: u(), funcId: 'graph-add-point', inputs: { x: '3', y: '68', id: 'p3' } },
+          { id: u(), funcId: 'graph-add-point', inputs: { x: '4', y: '75', id: 'p4' } },
+          { id: u(), funcId: 'graph-add-point', inputs: { x: '5', y: '82', id: 'p5' } },
+          { id: u(), funcId: 'graph-add-point', inputs: { x: '6', y: '90', id: 'p6' } },
+        ],
+      },
+      {
+        id: u(), title: 'Le coefficient de corrélation r', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'formula', title: 'Coefficient r',
+            content: '$r = \\dfrac{\\sum (x_i-\\bar{x})(y_i-\\bar{y})}{\\sqrt{\\sum(x_i-\\bar{x})^2 \\sum (y_i-\\bar{y})^2}}$|$r$ est toujours entre $-1$ et $1$.',
+            isList: 'true',
+          }},
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'interp', title: 'Interprétation',
+            content: '$r$ proche de $1$ : forte corrélation positive|$r$ proche de $-1$ : forte corrélation négative|$r$ proche de $0$ : aucune corrélation|Ici : $r \\approx 0.99$ → très forte corrélation positive',
+            isList: 'true',
+          }},
+          { id: u(), funcId: 'eq-create', inputs: { eq: 'r = 0.99' } },
+        ],
+      },
+    ],
+  },
+
+  /* ─── 17. Écart moyen ───────────────────────────────────────────── */
+  {
+    id: 'mean-deviation',
+    emoji: '📶',
+    title: 'Écart moyen',
+    desc: 'Mesure de dispersion — écart absolu moyen autour de la moyenne',
+    color: '#f43f5e',
+    pages: [
+      {
+        id: u(), title: 'Les données', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'intro', title: 'L\'écart moyen',
+            content: 'L\'écart moyen mesure la dispersion des données autour de la moyenne.|Plus l\'écart moyen est petit, plus les données sont regroupées autour de la moyenne.',
+            isList: 'true',
+          }},
+          { id: u(), funcId: 'table-create', inputs: {
+            data: '[["Coureur","Temps (min)"],["A",12],["B",15],["C",11],["D",14],["E",13]]',
+            headerRow: 'true', gridId: 'temps1',
+          }},
+        ],
+      },
+      {
+        id: u(), title: 'Calculer la moyenne', layout: 'single-equation',
+        steps: [
+          { id: u(), funcId: 'eq-create',     inputs: { eq: 'M = (12 + 15 + 11 + 14 + 13) / 5' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Calculer l\'écart moyen', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'table-create', inputs: {
+            data: '[["Coureur","Temps","Écart |x - 13|"],["A",12,1],["B",15,2],["C",11,2],["D",14,1],["E",13,0]]',
+            headerRow: 'true', gridId: 'dev1',
+          }},
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'result', title: 'Résultat',
+            content: '$\\text{É.M.} = \\dfrac{\\sum|x_i-\\bar{x}|}{n} = \\dfrac{1+2+2+1+0}{5} = 1.2$',
+            isList: 'false',
+          }},
+        ],
+      },
+    ],
+  },
+
+  /* ─── 18. Mesures de tendance centrale ──────────────────────────── */
+  {
+    id: 'central-tendency',
+    emoji: '🎯',
+    title: 'Mesures de tendance centrale',
+    desc: 'Moyenne, médiane et mode — trois façons de résumer des données',
+    color: '#38bdf8',
+    pages: [
+      {
+        id: u(), title: 'Moyenne, médiane et mode', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'intro', title: 'Trois mesures',
+            content: 'Moyenne : somme des données divisée par le nombre de données.|Médiane : valeur du milieu quand les données sont en ordre.|Mode : valeur qui apparaît le plus souvent.',
+            isList: 'true',
+          }},
+          { id: u(), funcId: 'table-create', inputs: {
+            data: '[["Élève","Note"],[1,65],[2,70],[3,70],[4,75],[5,80],[6,85],[7,90]]',
+            headerRow: 'true', gridId: 'notes1',
+          }},
+        ],
+      },
+      {
+        id: u(), title: 'Calculer la moyenne', layout: 'single-equation',
+        steps: [
+          { id: u(), funcId: 'eq-create',     inputs: { eq: 'M = (65 + 70 + 70 + 75 + 80 + 85 + 90) / 7' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Médiane et mode', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'medmode', title: 'Médiane et mode',
+            content: 'Les données sont déjà en ordre croissant.|La médiane est la 4ᵉ valeur (position du milieu) : 75.|Le mode est 70 (il apparaît 2 fois).',
+            isList: 'true',
+          }},
+          { id: u(), funcId: 'table-create', inputs: {
+            data: '[["Position","Note"],[1,65],[2,70],[3,70],["4 (médiane)",75],[5,80],[6,85],[7,90]]',
+            headerRow: 'true', gridId: 'notes2',
+          }},
+        ],
+      },
+    ],
+  },
+
+  /* ─── 19. Conversion d'unités de mesure ─────────────────────────── */
+  {
+    id: 'unit-conversion',
+    emoji: '🧮',
+    title: 'Conversion d\'unités de mesure',
+    desc: 'km, hm, dam, m, dm, cm, mm — et les unités d\'aire (km²)',
+    color: '#84cc16',
+    pages: [
+      {
+        id: u(), title: 'Unités de longueur', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'intro', title: 'Unités de longueur',
+            content: 'Chaque unité vaut 10 fois la suivante.|Pour convertir, on déplace la virgule d\'une position par unité.',
+            isList: 'true',
+          }},
+          { id: u(), funcId: 'table-create', inputs: {
+            data: '[["km","hm","dam","m","dm","cm","mm"],[1000,100,10,1,0.1,0.01,0.001]]',
+            headerRow: 'true', gridId: 'longueur1',
+          }},
+        ],
+      },
+      {
+        id: u(), title: 'Convertir 3.45 km en m', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'method', title: 'Méthode',
+            content: 'Du km au m, on saute 3 positions vers la droite (km → hm → dam → m).|On déplace donc la virgule de 3 positions vers la droite.',
+            isList: 'true',
+          }},
+          { id: u(), funcId: 'eq-create',     inputs: { eq: 'm = 3.45 * 1000' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Unités d\'aire (km²)', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'aire', title: 'Unités d\'aire',
+            content: 'Pour les unités d\'aire, chaque unité vaut 100 fois la suivante (pas 10!).|Ex : 1 km² = 100 hm² = 10 000 dam² = 1 000 000 m².',
+            isList: 'true',
+          }},
+          { id: u(), funcId: 'table-create', inputs: {
+            data: '[["km²","hm²","dam²","m²","dm²","cm²","mm²"],[1000000,10000,100,1,0.01,0.0001,0.000001]]',
+            headerRow: 'true', gridId: 'aire1',
+          }},
+        ],
+      },
+    ],
+  },
 ]

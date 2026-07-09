@@ -6,7 +6,7 @@ export class MathObject {
                 color = null, varParts = null,
                 isOperator = false, text = null,
                 isParenGroup = false, parenCoeff = 1, innerTerms = null,
-                factors = null, negBase = false } = {}) {
+                factors = null, negBase = false, expr = null } = {}) {
     this.id = id ?? crypto.randomUUID()
     this.sign = sign
     this.coefficient = coefficient
@@ -32,6 +32,11 @@ export class MathObject {
     // Each factor is replaceable on its own. value = coefficient × ∏ factor values.
     this.factors          = factors          // [{symbolicLabel?, coefficient, variable?, degree}] or null
     this.negBase          = negBase          // true → render coefficient wrapped as (−n) before the exponent
+    // Generic expression tree (see exprTree.js) — a term that IS an arithmetic
+    // sub-expression, e.g. (B+b)*h/2 or pi*r^2. Every number is its own leaf;
+    // operators/parens are pure tree structure, never folded into one term.
+    // Resolved by ONE generic order-of-operations walker, not a per-shape script.
+    this.expr             = expr
   }
 
   get value() {

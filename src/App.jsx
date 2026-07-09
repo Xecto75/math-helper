@@ -58,7 +58,7 @@ import {
   demoGeo3dMove, demoGeo3dHighlight, demoGeo3dLabelSides,
   demoGeo3dShowAngles, demoGeo3dHighlightAngle, demoGeo3dHighlightEdge, demoGeo3dRemoveEdgeHighlight,
   demoGeo3dHighlightFace, demoGeo3dRemoveFaceHighlight,
-  demoGeo3dShowTick, demoGeo3dRemoveTick, demoGeo3dDivideSegment, demoGeo3dRemoveDivideSegment,
+  demoGeo3dShowTick, demoGeo3dRemoveTick,
   demoGeo3dShowArrow, demoGeo3dRemoveArrow, demoGeo3dClearHighlights, demoGeo3dSetView, demoGeo3dAddText,
   demoGeo3dShowVolumeMeasures, demoGeo3dRemoveVolumeMeasures,
   demoGeo2dFlip, demoGeo2dRotate,
@@ -578,8 +578,6 @@ export default function App() {
       case 'geo3d-remove-face-highlight': return demoGeo3dRemoveFaceHighlight(inputs.id, inputs.faceIndex)
       case 'geo3d-show-tick':         return demoGeo3dShowTick(inputs.id, inputs.edgeIndex, inputs.ticks, inputs.color)
       case 'geo3d-remove-tick':       return demoGeo3dRemoveTick(inputs.id, inputs.edgeIndex)
-      case 'geo3d-divide-segment':    return demoGeo3dDivideSegment(inputs.id, inputs.edgeIndex, inputs.parts, inputs.color, inputs.showLabels)
-      case 'geo3d-remove-divide-segment': return demoGeo3dRemoveDivideSegment(inputs.id, inputs.edgeIndex, inputs.parts)
       case 'geo3d-show-arrow':        return demoGeo3dShowArrow(inputs.id, inputs.arrowId, inputs.from, inputs.to, inputs.color)
       case 'geo3d-remove-arrow':      return demoGeo3dRemoveArrow(inputs.id, inputs.arrowId)
       case 'geo3d-clear-highlights':  return demoGeo3dClearHighlights(inputs.id)

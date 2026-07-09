@@ -10,7 +10,7 @@ import { EquationState }  from './EquationState.js'
 import { MathObject }     from './MathObject.js'
 import { generateScript, generateDistributeScript } from './solveScript.js'
 import { nextFuncId, getFunctionIds } from './desmosEngine.js'
-import { getSideLengths } from './geometryEngine.js'
+import { getSideLengths, getShapeHeight, getShapeRadius, getVertexAngle } from './geometryEngine.js'
 import { resolveColor }   from './palette.js'
 import { t }              from '../i18n/translations.js'
 
@@ -45,7 +45,11 @@ function fmtTerm(term) {
 
 // ── eq-replace-variable ───────────────────────────────────────────────────────
 export function demoReplaceVariable(eqText, replacementsRaw) {
-  // Parse "a=2,b=-3,c=1" or "a=[shapeId]0,b=[shapeId]1" (geo side reference)
+  // Parse "a=2,b=-3,c=1" or a live geo reference instead of a hardcoded number:
+  // "a=[shapeId]0" (Nth side length), "a=[shapeId]h" (height/diameter),
+  // "a=[shapeId]r" (circle radius), "a=[shapeId]a2" (interior angle at vertex 2)
+  // — same [shapeId]token syntax used in text boxes/comments, so a lesson never
+  // needs the same number typed twice (once at shape creation, once here).
   const replacements = String(replacementsRaw || 'a=2,b=-3,c=1')
     .split(',')
     .map(s => {
@@ -53,11 +57,18 @@ export function demoReplaceVariable(eqText, replacementsRaw) {
       if (eq < 0) return null
       const lbl = s.slice(0, eq).trim()
       const rhs = s.slice(eq + 1).trim()
-      // [shapeId]N → look up the Nth side length from the geometry registry
-      const geoM = rhs.match(/^\[([^\]]+)\](\d+)$/)
-      const val  = geoM
-        ? (getSideLengths(geoM[1])[parseInt(geoM[2])] ?? NaN)
-        : Number(rhs)
+      const geoM = rhs.match(/^\[([^\]]+)\](a\d+|\d+|h|r)$/)
+      let val
+      if (geoM) {
+        const [, shapeId, tok] = geoM
+        val = tok === 'h'    ? getShapeHeight(shapeId)
+            : tok === 'r'    ? getShapeRadius(shapeId)
+            : tok[0] === 'a' ? getVertexAngle(shapeId, parseInt(tok.slice(1)))
+            : getSideLengths(shapeId)[parseInt(tok)]
+        val = val ?? NaN
+      } else {
+        val = Number(rhs)
+      }
       return { label: lbl, value: val }
     })
     .filter(r => r?.label && isFinite(r.value))
@@ -908,7 +919,7 @@ export function demoAddCommentGraph(textRaw, xRaw, yRaw, colorRaw, cmtIdRaw) {
   const text  = (textRaw  || 'f(0) = 1').trim()
   const x     = Number(xRaw) || 0
   const y     = Number(yRaw) || 0
-  const color = (colorRaw || '#a855f7').trim()
+  const color = (colorRaw || '#60a5fa').trim()
   const id    = (cmtIdRaw || '').trim() || crypto.randomUUID()
   return {
     snapshot: null,
@@ -921,7 +932,7 @@ export function demoAddCommentGraphFunc(textRaw, funcIdRaw, xRaw, colorRaw, cmtI
   const text   = (textRaw   || 'f(x)').trim()
   const funcId = (funcIdRaw || 'f').trim()
   const x      = Number(xRaw) || 0
-  const color  = (colorRaw  || '#a855f7').trim()
+  const color  = (colorRaw  || '#60a5fa').trim()
   const id     = (cmtIdRaw || '').trim() || crypto.randomUUID()
   return {
     snapshot: null,
@@ -934,7 +945,7 @@ export function demoAddCommentGraphArea(textRaw, funcIdRaw, xRaw, colorRaw, cmtI
   const text   = (textRaw   || 'area').trim()
   const funcId = (funcIdRaw || 'f').trim()
   const x      = Number(xRaw) || 0
-  const color  = (colorRaw  || '#a855f7').trim()
+  const color  = (colorRaw  || '#60a5fa').trim()
   const id     = (cmtIdRaw || '').trim() || crypto.randomUUID()
   return {
     snapshot: null,
@@ -984,7 +995,7 @@ export function demoAddCommentEquation(textRaw, sideRaw, indicesRaw, colorRaw, c
   const side    = (sideRaw    || 'both').trim()   // 'both' = whole equation | 'left' | 'right'
   // Empty indices = whole scope (one merged frame); explicit list = specific cells.
   const indices = (indicesRaw || '').split(',').map(s => Number(s.trim())).filter(isFinite)
-  const color   = (colorRaw  || '#a855f7').trim()
+  const color   = (colorRaw  || '#60a5fa').trim()
   const id      = (cmtIdRaw || '').trim() || crypto.randomUUID()
   return {
     snapshot: null,
@@ -997,7 +1008,7 @@ export function demoAddCommentEquation(textRaw, sideRaw, indicesRaw, colorRaw, c
 export function demoAddCommentFree(textRaw, sideRaw, colorRaw, cmtIdRaw, titleRaw) {
   const text  = (textRaw || 'Note').trim()
   const side  = (sideRaw || 'right').trim()   // 'left' | 'right'
-  const color = (colorRaw || '#a855f7').trim()
+  const color = (colorRaw || '#60a5fa').trim()
   const id    = (cmtIdRaw || '').trim() || crypto.randomUUID()
   const title = (titleRaw || '').trim() || null
   return {
@@ -1061,7 +1072,18 @@ export function demoEquationCreate(eqText) {
   const eq = (eqText || '3x + 5 = 14').trim()
   const isRich = /\|[^|]+\|/.test(eq) || /\//.test(eq) || /\b(sin|cos|tan|cot|sec|csc)\s*\(/.test(eq)
   const snapshot = (isRich ? parseRichEquation(eq) : parseEquation(eq)).snapshot()
-  return { snapshot, script: [{ type: 'renderEquation' }] }
+  const script = [{ type: 'renderEquation' }]
+  // "pi" in the raw string → the equation itself already renders the π glyph
+  // (see parseEquation.js's substitutePi); also float a small one-time note
+  // explaining what it numerically is, the first time it shows up.
+  if (/\bpi\b/i.test(eq) || /π/.test(eq)) {
+    script.push({
+      type: 'add-comment', id: 'pi-explainer', title: null,
+      text: `π ≈ ${Math.PI.toFixed(5)}`,
+      target: { type: 'free', side: 'right' },
+    })
+  }
+  return { snapshot, script }
 }
 
 // ── Text boxes ────────────────────────────────────────────────────────────────
@@ -1803,29 +1825,6 @@ export function demoGeo3dRemoveTick(idRaw, edgeIndexRaw) {
   return {
     snapshot: null,
     script: (indices.length ? indices : [0]).map(edgeIndex => ({ type: 'ggb-3d-remove-tick', id, edgeIndex })),
-  }
-}
-
-// ── geo3d-divide-segment ───────────────────────────────────────────────────────
-// Marks the (parts-1) points that split an edge into equal sections.
-export function demoGeo3dDivideSegment(idRaw, edgeIndexRaw, partsRaw, colorRaw, showLabelsRaw) {
-  return {
-    snapshot: null,
-    script: [{
-      type: 'ggb-3d-divide-segment', id: (idRaw || 'shape1').trim(),
-      edgeIndex: Number(edgeIndexRaw ?? 0), parts: Number(partsRaw) || 2,
-      color: colorRaw || 'purple', showLabels: String(showLabelsRaw) === 'true',
-    }],
-  }
-}
-
-export function demoGeo3dRemoveDivideSegment(idRaw, edgeIndexRaw, partsRaw) {
-  return {
-    snapshot: null,
-    script: [{
-      type: 'ggb-3d-remove-divide-segment', id: (idRaw || 'shape1').trim(),
-      edgeIndex: Number(edgeIndexRaw ?? 0), parts: Number(partsRaw) || 2,
-    }],
   }
 }
 

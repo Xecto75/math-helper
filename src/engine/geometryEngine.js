@@ -6,6 +6,7 @@
 
 import gsap from 'gsap'
 import { resolveColor } from './palette.js'
+import * as threeGeo from './threeEngine.js'
 
 const registry = new Map()
 const r4 = n => Math.round(n * 10000) / 10000
@@ -94,10 +95,12 @@ export function getShapeIds() {
   return [...registry.keys()]
 }
 
-// Returns the computed Euclidean length of each side, in order
+// Returns the computed Euclidean length of each side, in order. Falls back to
+// the Three.js flat-shape registry (geo3d-create-2d) if the id isn't one of
+// this engine's own (legacy geo-create-polygon) shapes.
 export function getSideLengths(id) {
   const entry = registry.get(id)
-  if (!entry?.vertices) return []
+  if (!entry?.vertices) return threeGeo.getSideLengths3D(id)
   const verts = entry.vertices
   return verts.map((v, i) => {
     const next = verts[(i + 1) % verts.length]
@@ -108,8 +111,9 @@ export function getSideLengths(id) {
 // Vertical extent of a shape (top to bottom) = its height. Diameter for circles.
 export function getShapeHeight(id) {
   const entry = registry.get(id)
-  if (entry?.type === 'circle') return r4(entry.r * 2)
-  if (!entry?.vertices?.length) return undefined
+  if (!entry) return threeGeo.getShapeHeight3D(id)
+  if (entry.type === 'circle') return r4(entry.r * 2)
+  if (!entry.vertices?.length) return undefined
   const ys = entry.vertices.map(v => v[1])
   return r4(Math.max(...ys) - Math.min(...ys))
 }
@@ -117,14 +121,15 @@ export function getShapeHeight(id) {
 // Circle radius (undefined for non-circles).
 export function getShapeRadius(id) {
   const entry = registry.get(id)
-  return entry?.type === 'circle' ? r4(entry.r) : undefined
+  if (!entry) return threeGeo.getShapeRadius3D(id)
+  return entry.type === 'circle' ? r4(entry.r) : undefined
 }
 
 // Interior angle (degrees) at vertex i of a polygon — the real measured angle,
 // so labels never have to guess acute/right/obtuse.
 export function getVertexAngle(id, i) {
   const entry = registry.get(id)
-  if (!entry?.vertices?.length) return undefined
+  if (!entry?.vertices?.length) return threeGeo.getVertexAngle3D(id, i)
   const vs = entry.vertices, n = vs.length
   const idx  = ((i % n) + n) % n
   const curr = vs[idx], prev = vs[(idx + n - 1) % n], next = vs[(idx + 1) % n]
@@ -249,7 +254,7 @@ export function unhighlightShape(geoRef, id) {
   const entry = registry.get(id)
   const display = geoRef?.current
   if (!display) return Promise.resolve()
-  const original = entry?.style ?? { fill: '#6495ed', stroke: '#6495ed', fillOpacity: 0.15, strokeWidth: 2 }
+  const original = entry?.style ?? { fill: '#60a5fa', stroke: '#60a5fa', fillOpacity: 0.15, strokeWidth: 2 }
   display.setShapeStyle(id, original)
   return new Promise(resolve => setTimeout(resolve, 1100))
 }
@@ -292,7 +297,7 @@ export async function labelSides(geoRef, id, customLabels = []) {
       x:         r4(mx + sign * nx * offset),
       y:         r4(my + sign * ny * offset),
       text:      labelText,
-      style:     { color: entry.edgeColors?.[i] ?? entry.style?.stroke ?? '#6495ed', anchor },
+      style:     { color: entry.edgeColors?.[i] ?? entry.style?.stroke ?? '#60a5fa', anchor },
     }
   })
 
@@ -339,7 +344,7 @@ export function showMeasure(geoRef, id, opts = {}) {
   const display = geoRef?.current
   if (!entry || !display) return Promise.resolve()
 
-  const color  = opts.color ? resolveColor(opts.color) : '#6495ed'
+  const color  = opts.color ? resolveColor(opts.color) : '#60a5fa'
   const lineId = `radius__${id}`
 
   // ── Circle: radius ────────────────────────────────────────────────────────
@@ -448,7 +453,7 @@ export async function showAreaMeasures(geoRef, id, opts = {}) {
   const display = geoRef?.current
   if (!entry || !display) return
 
-  const color     = opts.color ? resolveColor(opts.color) : '#6495ed'
+  const color     = opts.color ? resolveColor(opts.color) : '#60a5fa'
   const thickness = opts.thickness ?? 3
 
   if (entry.type === 'circle') {
@@ -528,7 +533,7 @@ export async function showAngles(geoRef, id, colorRaw) {
   const n     = verts.length
   // Angle arcs are independent of the side/border color: base light blue
   // unless the caller explicitly passes one.
-  const color = colorRaw ? resolveColor(colorRaw) : '#6495ed'
+  const color = colorRaw ? resolveColor(colorRaw) : '#60a5fa'
 
   // Arc radius: 25% of average edge length, clamped
   const avgEdge = verts.reduce((sum, v, i) => {

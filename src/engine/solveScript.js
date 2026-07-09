@@ -1,5 +1,6 @@
 import { MathObject } from './MathObject.js'
 import { EquationState } from './EquationState.js'
+import { bin, pm, sqrtN, num, label, negN, pw } from './exprTree.js'
 
 export function generateScript(initialSnapshot, originalInput) {
   const script = []
@@ -11,19 +12,24 @@ export function generateScript(initialSnapshot, originalInput) {
   // ── 0. Distribute parentheses ──────────────────────────────────────────────
   distributeAllParens(state, script)
 
-  // ── 1. Combine like terms on the left ──────────────────────────────────────
-  combineOnSide(state, script, 1, 'left')   // x-terms
-  combineOnSide(state, script, 0, 'left')   // constants
-
-  // ── 2. Combine like terms on the right (pre-existing) ─────────────────────
-  combineOnSide(state, script, 1, 'right')
-  combineOnSide(state, script, 0, 'right')
+  // ── 1-2. Combine like terms on both sides ──────────────────────────────────
+  // Collected rather than pushed immediately: the last one (if any) may end
+  // up paired with the very next cross-side move below (see step 3) so the
+  // two settle together instead of one finishing before the other starts.
+  const pendingCombines = [
+    combineOnSide(state, 1, 'left'),   // x-terms
+    combineOnSide(state, 0, 'left'),   // constants
+    combineOnSide(state, 1, 'right'),
+    combineOnSide(state, 0, 'right'),
+  ].filter(acts => acts.length > 0)
 
   // ── Quadratic branch — intercept before linear steps ──────────────────────
+  // No pairing opportunity down this path — flush any pending combines now.
   const hasQuadVar  = [...state.left, ...state.right].some(t => t.degree === 2 && t.variable)
   const hasLinearVar = [...state.left, ...state.right].some(t => t.degree === 1 && t.variable)
   const isQuadratic = hasQuadVar && hasLinearVar
   if (isQuadratic) {
+    pendingCombines.forEach(acts => script.push(...acts))
     generateQuadraticScript(state, script)
     return script
   }
@@ -35,8 +41,9 @@ export function generateScript(initialSnapshot, originalInput) {
   const otherSide = varSide === 'left' ? 'right' : 'left'
 
   // ── 3. Move x-terms from the other side onto the variable's side ──────────
-  // sendToOtherSide absorbs the subsequent combine step.
-  for (const term of [...state.findByDegree(1, otherSide)]) {
+  // sendToOtherSide absorbs the subsequent combine step. Build the action
+  // groups first (without pushing) so the first one can be paired below.
+  const moveGroups = [...state.findByDegree(1, otherSide)].map(term => {
     const resultId   = crypto.randomUUID()
     const targetSame = state.findByDegree(1, varSide)
     const combineWithIds = targetSame.map(t => t.id)
@@ -47,18 +54,18 @@ export function generateScript(initialSnapshot, originalInput) {
       ? state[varSide].indexOf(targetSame[0])
       : state[varSide].length
 
-    script.push({ type: 'showNarration', text: `Move ${fmtTerm(term)} to the other side.` })
-    script.push({ type: 'outlineDegree', degree: 1, side: otherSide, color: '#60a5fa' })
-    script.push({
-      type: 'sendToOtherSide',
-      id:            term.id,
-      resultId,
-      combineWithIds,
-      combinedVal,
-      variable:      term.variable,
-      degree:        term.degree,
-    })
-    script.push({ type: 'clearOutlines' })
+    const acts = [
+      { type: 'showNarration', text: `Move ${fmtTerm(term)} to the other side.` },
+      {
+        type: 'sendToOtherSide',
+        id:            term.id,
+        resultId,
+        combineWithIds,
+        combinedVal,
+        variable:      term.variable,
+        degree:        term.degree,
+      },
+    ]
 
     state.remove(term.id)
     combineWithIds.forEach(cid => state.remove(cid))
@@ -71,7 +78,26 @@ export function generateScript(initialSnapshot, originalInput) {
         degree:      1,
       }), varSide, firstPos)
     }
+    return acts
+  })
+
+  // Push the leading combines untouched. If there's a trailing combine AND
+  // an x-term about to move, run that last combine and the first move
+  // together — they touch different terms, so nothing is lost by letting
+  // them settle in the same beat instead of one finishing before the next
+  // starts (avoids the "gap, then fill" pause the sequential version had).
+  const trailingCombine = moveGroups.length > 0 ? pendingCombines.pop() : null
+  pendingCombines.forEach(acts => script.push(...acts))
+  if (trailingCombine) {
+    script.push({
+      type: 'ggb-parallel',
+      actions: [
+        { type: 'sequence', actions: trailingCombine },
+        { type: 'sequence', actions: moveGroups.shift() },
+      ],
+    })
   }
+  moveGroups.forEach(acts => script.push(...acts))
 
   // ── 4. Move the constant off the variable's side ──────────────────────────
   // Skip if there is no variable term to isolate (e.g. pure numeric equation like 25 = 25)
@@ -93,7 +119,6 @@ export function generateScript(initialSnapshot, originalInput) {
       ? `Subtract ${b.label} from both sides.`
       : `Add ${Math.abs(b.value)} to both sides.`
     script.push({ type: 'showNarration',  text: narration })
-    script.push({ type: 'outlineDegree',  degree: 0, side: varSide, color: '#60a5fa' })
     script.push({
       type: 'sendToOtherSide',
       id:            b.id,
@@ -103,7 +128,6 @@ export function generateScript(initialSnapshot, originalInput) {
       variable:      null,
       degree:        0,
     })
-    script.push({ type: 'clearOutlines' })
 
     state.remove(b.id)
     combineWithIds.forEach(cid => state.remove(cid))
@@ -249,11 +273,15 @@ function fmtParenGroup(group) {
 
 // ── combineOnSide ─────────────────────────────────────────────────────────────
 
-function combineOnSide(state, script, degree, side) {
+// Returns the list of actions for this combine (empty if there's nothing to
+// combine) instead of pushing directly — the caller decides whether to push
+// them standalone or bundle them with an adjacent step (see generateScript).
+function combineOnSide(state, degree, side) {
   const terms = state.findByDegree(degree, side)
-  if (terms.length < 2) return
+  if (terms.length < 2) return []
 
   const arr = side === 'left' ? state.left : state.right
+  const actions = []
 
   // Reorder so like terms are adjacent before combining
   const positions   = terms.map(t => arr.indexOf(t))
@@ -262,7 +290,7 @@ function combineOnSide(state, script, degree, side) {
   if (notAdjacent) {
     const others    = arr.filter(t => t.degree !== degree)
     const reordered = degree > 0 ? [...terms, ...others] : [...others, ...terms]
-    script.push({ type: 'reorderEquation', [side]: reordered.map(t => t.id) })
+    actions.push({ type: 'reorderEquation', [side]: reordered.map(t => t.id) })
     if (side === 'left') state.left  = reordered
     else                 state.right = reordered
     state.reflow()
@@ -274,9 +302,9 @@ function combineOnSide(state, script, degree, side) {
   const newId       = crypto.randomUUID()
   const firstPos    = (side === 'left' ? state.left : state.right).indexOf(terms[0])
 
-  script.push({ type: 'showNarration',  text: `Combine the ${label} on the ${side}.` })
-  script.push({ type: 'outlineDegree',  degree, side, color })
-  script.push({
+  actions.push({ type: 'showNarration',  text: `Combine the ${label} on the ${side}.` })
+  actions.push({ type: 'outlineDegree',  degree, side, color })
+  actions.push({
     type: 'combineTerms',
     ids:      terms.map(t => t.id),
     firstPos,
@@ -289,7 +317,7 @@ function combineOnSide(state, script, degree, side) {
       side,
     },
   })
-  script.push({ type: 'clearOutlines' })
+  actions.push({ type: 'clearOutlines' })
 
   // Simulate
   terms.forEach(t => state.remove(t.id))
@@ -300,6 +328,8 @@ function combineOnSide(state, script, degree, side) {
     variable:    degree > 0 ? terms[0].variable : null,
     degree,
   }), side, firstPos)
+
+  return actions
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -325,7 +355,10 @@ export function generateQuadraticScript(state, script) {
   const fmtL = n => n < 0 ? `(${fmt(n)})` : fmt(n)
 
   // 1. Move all right-side terms to left → standard form ax² + bx + c = 0
-  const rightCopy = [...state.right]
+  // A bare "= 0" is already standard form — nothing to move, so a literal
+  // zero term contributes nothing and shouldn't spend an animation step
+  // "sending" it across (a no-op −0 on both sides).
+  const rightCopy = [...state.right].filter(t => t.value !== 0)
   if (rightCopy.length > 0) {
     script.push({ type: 'showNarration', text: 'Mise en forme standard : ax² + bx + c = 0' })
   }
@@ -407,28 +440,28 @@ export function generateQuadraticScript(state, script) {
   script.push({ type: 'pause', seconds: 2.5 })
 
   // ── 5. Solve it for real, in the equation panel ───────────────────────────
-  // Every value below is already known (a, b, c are plain numbers by now), so
-  // each step is just a fully-resolved snapshot — no runtime evaluation needed.
-  const cst  = (val, extra = {}) => ({ sign: val >= 0 ? '+' : '-', coefficient: Math.abs(val), variable: null, degree: 0, ...extra })
+  // Every step below follows the SAME formula-then-substitute-then-solve
+  // pattern as any other equation in this app: show the formula with its real
+  // letters (a, b, c, Δ) first, THEN replace those letters with the actual
+  // numbers, THEN let the generic expression-tree evaluator reduce it — never
+  // jumping straight to pre-computed numbers.
   const vTerm = (name, extra = {}) => ({ sign: '+', coefficient: 1, variable: name, degree: 1, ...extra })
-  const frac = (sign, numeratorTerms, denominatorTerms) =>
-    ({ sign, isFraction: true, numeratorTerms, denominatorTerms, coefficient: 1, variable: null, degree: 1 })
+  // A term that IS an arithmetic sub-expression (see exprTree.js) — same
+  // representation the parser builds for (B+b)*h/2, π*r² etc., so the
+  // quadratic's formula is resolved by the exact same generic walker.
+  const exprTerm = root => ({ sign: '+', expr: root, coefficient: 1, variable: null, degree: 0 })
+  const subst = (...pairs) => ({ type: 'replaceVariable', replacements: pairs.map(([lbl, value]) => ({ label: lbl, value })) })
 
-  const negB = -b
+  const negB = -b   // only used for the final ANSWER banner text below
 
-  // Δ = b² − 4ac  (substituted with the real numbers, not yet evaluated) — from
-  // here on, every further reduction reuses the SAME generic step-by-step
-  // engine as any other equation (full-solve-current: square the term, then
-  // combine the two constants) instead of hand-jumping to the answer. The "Δ ="
-  // label on the left never gets torn down — only its right side animates.
+  // Δ = b² − 4ac — the formula first (real letters), then substitute a, b, c.
   script.push({
     type: 'replaceEquation',
     left:  [vTerm('Δ')],
-    right: [
-      cst(Math.abs(b), { degree: 2, negBase: b < 0 }),
-      cst(-4 * a * c),
-    ],
+    right: [exprTerm(bin('-', pw(label('b'), 2), bin('*', bin('*', num(4), label('a')), label('c'))))],
   })
+  script.push({ type: 'pause', seconds: 0.5 })
+  script.push(subst(['a', a], ['b', b], ['c', c]))
   script.push({ type: 'pause', seconds: 0.5 })
   script.push({ type: 'full-solve-current' })
   script.push({ type: 'pause', seconds: 0.8 })
@@ -437,37 +470,31 @@ export function generateQuadraticScript(state, script) {
     const x1 = (negB + sqrtDisc) / (2 * a)
     const x2 = (negB - sqrtDisc) / (2 * a)
 
-    // x = (−b ± √Δ) / 2a — Δ substituted as a real number, still under the
-    // radical. full-solve-current resolves √Δ in place (Phase 0e below) but
-    // leaves the ± untouched — choosing a side is exactly what x₁/x₂ do next.
+    // x = (−b ± √Δ) / 2a — formula first (b, Δ, a as real letters), then
+    // substitute. The generic evaluator reveals √Δ in place but never
+    // resolves the ± itself — choosing a side is exactly what x₁/x₂ do next.
     script.push({
       type: 'replaceEquation',
       left:  [vTerm(v)],
-      right: [frac('+',
-        [cst(negB), { sign: '+', coefficient: disc, variable: null, degree: 0, isSqrt: true, pmOperator: true }],
-        [cst(2 * a)],
-      )],
+      right: [exprTerm(bin('/', pm(negN(label('b')), sqrtN(label('Δ'))), bin('*', num(2), label('a'))))],
     })
-    script.push({ type: 'pause', seconds: 0.6 })
-    script.push({ type: 'full-solve-current' })
-    script.push({ type: 'pause', seconds: 0.9 })
-
-    // ── Branch 1: x₁ — definite '+', no more ambiguity, safe to fully reduce ──
-    script.push({
-      type: 'replaceEquation',
-      left:  [vTerm(`${v}₁`)],
-      right: [frac('+', [cst(negB), cst(sqrtDisc)], [cst(2 * a)])],
-    })
+    script.push({ type: 'pause', seconds: 0.5 })
+    script.push(subst(['a', a], ['b', b], ['Δ', disc]))
     script.push({ type: 'pause', seconds: 0.5 })
     script.push({ type: 'full-solve-current' })
     script.push({ type: 'pause', seconds: 0.9 })
 
-    // ── Branch 2: x₂ ──
-    script.push({
-      type: 'replaceEquation',
-      left:  [vTerm(`${v}₂`)],
-      right: [frac('+', [cst(negB), cst(-sqrtDisc)], [cst(2 * a)])],
-    })
+    // ── Branch 1: x₁ — pick '+', continuing from EXACTLY where the general
+    // formula left off (e.g. "(5 ± 1) / 2") instead of re-deriving it ──
+    script.push({ type: 'chooseQuadraticBranch', newLabel: `${v}₁`, sign: '+' })
+    script.push({ type: 'pause', seconds: 0.5 })
+    script.push({ type: 'full-solve-current' })
+    script.push({ type: 'pause', seconds: 0.9 })
+
+    // ── Branch 2: x₂ — rewind to that same shared point, then pick '-' ──
+    script.push({ type: 'restoreQuadraticBranch', newLabel: `${v}₂` })
+    script.push({ type: 'pause', seconds: 0.4 })
+    script.push({ type: 'chooseQuadraticBranch', sign: '-' })
     script.push({ type: 'pause', seconds: 0.5 })
     script.push({ type: 'full-solve-current' })
     script.push({ type: 'pause', seconds: 0.6 })
@@ -478,9 +505,11 @@ export function generateQuadraticScript(state, script) {
     script.push({
       type: 'replaceEquation',
       left:  [vTerm(v)],
-      right: [frac('+', [cst(negB)], [cst(2 * a)])],
+      right: [exprTerm(bin('/', negN(label('b')), bin('*', num(2), label('a'))))],
     })
-    script.push({ type: 'pause', seconds: 0.6 })
+    script.push({ type: 'pause', seconds: 0.5 })
+    script.push(subst(['a', a], ['b', b]))
+    script.push({ type: 'pause', seconds: 0.5 })
     script.push({ type: 'full-solve-current' })
     script.push({ type: 'pause', seconds: 0.8 })
     script.push({ type: 'text-add-item', id: 'quad-formula', text: '$\\Delta = 0$ → une seule solution' })

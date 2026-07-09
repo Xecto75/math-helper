@@ -8,9 +8,11 @@ import * as THREE from 'three'
 const registry = new Map()  // id → { type, isFlat, vertices, a, b, c, opts }
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
-
+// 'blue' == 0x60a5fa is THE reserved app-wide color (matches palette.js's
+// SYS.blue) — always use it for measurement lines/highlights, never a
+// one-off like orange, so annotations read consistently everywhere.
 const COLOR_NAMES = {
-  blue:   0x6495ed, red:    0xf87171, green:  0x4ade80,
+  blue:   0x60a5fa, red:    0xf87171, green:  0x4ade80,
   yellow: 0xfbbf24, purple: 0xa855f7, orange: 0xfb923c,
   cyan:   0x22d3ee, pink:   0xf472b6, white:  0xe2e8f0,
   teal:   0x2dd4bf, lime:   0xa3e635, rose:   0xfb7185,
@@ -18,12 +20,12 @@ const COLOR_NAMES = {
 }
 
 function resolveHex(color) {
-  if (!color) return 0x6495ed
+  if (!color) return 0x60a5fa
   if (typeof color === 'number') return color
   const s = String(color).trim().toLowerCase()
   if (COLOR_NAMES[s] !== undefined) return COLOR_NAMES[s]
   if (s.startsWith('#')) return parseInt(s.slice(1), 16)
-  return 0x6495ed
+  return 0x60a5fa
 }
 
 // ── Flat (2D) shape vertex calculation ────────────────────────────────────────
@@ -641,7 +643,7 @@ function shapeHeight3D(verts) {
 
 // Label one edge with arbitrary text — same placement math as labelSides3D,
 // for a single side instead of all of them.
-function labelEdge3D(display, entry, gx, gy, avgEdge, ppu, edgeIndex, text, color, labelId) {
+function labelEdge3D(display, id, entry, gx, gy, avgEdge, ppu, edgeIndex, text, color, labelId) {
   const verts = entry.vertices
   const n     = verts.length
   const [x1, y1] = verts[edgeIndex], [x2, y2] = verts[(edgeIndex + 1) % n]
@@ -655,6 +657,12 @@ function labelEdge3D(display, entry, gx, gy, avgEdge, ppu, edgeIndex, text, colo
   const offset = avgEdge * 0.14
   const fontSize = Math.round(Math.max(14, Math.min(36, avgEdge * ppu * 0.16)))
   display.addLabel3D(labelId, lx + gx + sign * nx * offset, ly + gy + sign * ny * offset, 0.05, text, { color, fontSize, fadeIn: 400 })
+
+  // A measurement is meaningless without seeing what it's measuring — always
+  // highlight the actual edge alongside its label, not just a floating number.
+  // Dashed, like every other measure line — never a solid edge overlay.
+  const lineGroup = makeDashedLineGroup3D([x1, y1, 0.06], [x2, y2, 0.06], resolveHex(color), 0.03)
+  addChildToGroup(display, id, `${labelId}_ln`, lineGroup)
 }
 
 // Dashed vertical line from the top vertex down to the base, parented to the
@@ -713,11 +721,11 @@ export async function showAreaMeasures3D(threeRef, id, opts = {}) {
   const entry = registry.get(id)
   if (!entry) return
 
-  // Default to orange (the app's established highlight-overlay color, same as
-  // highlightFace3D/highlightEdge3D) rather than the shape's own default blue —
-  // measure lines/labels sit right on the shape body, so matching its color
-  // makes them nearly invisible.
-  const color = opts.color ? `#${resolveHex(opts.color).toString(16).padStart(6, '0')}` : '#fb923c'
+  // Reserved light blue (#60a5fa) — the app-wide convention for measurement/
+  // highlight overlays (see palette.js SYS.blue). Never orange or anything
+  // else here, so every measurement reads consistently.
+  const hex   = opts.color ? resolveHex(opts.color) : 0x60a5fa
+  const color = `#${hex.toString(16).padStart(6, '0')}`
 
   if (entry.isCircle) {
     const r = entry.radius ?? 0
@@ -725,7 +733,9 @@ export async function showAreaMeasures3D(threeRef, id, opts = {}) {
     const gx = group?.position.x ?? 0, gy = group?.position.y ?? 0
     const angle = (opts.angle ?? 35) * Math.PI / 180
     const ex = r * Math.cos(angle), ey = r * Math.sin(angle)
-    display.addLabel3D(`amlbl_${id}`, gx + ex / 2, gy + ey / 2, 0.05, `r = ${parseFloat(r.toFixed(2))}`, { color, fadeIn: 400 })
+    const lineGroup = makeDashedLineGroup3D([0, 0, 0.06], [ex, ey, 0.06], hex, 0.03)
+    addChildToGroup(display, id, `amr_${id}`, lineGroup)
+    display.addLabel3D(`amlbl_${id}`, gx + ex / 2, gy + ey / 2, 0.05, `r = ${parseFloat(r.toFixed(2))}`, { color, fontSize: 24, fadeIn: 400 })
     return
   }
 
@@ -744,33 +754,33 @@ export async function showAreaMeasures3D(threeRef, id, opts = {}) {
   const fontSize = Math.round(Math.max(14, Math.min(36, avgEdge * ppu * 0.16)))
   const withHeightLine = () => {
     const { x, midY } = drawDashedHeightLine3D(display, id, verts, color)
-    display.addLabel3D(`amhlbl_${id}`, x + gx - avgEdge * 0.06, midY + gy, 0.05, `h = ${h}`, { color, fontSize, align: 'right', fadeIn: 400 })
+    display.addLabel3D(`amhlbl_${id}`, x + gx + avgEdge * 0.06, midY + gy, 0.05, `h = ${h}`, { color, fontSize, align: 'left', fadeIn: 400 })
   }
 
   switch (entry.type) {
     case 'square':
-      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `s = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      labelEdge3D(display, id, entry, gx, gy, avgEdge, ppu, 0, `s = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
       break
     case 'rectangle':
-      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `l = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
-      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 1, `h = ${sideLength3D(verts, 1)}`, color, `am_${id}_1`)
+      labelEdge3D(display, id, entry, gx, gy, avgEdge, ppu, 0, `l = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      labelEdge3D(display, id, entry, gx, gy, avgEdge, ppu, 1, `h = ${sideLength3D(verts, 1)}`, color, `am_${id}_1`)
       break
     case 'parallelogram':
-      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `b = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      labelEdge3D(display, id, entry, gx, gy, avgEdge, ppu, 0, `b = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
       withHeightLine()
       break
     case 'trapeze':
-      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `B = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
-      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 2, `b = ${sideLength3D(verts, 2)}`, color, `am_${id}_2`)
+      labelEdge3D(display, id, entry, gx, gy, avgEdge, ppu, 0, `B = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      labelEdge3D(display, id, entry, gx, gy, avgEdge, ppu, 2, `b = ${sideLength3D(verts, 2)}`, color, `am_${id}_2`)
       withHeightLine()
       break
     case 'triangle':
     case 'right-triangle':
-      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `b = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      labelEdge3D(display, id, entry, gx, gy, avgEdge, ppu, 0, `b = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
       withHeightLine()
       break
     default:
-      labelEdge3D(display, entry, gx, gy, avgEdge, ppu, 0, `s = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
+      labelEdge3D(display, id, entry, gx, gy, avgEdge, ppu, 0, `s = ${sideLength3D(verts, 0)}`, color, `am_${id}_0`)
   }
 }
 
@@ -834,62 +844,6 @@ export function removeEqualTick3D(threeRef, id, edgeIndexRaw) {
   const n = entry?.vertices?.length ?? 1
   const i = ((Number(edgeIndexRaw) || 0) % n + n) % n
   removeChildFromGroup(display, id, `tick_${id}_${i}`)
-}
-
-// ── Divide a segment into equal sections ───────────────────────────────────────
-// Marks the (parts - 1) interior "points de partage" along one edge with small
-// dots, optionally labeled P1, P2, … — e.g. parts=3 divides the edge into
-// thirds with two markers at 1/3 and 2/3.
-export function divideSegment3D(threeRef, id, edgeIndexRaw, partsRaw, colorRaw, showLabelsRaw) {
-  const display = threeRef?.current
-  if (!display) return
-  const entry = registry.get(id)
-  if (!entry?.vertices?.length) return
-  const verts = entry.vertices
-  const n     = verts.length
-  const i     = ((Number(edgeIndexRaw) || 0) % n + n) % n
-  const [x1, y1] = verts[i], [x2, y2] = verts[(i + 1) % n]
-
-  const parts       = Math.max(2, Math.round(partsRaw ?? 2))
-  const showLabels  = showLabelsRaw === true || String(showLabelsRaw).trim() === 'true'
-  const hex         = resolveHex(colorRaw)
-  const colorCss    = `#${hex.toString(16).padStart(6, '0')}`
-  const group       = new THREE.Group()
-  const dotGeo       = new THREE.CircleGeometry(0.09, 16)
-  const dotMat       = new THREE.MeshBasicMaterial({ color: hex })
-
-  const shapeGroup = display.getObject(id)
-  const gx = shapeGroup?.position.x ?? 0, gy = shapeGroup?.position.y ?? 0
-  const edgeDx = x2 - x1, edgeDy = y2 - y1
-  const eLen   = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy) || 1
-  const nx = -edgeDy / eLen, ny = edgeDx / eLen
-
-  for (let k = 1; k < parts; k++) {
-    const t  = k / parts
-    const px = x1 + edgeDx * t, py = y1 + edgeDy * t
-    const dot = new THREE.Mesh(dotGeo.clone(), dotMat.clone())
-    dot.position.set(px, py, 0.08)
-    group.add(dot)
-    if (showLabels) {
-      display.addLabel3D(
-        `divlbl_${id}_${i}_${k}`,
-        px + gx + nx * 0.3, py + gy + ny * 0.3, 0.09,
-        `P${k}`, { color: colorCss, fontSize: 14 },
-      )
-    }
-  }
-  addChildToGroup(display, id, `divpts_${id}_${i}`, group)
-}
-
-export function removeDivideSegment3D(threeRef, id, edgeIndexRaw, partsRaw) {
-  const display = threeRef?.current
-  if (!display) return
-  const entry = registry.get(id)
-  const n = entry?.vertices?.length ?? 1
-  const i = ((Number(edgeIndexRaw) || 0) % n + n) % n
-  removeChildFromGroup(display, id, `divpts_${id}_${i}`)
-  const parts = Math.max(2, Math.round(partsRaw ?? 2))
-  for (let k = 1; k < parts; k++) display.removeLabel3D(`divlbl_${id}_${i}_${k}`)
 }
 
 export function showAngles3D(threeRef, id, colorRaw) {
@@ -1336,10 +1290,15 @@ function makeLineMesh3D(p1, p2, hex, radius = 0.035) {
   const dir = new THREE.Vector3(dx, dy, dz).normalize()
   const mesh = new THREE.Mesh(
     new THREE.CylinderGeometry(radius, radius, len, 10),
-    new THREE.MeshBasicMaterial({ color: hex }),
+    // depthTest off + high renderOrder: these lines often run THROUGH the
+    // shape's interior (e.g. a cylinder/cone's height along its central
+    // axis), which would otherwise get hidden behind the shape's own
+    // (nominally translucent, but depth-writing) surface.
+    new THREE.MeshBasicMaterial({ color: hex, depthTest: false }),
   )
   mesh.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2)
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)
+  mesh.renderOrder = 999
   return mesh
 }
 
@@ -1367,10 +1326,10 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
   if (!entry || entry.isFlat) return
 
   const { type, a, b, c } = entry
-  // Default to orange (same highlight-overlay convention as highlightFace3D/
-  // highlightEdge3D) — these lines sit right on the shape's surface, so the
-  // shape's own default blue would make them blend in and look invisible.
-  const hex   = opts.color ? resolveHex(opts.color) : 0xfb923c
+  // Reserved light blue (#60a5fa) — the app-wide convention for measurement/
+  // highlight overlays (see palette.js SYS.blue). Never orange or anything
+  // else here, so every measurement reads consistently.
+  const hex   = opts.color ? resolveHex(opts.color) : 0x60a5fa
   const color = `#${hex.toString(16).padStart(6, '0')}`
   const fmt   = v => parseFloat((v ?? 0).toFixed(2))
 
@@ -1379,7 +1338,9 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
   const mid = (p1, p2, off = [0, 0, 0]) => [
     (p1[0] + p2[0]) / 2 + off[0], (p1[1] + p2[1]) / 2 + off[1], (p1[2] + p2[2]) / 2 + off[2],
   ]
-  const addSolid  = (p1, p2) => holder.add(makeLineMesh3D(p1, p2, hex))
+  // Every measure line is dashed — never a solid overlay, consistently across
+  // every dimension (edge, radius, height, depth).
+  const addSolid  = (p1, p2) => holder.add(makeDashedLineGroup3D(p1, p2, hex))
   const addDashed = (p1, p2) => holder.add(makeDashedLineGroup3D(p1, p2, hex))
 
   switch (type) {
@@ -1404,9 +1365,11 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
       const rp1 = [0, baseY, 0], rp2 = [r, baseY, 0]
       addSolid(rp1, rp2)
       labels.push({ pos: mid(rp1, rp2, [0, -0.32, 0]), text: `r = ${fmt(r)}` })
-      const hp1 = [r, baseY, 0], hp2 = [r, topY, 0]
+      // Height runs straight up the central axis (matches how h is drawn in
+      // a textbook cross-section) rather than offset along the visible edge.
+      const hp1 = [0, baseY, 0], hp2 = [0, topY, 0]
       addDashed(hp1, hp2)
-      labels.push({ pos: mid(hp1, hp2, [0.38, 0, 0]), text: `h = ${fmt(h)}` })
+      labels.push({ pos: mid(hp1, hp2, [0.35, 0, 0]), text: `h = ${fmt(h)}` })
       break
     }
     case 'prism': case 'box': case 'rectangular-prism': {
@@ -1428,19 +1391,45 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
     case 'pyramid': case 'square-pyramid': {
       const side = a ?? 2, h = b ?? 2.5
       const baseY = -h / 2, topY = h / 2
-      const bp1 = [-side / 2, baseY, 0], bp2 = [side / 2, baseY, 0]
+      // Built via ConeGeometry(radius=side*sqrt2/2, height, radialSegments=4)
+      // — its 4 base vertices sit at angles 0/90/180/270°, i.e. (0,±R) and
+      // (±R,0), NOT (±side/2,0)&(0,±side/2). A true edge runs between two
+      // ADJACENT ones, e.g. (0,R) → (R,0); that edge's length is exactly
+      // "side" — the old (-side/2,0)→(side/2,0) line was a chord through
+      // the interior, not a real edge (hence the "diagonal" look).
+      const R = side * Math.SQRT2 / 2
+      const bp1 = [0, baseY, R], bp2 = [R, baseY, 0]
       addSolid(bp1, bp2)
-      labels.push({ pos: mid(bp1, bp2, [0, -0.32, 0]), text: `a = ${fmt(side)}` })
-      const hp1 = [side / 2, baseY, 0], hp2 = [side / 2, topY, 0]
+      labels.push({ pos: mid(bp1, bp2, [0, -0.32, 0.15]), text: `a = ${fmt(side)}` })
+      // Height runs from the base center straight up to the apex (which sits
+      // exactly here), matching the textbook convention — not offset to a side.
+      const hp1 = [0, baseY, 0], hp2 = [0, topY, 0]
       addDashed(hp1, hp2)
-      labels.push({ pos: mid(hp1, hp2, [0.38, 0, 0]), text: `h = ${fmt(h)}` })
+      labels.push({ pos: mid(hp1, hp2, [0.35, 0, 0]), text: `h = ${fmt(h)}` })
       break
     }
-    case 'tetrahedron': case 'octahedron': {
-      const size = a ?? (type === 'tetrahedron' ? 1.8 : 1.6)
-      const p1 = [0, 0, 0], p2 = [size, 0, 0]
+    case 'tetrahedron': {
+      // TetrahedronGeometry(radius) vertices (before scaling) sit at
+      // (±1,±1,±1) with even sign-parity, each normalized then scaled by
+      // radius — i.e. real vertex = radius/√3 · (raw). Any two of the 4 are
+      // a genuine edge (a tetrahedron's vertices are pairwise connected).
+      const R = a ?? 1.8
+      const k = R / Math.sqrt(3)
+      const p1 = [k, k, k], p2 = [-k, -k, k]
       addSolid(p1, p2)
-      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: `a = ${fmt(size)}` })
+      const edge = Math.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2)
+      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: `a = ${fmt(edge)}` })
+      break
+    }
+    case 'octahedron': {
+      // OctahedronGeometry(radius) vertices sit exactly at (±radius,0,0),
+      // (0,±radius,0), (0,0,±radius) — any two non-opposite ones (e.g.
+      // (radius,0,0) & (0,radius,0)) are a genuine edge.
+      const R = a ?? 1.6
+      const p1 = [R, 0, 0], p2 = [0, R, 0]
+      addSolid(p1, p2)
+      const edge = Math.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2)
+      labels.push({ pos: mid(p1, p2, [0, 0.3, 0.15]), text: `a = ${fmt(edge)}` })
       break
     }
     case 'torus': {
@@ -1472,6 +1461,47 @@ export function removeVolumeMeasures3D(threeRef, id) {
   if (!display) return
   removeChildFromGroup(display, id, `vm_${id}`)
   for (let i = 0; i < 5; i++) display.removeLabel3D(`vm_${id}_${i}`)
+}
+
+// ── Live shape-value getters ──────────────────────────────────────────────────
+// Mirror geometryEngine.js's getSideLengths/getShapeHeight/getShapeRadius/
+// getVertexAngle, but reading THIS (Three.js flat-shape) registry — so a
+// comment/text box's [shapeId]N / [shapeId]h / [shapeId]r / [shapeId]aN geo-ref
+// resolves correctly for shapes made with geo3d-create-2d too, not just the
+// legacy geo-create-polygon ones.
+
+export function getSideLengths3D(id) {
+  const entry = registry.get(id)
+  if (!entry?.vertices) return []
+  return entry.vertices.map((_, i) => sideLength3D(entry.vertices, i))
+}
+
+export function getShapeHeight3D(id) {
+  const entry = registry.get(id)
+  if (!entry) return undefined
+  if (entry.isCircle) return parseFloat(((entry.radius ?? 0) * 2).toFixed(4))
+  if (!entry.vertices?.length) return undefined
+  return shapeHeight3D(entry.vertices)
+}
+
+export function getShapeRadius3D(id) {
+  const entry = registry.get(id)
+  return entry?.isCircle ? parseFloat((entry.radius ?? 0).toFixed(4)) : undefined
+}
+
+export function getVertexAngle3D(id, i) {
+  const entry = registry.get(id)
+  if (!entry?.vertices?.length) return undefined
+  const vs = entry.vertices, n = vs.length
+  const idx  = ((i % n) + n) % n
+  const curr = vs[idx], prev = vs[(idx + n - 1) % n], next = vs[(idx + 1) % n]
+  const a = [prev[0] - curr[0], prev[1] - curr[1]]
+  const b = [next[0] - curr[0], next[1] - curr[1]]
+  const ma = Math.hypot(a[0], a[1]), mb = Math.hypot(b[0], b[1])
+  if (!ma || !mb) return undefined
+  let c = (a[0] * b[0] + a[1] * b[1]) / (ma * mb)
+  c = Math.max(-1, Math.min(1, c))
+  return parseFloat((Math.acos(c) * 180 / Math.PI).toFixed(4))
 }
 
 // ── Arrow helpers ─────────────────────────────────────────────────────────────

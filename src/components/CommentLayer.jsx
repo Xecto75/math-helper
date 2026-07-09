@@ -48,11 +48,11 @@ function renderCommentText(text) {
 }
 
 const CommentBox = memo(function CommentBox({ c }) {
-  const [shown, setShown] = useState({ text: c.text, color: c.color ?? '#a855f7', title: c.title ?? null })
+  const [shown, setShown] = useState({ text: c.text, color: c.color ?? '#60a5fa', title: c.title ?? null })
   const [popKey, setPopKey] = useState(0)
 
   useEffect(() => {
-    const newColor = c.color ?? '#a855f7'
+    const newColor = c.color ?? '#60a5fa'
     const newTitle = c.title ?? null
     if (c.text === shown.text && newColor === shown.color && newTitle === shown.title) return
     setShown({ text: c.text, color: newColor, title: newTitle })
@@ -316,7 +316,7 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
         {resolved.map(c => {
           if (c.free) return null   // no connector line/dot for free-floating comments
 
-          const color = c.color ?? '#a855f7'
+          const color = c.color ?? '#60a5fa'
           const lx = c.side === 'left' ? c.boxX + BOX_W : c.boxX
           const ly = c.boxY + BOX_H / 2
 

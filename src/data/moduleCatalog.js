@@ -105,8 +105,6 @@ FUNCTIONS [positional args]:
   S2E:[id,edgeIndex,color]                              — animated highlight on one edge
   S2tk:[id,edgeIndex,ticks,color]                       — congruent-side tick mark(s) at an edge's midpoint (ticks=1-3; use a different count for a different equal-side pair)
   S2tx:[id,edgeIndex]                                    — remove tick mark(s) from an edge
-  S2d:[id,edgeIndex,parts,color,showLabels]             — mark the points de partage that split an edge into "parts" equal sections (parts=3 → 2 points at 1/3, 2/3)
-  S2dx:[id,edgeIndex,parts]                              — remove division points from an edge
   S2c with type="line": a genuine line SEGMENT (not an infinite line) — vals=[length]; e0 is its only edge, v0/v1 its endpoints
   S2w:[id,arrowId,from,to,color]                        — draw animated arrow inside shape
   S2W:[id,arrowId]                                      — remove arrow

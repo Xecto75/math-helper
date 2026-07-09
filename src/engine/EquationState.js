@@ -87,5 +87,6 @@ function termToPlain(t) {
     innerTerms:       t.innerTerms       ?? null,
     factors:          t.factors          ?? null,
     negBase:          t.negBase          ?? false,
+    expr:             t.expr             ?? null,
   }
 }

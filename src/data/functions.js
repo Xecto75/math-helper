@@ -95,10 +95,10 @@ export const CATEGORIES = [
       {
         id:          'eq-replace-variable',
         label:       'Replace Variable',
-        description: 'Fade symbolic letters and replace with numeric values — equation must already be on the page',
+        description: 'Fade symbolic letters and replace with numeric values — equation must already be on the page. A value can be a hardcoded number OR a live shape reference: [shapeId]0 (Nth side), [shapeId]h (height), [shapeId]r (circle radius), [shapeId]a2 (angle at vertex 2) — so it never goes out of sync with the shape.',
         status:      'ready',
         inputs: [
-          { id: 'replacements', label: 'Replacements (a=v,b=v,...)', type: 'text', default: 'a=2,b=-3,c=1', placeholder: 'a=2,b=-3,c=1' },
+          { id: 'replacements', label: 'Replacements (a=v,b=v,...)', type: 'text', default: 'a=2,b=-3,c=1', placeholder: 'a=2,b=-3,c=1  or  a=[shapeId]0,r=[circ]r' },
         ],
       },
       {
@@ -707,7 +707,7 @@ export const CATEGORIES = [
           { id: 'text',  label: 'Text',  type: 'text',   default: 'f(0) = 1' },
           { id: 'x',     label: 'X',     type: 'number', default: '0' },
           { id: 'y',     label: 'Y',     type: 'number', default: '1' },
-          { id: 'color', label: 'Color', type: 'color-name',   default: 'purple' },
+          { id: 'color', label: 'Color', type: 'color-name',   default: '#60a5fa' },
         ],
       },
       {
@@ -719,7 +719,7 @@ export const CATEGORIES = [
           { id: 'text',   label: 'Text',     type: 'text',    default: 'f(x)' },
           { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
           { id: 'x',     label: 'X',        type: 'number',  default: '1' },
-          { id: 'color',  label: 'Color',    type: 'color-name',    default: 'purple' },
+          { id: 'color',  label: 'Color',    type: 'color-name',    default: '#60a5fa' },
         ],
       },
       {
@@ -731,7 +731,7 @@ export const CATEGORIES = [
           { id: 'text',   label: 'Text',     type: 'text',    default: 'area' },
           { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
           { id: 'x',     label: 'X',        type: 'number',  default: '1' },
-          { id: 'color',  label: 'Color',    type: 'color-name',    default: 'purple' },
+          { id: 'color',  label: 'Color',    type: 'color-name',    default: '#60a5fa' },
         ],
       },
       {
@@ -802,7 +802,7 @@ export const CATEGORIES = [
               { value: 'left',  label: 'Left' },
             ],
             default: 'right' },
-          { id: 'color', label: 'Color', type: 'color-name', default: 'purple' },
+          { id: 'color', label: 'Color', type: 'color-name', default: '#60a5fa' },
         ],
       },
       {
@@ -1103,31 +1103,6 @@ export const CATEGORIES = [
         inputs: [
           { id: 'id',        label: 'ID',     type: 'text',   default: 'shape1' },
           { id: 'edgeIndex', label: 'Edge # (comma-sep for several)', type: 'text', default: '0' },
-        ],
-      },
-      {
-        id: 'geo3d-divide-segment',
-        label: 'Divide Segment',
-        description: 'Mark the points that split an edge into N equal sections (points de partage) — e.g. parts=3 marks the two points at 1/3 and 2/3',
-        status: 'ready', use3D: true,
-        inputs: [
-          { id: 'id',          label: 'ID',       type: 'text',       default: 'shape1' },
-          { id: 'edgeIndex',   label: 'Edge #',   type: 'number',     default: 0 },
-          { id: 'parts',       label: 'Parts (N)', type: 'number',    default: 2, min: 2 },
-          { id: 'color',       label: 'Color',    type: 'color-name', default: 'purple' },
-          { id: 'showLabels',  label: 'Show labels (P1, P2…)', type: 'select', default: 'false',
-            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
-        ],
-      },
-      {
-        id: 'geo3d-remove-divide-segment',
-        label: 'Remove Divide Segment',
-        description: 'Remove the division points from one edge',
-        status: 'ready', use3D: true,
-        inputs: [
-          { id: 'id',        label: 'ID',       type: 'text',   default: 'shape1' },
-          { id: 'edgeIndex', label: 'Edge #',   type: 'number', default: 0 },
-          { id: 'parts',     label: 'Parts (N)', type: 'number', default: 2 },
         ],
       },
       {

@@ -2,10 +2,21 @@ import { parse } from 'mathjs'
 import { MathObject } from './MathObject.js'
 import { EquationState } from './EquationState.js'
 import { resolveColor, PALETTE } from './palette.js'
+import { needsExprTree, parseTermExpr } from './exprTree.js'
 
 // ── Symbolic equation parser ─────────────────────────────────────────────────
 // Handles terms like: ax², bx, c (single-letter symbolic coefficients)
 // and numeric terms: 3x², 2x, 5.  Example: "ax^2 + bx + c = 5"
+
+// "pi" (or the literal π glyph) in a raw equation string is swapped for this
+// exact numeric literal BEFORE either parser below ever sees it — so it flows
+// through as an ordinary number (multiplication, powers, combining…) with no
+// special-casing anywhere else. TermCell.jsx detects a coefficient equal to
+// Math.PI and renders the π glyph instead of the raw decimal on the way back out.
+const PI_LITERAL = String(Math.PI)
+function substitutePi(str) {
+  return String(str).replace(/\bpi\b/gi, PI_LITERAL).replace(/π/g, PI_LITERAL)
+}
 
 const SUP_TO_DIGIT = { '⁻': '-', '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' }
 
@@ -87,6 +98,7 @@ export function parseRichEquation(rawInput) {
   // Syntax: ** = exponent (→ internal ^), * = multiplication. Convert ** first so
   // the single * is left untouched for products.
   rawInput = rawInput.replace(/\*\*/g, '^')
+  rawInput = substitutePi(rawInput)
   const input  = rawInput.includes('=') ? rawInput : `${rawInput}=0`
   const eqIdx  = input.indexOf('=')
   const leftTerms  = parseRichSide(input.slice(0, eqIdx).trim())
@@ -143,27 +155,17 @@ function parseRichSide(str) {
     const content = part.slice(1).trim()
     if (!content) continue
 
-    // Only split on / that is not inside parentheses
-    const slashIdx = findOuterSlash(content)
-    if (slashIdx >= 0) {
-      const rawNum = content.slice(0, slashIdx).trim()
-      const rawDen = content.slice(slashIdx + 1).trim()
+    // Only depth-0 color applies to the term; inner (paren-scoped) colors go to parseRichAtom
+    const termColor = pickColorDepth0(content, colors)
+    const outerStripped = stripColorsDepth0(content)   // inner __Cn__ still present
 
-      const numTerms = parseFracSide(rawNum, labels, colors)
-      const denTerms = parseFracSide(rawDen, labels, colors)
-      // degree follows the numerator — x/2 is degree-1, not degree-0
-      const fracDegree = numTerms.some(t => t.degree > 0) ? 1 : 0
-      terms.push({
-        sign,
-        isFraction:       true,
-        numeratorTerms:   numTerms,
-        denominatorTerms: denTerms,
-        coefficient: 1, variable: null, degree: fracDegree, color: null,
-      })
+    if (needsExprTree(outerStripped)) {
+      // A real arithmetic sub-expression — (B+b)*h/2, pi*r^2, (-b+sqrtDisc)/2a…
+      // ONE generic tree, resolved later one operation at a time by the
+      // order-of-operations walker in exprTree.js. Every number is its own
+      // leaf; *, /, ( ) are pure structure — never folded into "one term".
+      terms.push({ sign, expr: parseTermExpr(outerStripped, labels), coefficient: 1, variable: null, degree: 0, color: termColor })
     } else {
-      // Only depth-0 color applies to the term; inner (paren-scoped) colors go to parseRichAtom
-      const termColor = pickColorDepth0(content, colors)
-      const outerStripped = stripColorsDepth0(content)   // inner __Cn__ still present
       const atom = parseRichAtom(outerStripped, labels, colors)
       if (atom) terms.push({ ...atom, sign, color: termColor })
     }
@@ -204,66 +206,6 @@ function stripColors(s) {
   return s.replace(/__C\d+__/g, '').trim()
 }
 
-// Find the ) matching the ( at openIdx; -1 if none.
-function findMatchingParen(s, openIdx) {
-  let depth = 0
-  for (let i = openIdx; i < s.length; i++) {
-    if (s[i] === '(') depth++
-    else if (s[i] === ')') { depth--; if (depth === 0) return i }
-  }
-  return -1
-}
-
-// Split an expression on top-level + / − into signed pieces (parens respected).
-function splitTopLevelAddSub(s) {
-  const out = []
-  let depth = 0, cur = '', sign = '+'
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i]
-    if (ch === '(') { depth++; cur += ch; continue }
-    if (ch === ')') { depth--; cur += ch; continue }
-    if (depth === 0 && (ch === '+' || ch === '-')) {
-      if (cur.trim() === '') { sign = ch === '-' ? '-' : '+'; continue }  // leading sign
-      out.push({ sign, text: cur.trim() })
-      sign = ch === '-' ? '-' : '+'
-      cur = ''
-      continue
-    }
-    cur += ch
-  }
-  if (cur.trim() !== '') out.push({ sign, text: cur.trim() })
-  return out
-}
-
-// Parse one side of a fraction into an array of signed sub-terms, so each labelled
-// piece (e.g. y₂, y₁ in "(|y₂| - |y₁|)") stays individually replaceable.
-function parseFracSide(rawSide, labels, colors) {
-  let s = rawSide.trim()
-  // Strip one layer of outer parens that wrap the whole side
-  if (s.startsWith('(') && findMatchingParen(s, 0) === s.length - 1) s = s.slice(1, -1).trim()
-  const subs = []
-  for (const { sign, text } of splitTopLevelAddSub(s)) {
-    const color = pickColorDepth0(text, colors)
-    const atom  = parseRichAtom(stripColorsDepth0(text), labels, colors)
-    if (atom) {
-      atom.sign = sign
-      if (color) atom.color = color
-      subs.push(atom)
-    }
-  }
-  return subs
-}
-
-function findOuterSlash(s) {
-  let depth = 0
-  for (let i = 0; i < s.length; i++) {
-    if (s[i] === '(') depth++
-    else if (s[i] === ')') depth--
-    else if (s[i] === '/' && depth === 0) return i
-  }
-  return -1
-}
-
 function restoreLabels(s, labels) {
   return s.replace(/__S(\d+)__/g, (_, n) => labels[+n] ?? '')
 }
@@ -284,38 +226,6 @@ function parseRichAtom(content, labels, colors = []) {
   if (svM) {
     const degree = svM[3] ? parseInt(svM[3]) : 1
     return { sign: '+', coefficient: 1, symbolicLabel: labels[+svM[1]], variable: svM[2], degree, isFraction: false }
-  }
-
-  // Product of symbolic labels  e.g. |m||x|, |m|*|x|, |m| × |x|  → m·x (each replaceable)
-  const labelTokens = [...content.matchAll(/__S(\d+)__(?:\^(-?\d+))?/g)]
-  if (labelTokens.length >= 2) {
-    const rest = content.replace(/__S\d+__(?:\^-?\d+)?/g, '').replace(/[*×·\s]/g, '')
-    if (rest === '') {
-      const factors = labelTokens.map(mt => ({
-        sign: '+', coefficient: 1, symbolicLabel: labels[+mt[1]], variable: null,
-        degree: mt[2] ? parseInt(mt[2]) : 0,
-      }))
-      return { sign: '+', coefficient: 1, variable: null, degree: 1, isFraction: false, factors }
-    }
-  }
-
-  // (sum of labels) × label, either order — e.g. (|B|+|b|)*|h| → area-formula
-  // style product where the parenthesized part stays a replaceable SUM group.
-  const groupTimesLabel = content.match(/^\(([^()]+)\)\s*[*×·]\s*__S(\d+)__(?:\^(-?\d+))?$/)
-  const labelTimesGroup = content.match(/^__S(\d+)__(?:\^(-?\d+))?\s*[*×·]\s*\(([^()]+)\)$/)
-  if (groupTimesLabel || labelTimesGroup) {
-    const [innerRaw, labelIdx, expRaw] = groupTimesLabel
-      ? [groupTimesLabel[1], groupTimesLabel[2], groupTimesLabel[3]]
-      : [labelTimesGroup[3], labelTimesGroup[1], labelTimesGroup[2]]
-    const groupTerms = parseFracSide(innerRaw, labels, colors)
-    if (groupTerms.length) {
-      const labelFactor = {
-        sign: '+', coefficient: 1, symbolicLabel: labels[+labelIdx], variable: null,
-        degree: expRaw ? parseInt(expRaw) : 0,
-      }
-      const factors = groupTimesLabel ? [{ terms: groupTerms }, labelFactor] : [labelFactor, { terms: groupTerms }]
-      return { sign: '+', coefficient: 1, variable: null, degree: 1, isFraction: false, factors }
-    }
   }
 
   // Pure number
@@ -374,6 +284,7 @@ export function parseSymbolicEquation(rawInput) {
  * quadratic terms (nx^2, x^2), addition and subtraction.
  */
 export function parseEquation(rawInput) {
+  rawInput = substitutePi(rawInput)
   // Allow expressions without "=" — treat them as "expr = 0"
   const input = rawInput.includes('=') ? rawInput : `${rawInput}=0`
   const eqIdx = input.indexOf('=')
@@ -396,6 +307,35 @@ function extractTerms(expr) {
   const raw = []
   collectTerms(node, true, raw)
   return raw
+}
+
+// Evaluate a node down to a plain number IF it's built entirely out of
+// constants (no variables) — used to fold chained numeric products like the
+// "2*pi" in "2*pi*r" (which parses as (2*pi)*r, a nested OperatorNode on the
+// left, not a bare ConstantNode) before re-checking for a coefficient*variable
+// shape. Returns null if the subtree contains anything non-constant.
+function tryConstEval(node) {
+  if (node.type === 'ConstantNode') return node.value
+  if (node.type === 'ParenthesisNode') return tryConstEval(node.content)
+  if (node.type === 'OperatorNode') {
+    if (node.args.length === 2) {
+      const l = tryConstEval(node.args[0]), r = tryConstEval(node.args[1])
+      if (l === null || r === null) return null
+      switch (node.op) {
+        case '+': return l + r
+        case '-': return l - r
+        case '*': return l * r
+        case '/': return r !== 0 ? l / r : null
+        case '^': return Math.pow(l, r)
+        default: return null
+      }
+    }
+    if (node.op === '-' && node.args.length === 1) {
+      const v = tryConstEval(node.args[0])
+      return v === null ? null : -v
+    }
+  }
+  return null
 }
 
 function collectTerms(node, positive, out) {
@@ -470,6 +410,33 @@ function collectTerms(node, positive, out) {
               })),
             })
             return
+          }
+        }
+      }
+      // Fallback: fold either side down to a plain number first, e.g.
+      // "2*pi*r" parses as (2*pi)*r — the left side is a nested OperatorNode,
+      // not a bare ConstantNode, so none of the specific patterns above match
+      // it directly. Try evaluating each side as a pure-constant subtree and
+      // re-run the same coefficient*variable / coefficient*x^n logic on
+      // whichever side turns out to be a plain number.
+      {
+        const aVal = tryConstEval(a), bVal = tryConstEval(b)
+        if (aVal !== null && bVal !== null) {
+          out.push({ sign, coefficient: aVal * bVal, variable: null, degree: 0 })
+          return
+        }
+        const [cVal, other] = aVal !== null ? [aVal, b] : bVal !== null ? [bVal, a] : [null, null]
+        if (cVal !== null) {
+          if (other.type === 'SymbolNode') {
+            out.push({ sign, coefficient: cVal, variable: other.name, degree: 1 })
+            return
+          }
+          if (other.type === 'OperatorNode' && other.op === '^') {
+            const [base, exp] = other.args
+            if (base.type === 'SymbolNode' && exp.type === 'ConstantNode') {
+              out.push({ sign, coefficient: cVal, variable: base.name, degree: exp.value })
+              return
+            }
           }
         }
       }

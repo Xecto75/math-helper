@@ -5,12 +5,19 @@ function supStr(n) {
   return String(n).split('').map(c => SUP[c] ?? c).join('')
 }
 
+// A coefficient that's (numerically) exactly Math.PI came from typing "pi" in
+// an eq-create string (see parseEquation.js's substitutePi) — show the glyph
+// instead of the raw decimal everywhere a coefficient is formatted for display.
+function fmtNum(n) {
+  return Math.abs(n - Math.PI) < 1e-9 ? 'π' : String(parseFloat(n.toFixed(4)))
+}
+
 function FracSubTerm({ sub, pos }) {
   if (!sub) return null
   const text = sub.symbolicLabel
     ?? (sub.variable
-        ? (sub.coefficient !== 1 ? String(sub.coefficient) : '') + sub.variable
-        : String(parseFloat(Math.abs(sub.coefficient).toFixed(4))))
+        ? (sub.coefficient !== 1 ? fmtNum(sub.coefficient) : '') + sub.variable
+        : fmtNum(Math.abs(sub.coefficient)))
   return (
     <span
       className="frac-sub-coeff"
@@ -55,11 +62,132 @@ function FactorProduct({ factors, subIndex }) {
   )
 }
 
+// ── Generic expression-tree rendering (exprTree.js) ──────────────────────────
+// Every number/label is its OWN bordered chip (a plain .term-cell, same as an
+// algebra term) — never glued together inside one shared box. +, -, *, / and
+// ( ) render as plain, unboxed connectors between chips (.term-op / .pg-open
+// /.pg-close), exactly like the neutral separators between algebra terms.
+// Same recursive renderer for a trapezoid's (B+b)×h/2, a circle's π×r², a
+// quadratic's (-b+√Δ)/2a — no per-equation-shape branch.
+function ExprLeaf({ node, color }) {
+  return (
+    <div className="term-cell" data-expr-id={node.id} style={color ? { color } : undefined}>
+      {node.t === 'label' ? node.name : fmtNum(node.v)}
+    </div>
+  )
+}
+
+function ExprNode({ node, parentPrec = 0, isRightChild = false, color }) {
+  if (!node) return null
+
+  if (node.t === 'num' || node.t === 'label')
+    return <ExprLeaf node={node} color={color} />
+
+  if (node.t === 'neg') {
+    // Parenthesize a negative/compound argument — "−(-5)" reads unambiguously,
+    // "−-5" (glued minus signs) does not.
+    const needsParens = node.arg.t === 'bin' || (node.arg.t === 'num' && node.arg.v < 0)
+    return (
+      <span className="expr-group" data-expr-id={node.id}>
+        <span className="term-op">−</span>
+        {needsParens && <span className="pg-open">(</span>}
+        <ExprNode node={node.arg} parentPrec={needsParens ? 0 : 3} color={color} />
+        {needsParens && <span className="pg-close">)</span>}
+      </span>
+    )
+  }
+
+  if (node.t === 'sqrt')
+    return (
+      <span className="expr-group" data-expr-id={node.id}>
+        <span className="term-op">√</span>
+        <ExprNode node={node.arg} parentPrec={3} color={color} />
+      </span>
+    )
+
+  if (node.t === 'pow') {
+    const baseNeedsParens = node.base.t === 'bin' || node.base.t === 'neg'
+    return (
+      <span className="expr-group" data-expr-id={node.id} style={{ alignItems: 'flex-start' }}>
+        {baseNeedsParens && <span className="pg-open">(</span>}
+        <ExprNode node={node.base} parentPrec={0} color={color} />
+        {baseNeedsParens && <span className="pg-close">)</span>}
+        <span className="term-exp">{supStr(node.exp)}</span>
+      </span>
+    )
+  }
+
+  if (node.t === 'pm') {
+    const needsParens = 1 < parentPrec || (1 === parentPrec && isRightChild)
+    return (
+      <span className="expr-group" data-expr-id={node.id}>
+        {needsParens && <span className="pg-open">(</span>}
+        <ExprNode node={node.a} parentPrec={1} isRightChild={false} color={color} />
+        <span className="term-op">±</span>
+        <ExprNode node={node.b} parentPrec={1} isRightChild={true} color={color} />
+        {needsParens && <span className="pg-close">)</span>}
+      </span>
+    )
+  }
+
+  if (node.t === 'bin') {
+    const prec = (node.op === '+' || node.op === '-') ? 1 : 2
+    const needsParens = prec < parentPrec || (prec === parentPrec && isRightChild)
+    const opSym = node.op === '*' ? '×' : node.op
+    return (
+      <span className="expr-group" data-expr-id={node.id}>
+        {needsParens && <span className="pg-open">(</span>}
+        <ExprNode node={node.a} parentPrec={prec} isRightChild={false} color={color} />
+        <span className={`term-op${node.op === '*' ? ' term-op--mul' : ''}`}>{opSym}</span>
+        <ExprNode node={node.b} parentPrec={prec} isRightChild={true} color={color} />
+        {needsParens && <span className="pg-close">)</span>}
+      </span>
+    )
+  }
+
+  return null
+}
+
+// A term whose value is a full arithmetic sub-expression. The outermost `/`
+// (if any) renders as a stacked fraction (numerator row / bar / denominator
+// row) with NO bordered box around the whole thing — only the individual
+// number chips inside are boxed. Everything else renders as a plain inline
+// row of chips + connectors.
+function ExprTerm({ term, showOp, innerRef }) {
+  const root = term.expr
+  const isTopFraction = root.t === 'bin' && root.op === '/'
+  if (isTopFraction) {
+    return (
+      <div className="term-wrap" ref={innerRef} data-id={term.id}>
+        {showOp && <span className="term-op">{term.sign === '-' ? '−' : '+'}</span>}
+        <div className="expr-fraction">
+          <div className="expr-fraction-row"><ExprNode node={root.a} color={term.color} /></div>
+          <div className="frac-bar" />
+          <div className="expr-fraction-row"><ExprNode node={root.b} color={term.color} /></div>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="term-wrap" ref={innerRef} data-id={term.id}>
+      {showOp && <span className="term-op">{term.sign === '-' ? '−' : '+'}</span>}
+      <ExprNode node={root} color={term.color} />
+    </div>
+  )
+}
+
 const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
   // Suppress the '+' sign when sitting directly after an operator token like "arcsin("
   const afterOp = prevTerm?.isOperator === true
   const isFirst = term.cellIndex === 0
   const showOp  = (!isFirst && !afterOp) || term.sign === '-'
+
+  // ── Generic expression tree (see exprTree.js) — takes priority over every
+  // other branch below: a term with .expr never also carries the legacy
+  // isFraction/factors fields (the parser emits one or the other).
+  if (term.expr) {
+    return <ExprTerm term={term} showOp={showOp} innerRef={ref} />
+  }
 
   // ── Fraction cell ──────────────────────────────────────────────────────────
   if (term.isFraction) {
@@ -119,7 +247,7 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
 
   // ── Paren-group cell e.g. 2(x+3) ─────────────────────────────────────────
   if (term.isParenGroup) {
-    const coeffStr = term.parenCoeff === 1 ? '' : String(parseFloat(term.parenCoeff.toFixed(4)))
+    const coeffStr = term.parenCoeff === 1 ? '' : fmtNum(term.parenCoeff)
     return (
       <div className="term-wrap" ref={ref}>
         {showOp && <span className="term-op">{term.sign === '-' ? '−' : '+'}</span>}
@@ -129,7 +257,7 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
           {(term.innerTerms ?? []).map((inner, i) => {
             const isNeg = inner.sign === '-'
             const absC  = Math.abs(inner.coefficient)
-            const c     = absC === 1 && inner.variable ? '' : String(parseFloat(absC.toFixed(4)))
+            const c     = absC === 1 && inner.variable ? '' : fmtNum(absC)
             const v     = inner.variable ?? ''
             const deg   = inner.degree >= 2 ? supStr(inner.degree) : ''
             return (
@@ -153,7 +281,7 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
         {showOp && <span className="term-op">{term.sign === '-' ? '−' : '+'}</span>}
         {term.factors.map((f, i) => {
           const text = f.symbolicLabel
-            ?? ((f.sign === '-' ? '−' : '') + String(parseFloat(Math.abs(f.coefficient).toFixed(4))))
+            ?? ((f.sign === '-' ? '−' : '') + fmtNum(Math.abs(f.coefficient)))
           const deg = f.degree >= 2 ? supStr(f.degree) : ''
           return (
             <span key={i} style={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -176,7 +304,7 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
   const showCoeff   = hasSymbolic || isConst || term.coefficient !== 1
   const coeffText   = hasSymbolic
     ? term.symbolicLabel
-    : String(parseFloat(Math.abs(term.coefficient).toFixed(4)))
+    : fmtNum(Math.abs(term.coefficient))
 
   const showExp = !!(term.degree >= 2 || ((term.variable || term.symbolicLabel !== undefined) && (term.degree < 0 || term.showDegree)))
   const expText = showExp ? supStr(term.degree) : ''

@@ -55,7 +55,6 @@ const FUNCS = {
   S2F: 'geo3d-highlight-face',    S2Fx: 'geo3d-remove-face-highlight',
   S3m: 'geo3d-show-volume-measures', S3mx: 'geo3d-remove-volume-measures',
   S2tk: 'geo3d-show-tick',    S2tx: 'geo3d-remove-tick',
-  S2d:  'geo3d-divide-segment', S2dx: 'geo3d-remove-divide-segment',
   S2w: 'geo3d-show-arrow',
   S2W: 'geo3d-remove-arrow',
   S2H: 'geo3d-clear-highlights',

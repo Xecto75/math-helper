@@ -93,6 +93,20 @@ export const CATEGORIES = [
         ],
       },
       {
+        id:          'eq-multiply',
+        label:       'Multiply Both Sides',
+        description: 'Show ×N on both sides and simplify every term — clears a fraction like x/2 = 4',
+        status:      'ready',
+        inputs: [
+          {
+            id:      'multiplier',
+            label:   'Multiplier',
+            type:    'number',
+            default: 2,
+          },
+        ],
+      },
+      {
         id:          'eq-replace-variable',
         label:       'Replace Variable',
         description: 'Fade symbolic letters and replace with numeric values — equation must already be on the page. A value can be a hardcoded number OR a live reference to whatever created it, so it never goes out of sync: [id]0/[id]h/[id]r/[id]aN (2D or flat-2D shape side/height/radius/vertex-angle), [id]a/[id]r/[id]h/[id]l/[id]d/[id]R (a 3D solid\'s dimension — matches the letter shown by Show Volume Measures for that shape type), [id]x/[id]y (a graph point), [id]x1/[id]y1/[id]x2/[id]y2/[id]len (a graph segment), [id]r<row>c<col> (a table cell, 0-indexed), [funcId]N (the Nth number written in a plotted expression, left to right — a literal like "2x+4"\'s 2/4 OR a |slider| var\'s live value), [sliderName]v (a slider addressed directly by its own name).',

@@ -456,7 +456,13 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
   const exprCellsFor = (container, id) => {
     const host = container?.querySelector(`[data-expr-id="${id}"]`)
     if (!host) return null
-    return host.matches('.term-cell') ? host : [...host.querySelectorAll('.term-cell')]
+    // A group wrapper's own connectors — sin/cos/tan's name and its big
+    // parens (.fn-name/.pg-open/.pg-close) — read as part of the thing
+    // that's about to change, same as the number chip(s) inside; without
+    // them, applying sin(45) tinted only "45" blue and left "sin(" ")"
+    // looking untouched, like they weren't part of the operation at all.
+    return host.matches('.term-cell') ? host
+      : [...host.querySelectorAll('.term-cell, .fn-name, .pg-open, .pg-close')]
   }
 
   switch (action.type) {
@@ -1618,17 +1624,39 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     case 'divideBothSides': {
       if (!state) break
       const { divisor } = action
-      const wraps = allWraps(refs())
 
-      const overlays = wraps.map(wrapEl => {
-        const r  = wrapEl.getBoundingClientRect()
-        const fs = Math.max(Math.round(r.height * 0.52), 14)
+      // One bracket-line + label per SIDE (not per term) — the line still
+      // spans that whole side's terms (same "divide everything under here"
+      // reading as before), but the divisor label sits at the side's own
+      // OUTER edge (far left of the left side, far right of the right
+      // side) instead of centered under each individual wrap — reads as
+      // "apply this to the whole side", the same way sendToOtherSide reads
+      // as "this term crosses the equals sign", not a cluster of repeated
+      // labels under every term. A side with no terms (fully cancelled out)
+      // just gets no overlay at all rather than guessing a position.
+      const sideBox = wraps => {
+        if (!wraps.length) return null
+        const rects = wraps.map(w => w.getBoundingClientRect())
+        return {
+          top:    Math.min(...rects.map(r => r.top)),
+          bottom: Math.max(...rects.map(r => r.bottom)),
+          left:   Math.min(...rects.map(r => r.left)),
+          right:  Math.max(...rects.map(r => r.right)),
+        }
+      }
+      const cellRefsNow = refs()
+      const leftBox  = sideBox(cellRefsNow.left  ?? [])
+      const rightBox = sideBox(cellRefsNow.right ?? [])
+
+      const makeOverlay = (box, edge) => {
+        if (!box) return null
+        const fs = Math.max(Math.round((box.bottom - box.top) * 0.52), 14)
 
         const line = document.createElement('div')
         line.className = '_anim-overlay'
         line.style.cssText = `
-          position:fixed;left:${r.left-3}px;top:${r.bottom+6}px;
-          width:${r.width+6}px;height:2.5px;
+          position:fixed;left:${box.left-3}px;top:${box.bottom+6}px;
+          width:${box.right - box.left + 6}px;height:2.5px;
           background:#60a5fa;
           border-radius:2px;transform-origin:center;transform:scaleX(0);
         `
@@ -1637,17 +1665,21 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         const lbl = document.createElement('div')
         lbl.className = '_anim-overlay'
         lbl.textContent = String(divisor)
+        const lblX = edge === 'left' ? box.left : box.right
+        const lblAnchor = edge === 'left' ? 'translateX(-100%)' : 'translateX(0%)'
         lbl.style.cssText = `
           position:fixed;
-          left:${r.left + r.width / 2}px;top:${r.bottom + 14}px;
-          transform:translateX(-50%) translateY(10px);
+          left:${lblX}px;top:${box.bottom + 14}px;
+          transform:${lblAnchor} translateY(10px);
           font-family:'Fira Code','Cascadia Code',ui-monospace,monospace;
           font-size:${fs}px;font-weight:600;color:#60a5fa;
           opacity:0;white-space:nowrap;
         `
         document.body.appendChild(lbl)
         return { line, lbl }
-      })
+      }
+
+      const overlays = [makeOverlay(leftBox, 'left'), makeOverlay(rightBox, 'right')].filter(Boolean)
 
       await gsap.to(overlays.map(o => o.line), { scaleX: 1, duration: 0.55, ease: 'power2.out' }).then()
       await gsap.to(overlays.map(o => o.lbl),  { opacity: 1, y: 0, duration: 0.4, ease: 'back.out(1.4)' }).then()
@@ -1706,26 +1738,46 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     case 'multiplyBothSides': {
       if (!state) break
       const { multiplier } = action
-      const wraps = allWraps(refs())
 
-      const overlays = wraps.map(wrapEl => {
-        const r  = wrapEl.getBoundingClientRect()
-        const fs = Math.max(Math.round(r.height * 0.52), 14)
+      // Same per-SIDE placement as divideBothSides — one "×N" at the far
+      // outer edge of each side (left side → far left, right side → far
+      // right) instead of one repeated under every individual term.
+      const sideBox = wraps => {
+        if (!wraps.length) return null
+        const rects = wraps.map(w => w.getBoundingClientRect())
+        return {
+          top:    Math.min(...rects.map(r => r.top)),
+          bottom: Math.max(...rects.map(r => r.bottom)),
+          left:   Math.min(...rects.map(r => r.left)),
+          right:  Math.max(...rects.map(r => r.right)),
+        }
+      }
+      const cellRefsNow = refs()
+      const leftBox  = sideBox(cellRefsNow.left  ?? [])
+      const rightBox = sideBox(cellRefsNow.right ?? [])
+
+      const makeOverlay = (box, edge) => {
+        if (!box) return null
+        const fs = Math.max(Math.round((box.bottom - box.top) * 0.52), 14)
 
         const lbl = document.createElement('div')
         lbl.className = '_anim-overlay'
         lbl.textContent = `×${multiplier}`
+        const lblX = edge === 'left' ? box.left : box.right
+        const lblAnchor = edge === 'left' ? 'translateX(-100%)' : 'translateX(0%)'
         lbl.style.cssText = `
           position:fixed;
-          left:${r.left + r.width / 2}px;top:${r.bottom + 14}px;
-          transform:translateX(-50%) translateY(10px) scale(0.6);
+          left:${lblX}px;top:${box.bottom + 14}px;
+          transform:${lblAnchor} translateY(10px) scale(0.6);
           font-family:'Fira Code','Cascadia Code',ui-monospace,monospace;
           font-size:${fs}px;font-weight:600;color:#60a5fa;
           opacity:0;white-space:nowrap;
         `
         document.body.appendChild(lbl)
         return { lbl }
-      })
+      }
+
+      const overlays = [makeOverlay(leftBox, 'left'), makeOverlay(rightBox, 'right')].filter(Boolean)
 
       await gsap.to(overlays.map(o => o.lbl), { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'back.out(1.4)' }).then()
       await wait(0.75)

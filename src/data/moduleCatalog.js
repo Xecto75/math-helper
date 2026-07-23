@@ -92,6 +92,7 @@ FUNCTIONS [positional args]:
   es:[termIndex]                     — move term at index to other side (0=first term left→right)
   eo:[]                              — reorder so like terms are adjacent
   ed:[divisor]                       — divide both sides by number
+  em:[multiplier]                    — multiply both sides by number (clears x/2=4 style fractions)
   ef:[]                              — animated full solve (combine→send→divide) — use for any degree-1 eq
   ev:[replacements]                  — substitute values e.g. "a=2,b=-3,c=1" — prefer
                                         a live [id]token ref over a literal when the

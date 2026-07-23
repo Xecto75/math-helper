@@ -36,7 +36,7 @@ const FUNCS = {
   es: 'eq-send-other-side',  eo: 'eq-reorder',          ed: 'eq-divide',
   ef: 'eq-full-solve',       ev: 'eq-replace-variable', er: 'eq-racine-des-bords',
   ea: 'eq-apply-inverse-trig', ee: 'eq-disparition-exposant',
-  eS: 'eq-save-result',
+  eS: 'eq-save-result',        em: 'eq-multiply',
 
   // ── Canvas geometry (SVG) ───────────────────────────────────────────────────
   gp: 'geo-create-polygon',  gx: 'geo-erase-shape',     gm: 'geo-move-shape',

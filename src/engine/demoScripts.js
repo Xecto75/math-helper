@@ -61,6 +61,12 @@ export function demoEquationDivide(divisor) {
   return { snapshot: null, script: [{ type: 'divideBothSides', divisor }] }
 }
 
+// ── eq-multiply ───────────────────────────────────────────────────────────────
+export function demoEquationMultiply(multiplier) {
+  if (!multiplier || multiplier === 0) throw new Error('Multiplier must be non-zero.')
+  return { snapshot: null, script: [{ type: 'multiplyBothSides', multiplier }] }
+}
+
 // ── helper (equation) ─────────────────────────────────────────────────────────
 function fmtTerm(term) {
   const sign  = term.sign === '-' ? '−' : ''

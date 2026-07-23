@@ -1,4 +1,6 @@
 import 'dotenv/config'
+import fs         from 'fs'
+import path       from 'path'
 import express    from 'express'
 import cors       from 'cors'
 import Anthropic  from '@anthropic-ai/sdk'
@@ -9,6 +11,42 @@ const app  = express()
 const port = 3001
 app.use(cors())
 app.use(express.json())
+
+// ── Example overrides — a real file on disk, not browser localStorage ────────
+// A lesson built/edited in the Builder and saved over a bundled Example used
+// to live ONLY in the browser's own localStorage: invisible to anyone editing
+// the source (including Claude), lost on a cleared profile, never in git.
+// Saving now writes here instead — a plain JSON map of exampleId → pages,
+// tracked in the repo like any other file, so "I edited and saved it" and
+// "it's now the real content" mean the same thing.
+const OVERRIDES_PATH = path.join(process.cwd(), 'src/data/exampleOverrides.json')
+
+function readOverridesFile() {
+  try { return JSON.parse(fs.readFileSync(OVERRIDES_PATH, 'utf8')) } catch { return {} }
+}
+function writeOverridesFile(obj) {
+  fs.writeFileSync(OVERRIDES_PATH, JSON.stringify(obj, null, 2) + '\n')
+}
+
+app.get('/api/example-overrides', (req, res) => {
+  res.json(readOverridesFile())
+})
+
+app.post('/api/example-overrides/:id', (req, res) => {
+  const { pages } = req.body
+  if (!Array.isArray(pages)) return res.status(400).json({ error: 'pages must be an array' })
+  const all = readOverridesFile()
+  all[req.params.id] = pages
+  writeOverridesFile(all)
+  res.json({ ok: true })
+})
+
+app.delete('/api/example-overrides/:id', (req, res) => {
+  const all = readOverridesFile()
+  delete all[req.params.id]
+  writeOverridesFile(all)
+  res.json({ ok: true })
+})
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 

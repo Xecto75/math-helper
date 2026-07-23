@@ -39,6 +39,31 @@ function readExOverrides() {
 function writeExOverrides(obj) {
   localStorage.setItem(EX_OVERRIDES_KEY, JSON.stringify(obj))
 }
+
+// ── Server-persisted example overrides ───────────────────────────────────────
+// A real file on disk (src/data/exampleOverrides.json via server.js), not
+// localStorage — so "Save" while editing a bundled Example actually becomes
+// the shipped content (git-tracked, visible to anyone reading the source),
+// instead of a copy only that one browser profile ever sees again.
+async function fetchServerOverrides() {
+  try {
+    const res = await fetch('/api/example-overrides')
+    if (!res.ok) return {}
+    return await res.json()
+  } catch { return {} }
+}
+async function saveOverrideToServer(id, pages) {
+  try {
+    await fetch(`/api/example-overrides/${encodeURIComponent(id)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pages }),
+    })
+  } catch { /* server may be offline — local state already updated */ }
+}
+async function deleteOverrideFromServer(id) {
+  try { await fetch(`/api/example-overrides/${encodeURIComponent(id)}`, { method: 'DELETE' }) }
+  catch { /* server may be offline */ }
+}
 function readDraft() {
   try {
     const raw = localStorage.getItem(DRAFT_KEY)
@@ -282,6 +307,26 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
   const [showSlots,       setShowSlots]       = useState(false)
   const saveInputRef                          = useRef(null)
 
+  // On mount: load the server-persisted overrides, then migrate over anything
+  // still only sitting in this browser's own localStorage (leftover from
+  // before this was server-backed, or a save that landed while offline) —
+  // one-time, automatic, so existing edits never need to be manually
+  // re-entered just because the persistence layer moved.
+  useEffect(() => {
+    (async () => {
+      const serverOverrides = await fetchServerOverrides()
+      const local = readExOverrides()
+      const merged = { ...serverOverrides }
+      for (const [id, pages] of Object.entries(local)) {
+        if (!(id in serverOverrides)) {
+          merged[id] = pages
+          saveOverrideToServer(id, pages)  // fire-and-forget migration
+        }
+      }
+      setExOverrides(merged)
+    })()
+  }, [])
+
   const handleLoadDraft = () => {
     const draft = rehydrateDraft(readDraft())
     if (draft) { setPages(draft); setActivePage(0); setShowSlots(false); setEditingExampleId(null) }
@@ -289,9 +334,11 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
 
   const handleSave = () => {
     if (editingExampleId) {
-      const next = { ...exOverrides, [editingExampleId]: JSON.parse(JSON.stringify(pages)) }
-      writeExOverrides(next)
+      const savedPages = JSON.parse(JSON.stringify(pages))
+      const next = { ...exOverrides, [editingExampleId]: savedPages }
+      writeExOverrides(next)       // local cache — instant, works offline
       setExOverrides(next)
+      saveOverrideToServer(editingExampleId, savedPages)  // the real, durable copy
       return
     }
     const name  = saveName.trim() || `Lesson ${slots.length + 1}`
@@ -309,6 +356,7 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     delete next[id]
     writeExOverrides(next)
     setExOverrides(next)
+    deleteOverrideFromServer(id)
   }
 
   const handleLoad = (entry) => {

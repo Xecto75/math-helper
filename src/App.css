@@ -3139,6 +3139,32 @@
   --ex-color: #34d399;
   grid-template-columns: 28px 1fr auto auto;
 }
+.lb-ex-override {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: #fbbf24;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+.lb-ex-override-reset {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #fbbf24;
+  background: color-mix(in srgb, #fbbf24 15%, transparent);
+  border: 1px solid color-mix(in srgb, #fbbf24 35%, transparent);
+  border-radius: 4px;
+  padding: 1px 7px;
+  cursor: pointer;
+  line-height: 1.5;
+}
+.lb-ex-override-reset:hover {
+  background: color-mix(in srgb, #fbbf24 28%, transparent);
+}
 .lb-ex-card-del {
   grid-row: 1 / 3;
   background: none;

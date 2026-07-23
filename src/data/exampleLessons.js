@@ -190,11 +190,16 @@ export const EXAMPLE_LESSONS = [
       {
         id: u(), title: 'Find b: a=7, A=60°, B=45°', layout: 'geo-equation',
         steps: [
-          { id: u(), funcId: 'geo3d-create-2d',   inputs: { id: 'tri2', type: 'triangle', a: '7', b: '5.7', c: '7.8', color: 'purple' } },
+          // b/c aren't 5.7/7.8 by coincidence — they're the exact law-of-sines
+          // solution for a=7,A=60°,B=45° (computed once, not re-derived here)
+          // so the shape's OWN live vertex angles read back as a clean 45°/60°,
+          // letting the equation below reference them instead of retyping
+          // "45"/"60" as bare numbers that could silently drift from the shape.
+          { id: u(), funcId: 'geo3d-create-2d',   inputs: { id: 'tri2', type: 'triangle', a: '7', b: '5.715476', c: '7.807486', color: 'purple' } },
           { id: u(), funcId: 'geo3d-set-view',    inputs: { zoom: '1.5', duration: '0.3' } },
           { id: u(), funcId: 'geo3d-show-angles', inputs: { id: 'tri2', color: 'yellow' } },
           { id: u(), funcId: 'geo3d-label-sides', inputs: { id: 'tri2', labels: 'a=7,b=?,c=7.8' } },
-          { id: u(), funcId: 'eq-create',         inputs: { eq: 'b = 7 * sin(45) / sin(60)' } },
+          { id: u(), funcId: 'eq-create',         inputs: { eq: 'b = [tri2]0 * sin([tri2]a0) / sin([tri2]a2)' } },
           { id: u(), funcId: 'eq-full-solve',     inputs: {} },
         ],
       },

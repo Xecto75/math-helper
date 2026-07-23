@@ -35,14 +35,19 @@ const FLAT_TYPES = new Set([
   'parallelogram', 'trapeze', 'pentagon', 'hexagon', 'octagon', 'regular-polygon', 'line',
 ])
 
-const r4 = n => Math.round(n * 10000) / 10000
+// 6 decimals, not 4 — a "clean" triangle built from a precise law-of-sines
+// side (so its OWN live angles read back as an exact 45°/60° for an equation
+// to reference) was still drifting to 45.0005°/59.9995° after this rounded
+// its vertices, since 4 decimals of coordinate error is enough to perturb
+// the 4th decimal of an angle computed from them.
+const r6 = n => Math.round(n * 1000000) / 1000000
 
 function centerVertices(verts) {
   const xs = verts.map(v => v[0])
   const ys = verts.map(v => v[1])
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2
   const cy = (Math.min(...ys) + Math.max(...ys)) / 2
-  return verts.map(([x, y]) => [r4(x - cx), r4(y - cy)])
+  return verts.map(([x, y]) => [r6(x - cx), r6(y - cy)])
 }
 
 function calcFlatVertices(type, values) {
@@ -442,7 +447,7 @@ export function flipShape2D(threeRef, id) {
       // Bake: negate X in vertices and rebuild so all subsequent ops use correct coords
       const entry = registry.get(id)
       if (entry?.vertices) {
-        entry.vertices = entry.vertices.map(([x, y]) => [r4(-x), y])
+        entry.vertices = entry.vertices.map(([x, y]) => [r6(-x), y])
         const hexColor = resolveHex(entry.opts?.color ?? 'blue')
         const savedPos = group.position.clone()
         const newGroup = buildFlatGroupFromVerts(entry.vertices, hexColor, entry.opts)
@@ -481,8 +486,8 @@ export function rotateShape2D(threeRef, id, degrees = 90) {
       if (entry?.vertices) {
         const cos = Math.cos(rad), sin = Math.sin(rad)
         entry.vertices = entry.vertices.map(([x, y]) => [
-          r4(x * cos - y * sin),
-          r4(x * sin + y * cos),
+          r6(x * cos - y * sin),
+          r6(x * sin + y * cos),
         ])
         const hexColor = resolveHex(entry.opts?.color ?? 'blue')
         const savedPos = group.position.clone()
@@ -610,12 +615,20 @@ export async function labelSides3D(threeRef, id, customLabels = []) {
 
     const edgeColor = entry.edgeColors?.[i] ?? '#a5b4fc'
     const fontSize  = Math.round(Math.max(14, Math.min(36, avgEdge * ppu * 0.16)))
-    // addLabel3D centers the label ON this point (translate(-50%,-50%)), so
-    // the gap to the line is (offset − half the label's own height), not
-    // offset itself — solve for a true ~6px gap instead of a size-proportional
-    // offset that pushed long-side labels far from their line (and could push
-    // a bottom-edge label below the visible canvas entirely).
-    const offset = (fontSize / 2 + 6) / ppu
+    // addLabel3D centers the label ON this point (translate(-50%,-50%)) and the
+    // label itself is always axis-aligned text, never rotated to match the
+    // edge — so "half the font size" alone (a plain perpendicular half-height)
+    // only clears a near-horizontal edge. A near-vertical/diagonal edge (e.g.
+    // "b=7" against a steep side) needs the label's HALF-WIDTH pushed out too,
+    // or a wide label's corner still crosses the line while its center looks
+    // clear. Project the label's own (approximate) half-width/half-height onto
+    // the edge's normal — the standard axis-aligned-box-vs-line clearance
+    // formula — then add a flat ~6px gap on top of that true hitbox edge.
+    const charW  = fontSize * 0.62
+    const halfW  = (text.length * charW) / 2
+    const halfH  = fontSize / 2
+    const offsetPx = halfW * Math.abs(nx) + halfH * Math.abs(ny) + 6
+    const offset   = offsetPx / ppu
 
     display.addLabel3D(
       `sl_${id}_${i}`,

@@ -371,7 +371,8 @@ EXAMPLE:
     label: 'Text & Formula Panels',
     description: 'Floating text panels with LaTeX, bullet lists, and computed values — used alongside other displays to show formulas or explanations',
     layouts: [],
-    doc: `TEXT FUNCTIONS [positional args]:
+    doc: `TEXT LAYOUTS: sT=single-text (text box alone, no paired display)
+TEXT FUNCTIONS [positional args]:
   tc:[boxId,title,content,isList,color]   — create text box
   ti:[bId,item]                           — append item to list box
   tx:[bId,index]                          — remove list item (0=first, -1=last)

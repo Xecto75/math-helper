@@ -1,1 +1,1905 @@
-{}
+{
+  "linear-eq": [
+    {
+      "title": "Résolution automatique : 4(x + 2) − 3 = 2x + 9",
+      "id": "lb13",
+      "layout": "single-equation",
+      "steps": [
+        {
+          "id": "lb14",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "4(x + 2) - 3 = 2x + 9"
+          }
+        },
+        {
+          "id": "lb15",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        }
+      ]
+    }
+  ],
+  "pythagoras": [
+    {
+      "title": "a² + b² = c²",
+      "id": "lb130",
+      "layout": "geo-equation",
+      "steps": [
+        {
+          "id": "lb131",
+          "funcId": "geo3d-create-2d",
+          "inputs": {
+            "id": "tri",
+            "type": "right-triangle",
+            "a": "3",
+            "b": "4",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb132",
+          "funcId": "geo3d-set-view",
+          "inputs": {
+            "zoom": "1.5",
+            "duration": "0.3"
+          }
+        },
+        {
+          "id": "lb133",
+          "funcId": "geo3d-label-sides",
+          "inputs": {
+            "id": "tri",
+            "labels": "a,b,c"
+          }
+        },
+        {
+          "id": "lb134",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "tri",
+            "edgeIndex": "0",
+            "color": "orange"
+          }
+        },
+        {
+          "id": "lb135",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "tri",
+            "edgeIndex": "1",
+            "color": "green"
+          }
+        },
+        {
+          "id": "lb136",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "tri",
+            "edgeIndex": "2",
+            "color": "purple"
+          }
+        },
+        {
+          "id": "lb137",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|a|{green}^2 + |b|{orange}^2 = |c|{purple}^2"
+          }
+        },
+        {
+          "id": "lb1",
+          "funcId": "geo3d-label-sides",
+          "inputs": {
+            "id": "tri",
+            "labels": "3,4,?"
+          }
+        },
+        {
+          "id": "lb139",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "var_a": "3",
+            "var_b": "4",
+            "var_c": ""
+          }
+        },
+        {
+          "id": "lb140",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        },
+        {
+          "id": "lb141",
+          "funcId": "geo3d-label-sides",
+          "inputs": {
+            "id": "tri",
+            "labels": ",,5"
+          }
+        }
+      ]
+    }
+  ],
+  "quadratic-eq": [
+    {
+      "title": "Résoudre : x² − 5x + 6 = 0",
+      "id": "lb93",
+      "layout": "text-equation",
+      "steps": [
+        {
+          "id": "lb94",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "x^2 - 5x + 6 = -4 + 2x"
+          }
+        },
+        {
+          "id": "lb95",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "box1",
+            "title": "",
+            "content": "On veut l'équation de forme $ax^2 + bx + c = 0$ ou a, b et c sont des constantes.|On cherche les valeurs de $x$ qui annulent l'équation — les **zéros**",
+            "isList": "false",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb96",
+          "funcId": "quadratic-solve",
+          "inputs": {}
+        }
+      ]
+    }
+  ],
+  "volumes": [
+    {
+      "title": "Volume du prisme rectangle",
+      "id": "lb1007",
+      "layout": "geo-equation",
+      "steps": [
+        {
+          "id": "lb1008",
+          "funcId": "geo3d-create",
+          "inputs": {
+            "id": "shape1",
+            "type": "cube",
+            "a": "3",
+            "b": "",
+            "c": "",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb1009",
+          "funcId": "geo3d-show-volume-measures",
+          "inputs": {
+            "id": "shape1",
+            "color": "red"
+          }
+        },
+        {
+          "id": "lb1010",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "",
+            "title": "Volume of cube",
+            "text": "V = a^3",
+            "side": "right",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb1011",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|V| = |a|^3"
+          }
+        },
+        {
+          "id": "lb1012",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "replacements": "a=2,b=-3,c=1",
+            "var_a": "[shape1]a"
+          }
+        },
+        {
+          "id": "lb1013",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        }
+      ]
+    },
+    {
+      "title": "Volume du cylindre",
+      "id": "lb1014",
+      "layout": "geo-equation",
+      "steps": [
+        {
+          "id": "lb1015",
+          "funcId": "geo3d-create",
+          "inputs": {
+            "id": "1",
+            "type": "cylinder",
+            "a": "3",
+            "b": "",
+            "c": "",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb1016",
+          "funcId": "geo3d-show-volume-measures",
+          "inputs": {
+            "id": "1",
+            "color": "red"
+          }
+        },
+        {
+          "id": "lb1017",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "",
+            "title": "Volume of cone",
+            "text": "V = π * r^2 * h",
+            "side": "right",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb1018",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|V| = pi * |r|^2 * |h|"
+          }
+        },
+        {
+          "id": "lb1019",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "var_r": "[1]r",
+            "var_h": "[1]h"
+          }
+        },
+        {
+          "id": "lb1020",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        }
+      ]
+    }
+  ],
+  "central-tendency": [
+    {
+      "title": "Moyenne, médiane et mode",
+      "id": "lb175",
+      "layout": "text-grid",
+      "steps": [
+        {
+          "id": "lb176",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "intro",
+            "title": "Trois mesures",
+            "content": "Moyenne : somme des données divisée par le nombre de données.|Médiane : valeur du milieu quand les données sont en ordre.|Mode : valeur qui apparaît le plus souvent.",
+            "isList": "true",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb177",
+          "funcId": "table-create",
+          "inputs": {
+            "data": "[[\"Élève\",\"Note\"],[1,65],[2,70],[3,70],[4,75],[5,80],[6,85],[7,90]]",
+            "headerRow": "true",
+            "gridId": "notes1"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Calculer la moyenne",
+      "id": "lb178",
+      "layout": "single-equation",
+      "steps": [
+        {
+          "id": "lb179",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "M = (65 + 70 + 70 + 75 + 80 + 85 + 90) / 7"
+          }
+        },
+        {
+          "id": "lb180",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        }
+      ]
+    },
+    {
+      "title": "Médiane et mode",
+      "id": "lb181",
+      "layout": "text-grid",
+      "steps": [
+        {
+          "id": "lb182",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "medmode",
+            "title": "Médiane et mode",
+            "content": "Les données sont déjà en ordre croissant.|La médiane est la 4ᵉ valeur (position du milieu) : 75.|Le mode est 70 (il apparaît 2 fois).",
+            "isList": "true",
+            "color": "green"
+          }
+        },
+        {
+          "id": "lb183",
+          "funcId": "table-create",
+          "inputs": {
+            "data": "[[\"Position\",\"Note\"],[1,65],[2,70],[3,70],[\"4 (médiane)\",75],[5,80],[6,85],[7,90]]",
+            "headerRow": "true",
+            "gridId": "notes2"
+          }
+        }
+      ]
+    }
+  ],
+  "areas": [
+    {
+      "title": "Aire d'un trapèze",
+      "id": "lb126",
+      "layout": "geo-equation",
+      "steps": [
+        {
+          "id": "lb127",
+          "funcId": "geo3d-create-2d",
+          "inputs": {
+            "id": "trap",
+            "type": "trapeze",
+            "a": "6",
+            "b": "4",
+            "c": "3",
+            "color": "teal"
+          }
+        },
+        {
+          "id": "lb128",
+          "funcId": "geo3d-set-view",
+          "inputs": {
+            "zoom": "1.5",
+            "duration": "0.3"
+          }
+        },
+        {
+          "id": "lb129",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "",
+            "title": "Area of Trapezoid",
+            "text": "$A = \\dfrac{(B + b) \\cdot h}{2}$",
+            "side": "right",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb130",
+          "funcId": "geo-show-area-measures",
+          "inputs": {
+            "shapeId": "trap",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb131",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|A| = (|B| + |b|) * |h| / 2"
+          }
+        },
+        {
+          "id": "lb132",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "var_B": "6",
+            "var_b": "4",
+            "var_h": "3"
+          }
+        },
+        {
+          "id": "lb133",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        }
+      ]
+    },
+    {
+      "title": "Aire d'un cercle",
+      "id": "lb134",
+      "layout": "geo-equation",
+      "steps": [
+        {
+          "id": "lb135",
+          "funcId": "geo3d-create-2d",
+          "inputs": {
+            "id": "circ",
+            "type": "circle",
+            "a": "4",
+            "color": "orange"
+          }
+        },
+        {
+          "id": "lb136",
+          "funcId": "geo3d-set-view",
+          "inputs": {
+            "zoom": "1.2",
+            "duration": "0.3"
+          }
+        },
+        {
+          "id": "lb137",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "",
+            "title": "Area of Circle",
+            "text": "$A = \\pi r^2$",
+            "side": "right",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb138",
+          "funcId": "geo-show-area-measures",
+          "inputs": {
+            "shapeId": "circ",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb139",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|A| = 3.1415 * |r|^2"
+          }
+        },
+        {
+          "id": "lb140",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "var_r": "4"
+          }
+        },
+        {
+          "id": "lb141",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        }
+      ]
+    }
+  ],
+  "soh-cah-toa": [
+    {
+      "title": "SOH — Sine",
+      "id": "lb601",
+      "layout": "text-geo",
+      "steps": [
+        {
+          "id": "lb603",
+          "funcId": "geo3d-create-2d",
+          "inputs": {
+            "id": "tri",
+            "type": "right-triangle",
+            "a": "3",
+            "b": "4",
+            "c": "",
+            "color": "blue"
+          }
+        },
+        {
+          "id": "lb604",
+          "funcId": "geo3d-set-view",
+          "inputs": {
+            "zoom": "2",
+            "panX": "0",
+            "panY": "0",
+            "distance": "",
+            "duration": "0.3"
+          }
+        },
+        {
+          "id": "lb605",
+          "funcId": "geo3d-highlight-angle",
+          "inputs": {
+            "id": "tri",
+            "angleIndex": "0",
+            "color": "yellow"
+          }
+        },
+        {
+          "id": "lb606",
+          "funcId": "cmt-geo",
+          "inputs": {
+            "cmtId": "",
+            "text": "θ",
+            "shapeId": "tri",
+            "vertexIndex": "0",
+            "color": "yellow"
+          }
+        },
+        {
+          "id": "lb607",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "tri",
+            "edgeIndex": "2",
+            "color": "purple"
+          }
+        },
+        {
+          "id": "lb608",
+          "funcId": "cmt-geo-edge",
+          "inputs": {
+            "cmtId": "",
+            "text": "Hypotenuse",
+            "shapeId": "tri",
+            "edgeIndex": "2",
+            "color": "purple"
+          }
+        },
+        {
+          "id": "lb609",
+          "funcId": "geo3d-show-arrow",
+          "inputs": {
+            "id": "tri",
+            "arrowId": "arr1",
+            "from": "v0",
+            "to": "e1",
+            "color": "orange"
+          }
+        },
+        {
+          "id": "lb610",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "tri",
+            "edgeIndex": "1",
+            "color": "orange"
+          }
+        },
+        {
+          "id": "lb611",
+          "funcId": "cmt-geo-edge",
+          "inputs": {
+            "cmtId": "",
+            "text": "Opposite",
+            "shapeId": "tri",
+            "edgeIndex": "1",
+            "color": "orange"
+          }
+        },
+        {
+          "id": "lb612",
+          "funcId": "geo3d-remove-arrow",
+          "inputs": {
+            "id": "tri",
+            "arrowId": "arr1"
+          }
+        },
+        {
+          "id": "lb613",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "formula",
+            "title": "Sine — SOH",
+            "content": "$\\sin(\\clr{yellow}{\\theta}) = \\dfrac{\\clr{orange}{\\text{Opposite}}}{\\clr{purple}{\\text{Hypotenuse}}}$",
+            "isList": "false"
+          }
+        }
+      ]
+    },
+    {
+      "title": "SOH — Sine example",
+      "id": "lb614",
+      "layout": "geo-equation",
+      "steps": [
+        {
+          "id": "lb616",
+          "funcId": "geo3d-create-2d",
+          "inputs": {
+            "id": "tri",
+            "type": "right-triangle",
+            "a": "3",
+            "b": "4",
+            "c": "",
+            "color": "blue"
+          }
+        },
+        {
+          "id": "lb617",
+          "funcId": "geo3d-label-sides",
+          "inputs": {
+            "id": "tri",
+            "labels": ""
+          }
+        },
+        {
+          "id": "lb618",
+          "funcId": "geo3d-highlight-angle",
+          "inputs": {
+            "id": "tri",
+            "angleIndex": "0",
+            "color": "yellow"
+          }
+        },
+        {
+          "id": "lb619",
+          "funcId": "cmt-geo",
+          "inputs": {
+            "cmtId": "angle",
+            "text": "θ",
+            "shapeId": "tri",
+            "vertexIndex": "0",
+            "color": "yellow"
+          }
+        },
+        {
+          "id": "lb620",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "tri",
+            "edgeIndex": "2",
+            "color": "purple"
+          }
+        },
+        {
+          "id": "lb621",
+          "funcId": "cmt-geo-edge",
+          "inputs": {
+            "cmtId": "",
+            "text": "Hypotenuse",
+            "shapeId": "tri",
+            "edgeIndex": "2",
+            "color": "purple"
+          }
+        },
+        {
+          "id": "lb622",
+          "funcId": "geo3d-show-arrow",
+          "inputs": {
+            "id": "tri",
+            "arrowId": "arr1",
+            "from": "v0",
+            "to": "e1",
+            "color": "orange"
+          }
+        },
+        {
+          "id": "lb623",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "tri",
+            "edgeIndex": "1",
+            "color": "orange"
+          }
+        },
+        {
+          "id": "lb624",
+          "funcId": "cmt-geo-edge",
+          "inputs": {
+            "cmtId": "",
+            "text": "Opposite",
+            "shapeId": "tri",
+            "edgeIndex": "1",
+            "color": "orange"
+          }
+        },
+        {
+          "id": "lb625",
+          "funcId": "geo3d-remove-arrow",
+          "inputs": {
+            "id": "tri",
+            "arrowId": "arr1"
+          }
+        },
+        {
+          "id": "lb626",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|Opposite|{orange}/|Hypothenuse|{purple} = sin(|θ|{yellow})"
+          }
+        },
+        {
+          "id": "lb627",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "var_Opposite": "4",
+            "var_Hypothenuse": "5"
+          }
+        },
+        {
+          "id": "lb628",
+          "funcId": "eq-apply-inverse-trig",
+          "inputs": {
+            "trig": "sin"
+          }
+        },
+        {
+          "id": "lb629",
+          "funcId": "cmt-update",
+          "inputs": {
+            "cmtId": "angle",
+            "text": "[eq-result]°"
+          }
+        }
+      ]
+    }
+  ],
+  "substitution": [
+    {
+      "title": "What is Substitution",
+      "id": "lb562",
+      "layout": "text-graph",
+      "background": "default",
+      "steps": [
+        {
+          "id": "lb563",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "y=-x+3",
+            "id": "f",
+            "hideLabel": "0"
+          }
+        },
+        {
+          "id": "lb564",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "-6x+3y=12",
+            "id": "g",
+            "hideLabel": "0"
+          }
+        },
+        {
+          "id": "lb565",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "box0",
+            "title": "Substitution Method",
+            "content": "How do you find the intersection point between the two functions ?|One way is the **Substition method**.",
+            "isList": "false",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb566",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "box1",
+            "title": "Step by Step",
+            "content": "Isolate one of the equation into y = ax + b|Replace y in the second equation with it|Isolate x to find it's value|Replace x in either eqaution|Isolate y to find it's value|You get the intersection point (x,y) !",
+            "isList": "steps",
+            "color": ""
+          }
+        }
+      ]
+    },
+    {
+      "title": "Example of Substitution",
+      "id": "lb567",
+      "layout": "text-equation",
+      "background": "default",
+      "steps": [
+        {
+          "id": "lb568",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "box0",
+            "title": "Two equations",
+            "content": "$y=-x+3$|$-6x+3y=12$",
+            "isList": "true",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb569",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "box1",
+            "title": "Step 1",
+            "content": "Isolate y in the equation $y=-x+3$",
+            "isList": "false",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb570",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "y=-x+3"
+          }
+        },
+        {
+          "id": "lb571",
+          "funcId": "cmt-equation",
+          "inputs": {
+            "cmtId": "",
+            "text": "y already isolated",
+            "side": "both",
+            "indices": "",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb572",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "box1",
+            "title": "Step 2",
+            "content": "Replace y in the second equation",
+            "isList": "false",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb573",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "-6x+3(-x+3)=12"
+          }
+        },
+        {
+          "id": "lb574",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "box1",
+            "title": "Step 3",
+            "content": "Isolate x, to find it's value",
+            "isList": "false",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb575",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        },
+        {
+          "id": "lb576",
+          "funcId": "eq-save-result",
+          "inputs": {
+            "name": "x"
+          }
+        },
+        {
+          "id": "lb577",
+          "funcId": "cmt-equation",
+          "inputs": {
+            "cmtId": "1",
+            "text": "x = [x]v",
+            "side": "left",
+            "indices": "",
+            "color": "red"
+          }
+        },
+        {
+          "id": "lb578",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "box1",
+            "title": "Step 4",
+            "content": "Replace x in the first equation",
+            "isList": "false",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb579",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|y|=-|x|+3"
+          }
+        },
+        {
+          "id": "lb580",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "replacements": "a=2,b=-3,c=1",
+            "var_x": "[x]v"
+          }
+        },
+        {
+          "id": "lb581",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        },
+        {
+          "id": "lb582",
+          "funcId": "eq-save-result",
+          "inputs": {
+            "name": "y"
+          }
+        },
+        {
+          "id": "lb583",
+          "funcId": "cmt-equation",
+          "inputs": {
+            "cmtId": "2",
+            "text": "y = [y]v",
+            "side": "left",
+            "indices": "",
+            "color": "red"
+          }
+        },
+        {
+          "id": "lb584",
+          "funcId": "set-layout",
+          "inputs": {
+            "mode": "single-graph"
+          }
+        }
+      ]
+    }
+  ],
+  "perimeters": [
+    {
+      "title": "Périmètre d'un trapèze",
+      "id": "lb170",
+      "layout": "geo-equation",
+      "steps": [
+        {
+          "id": "lb171",
+          "funcId": "geo3d-create-2d",
+          "inputs": {
+            "id": "trap",
+            "type": "trapeze",
+            "a": "8",
+            "b": "5",
+            "c": "4",
+            "color": "cyan"
+          }
+        },
+        {
+          "id": "lb172",
+          "funcId": "geo3d-set-view",
+          "inputs": {
+            "zoom": "1.5",
+            "duration": "0.3"
+          }
+        },
+        {
+          "id": "lb173",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "trap",
+            "edgeIndex": "0",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb174",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "trap",
+            "edgeIndex": "1",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb175",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "trap",
+            "edgeIndex": "2",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb176",
+          "funcId": "geo3d-highlight-edge",
+          "inputs": {
+            "id": "trap",
+            "edgeIndex": "3",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb177",
+          "funcId": "geo3d-label-sides",
+          "inputs": {
+            "id": "trap"
+          }
+        },
+        {
+          "id": "lb178",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "",
+            "title": "Perimeter of Trapèze",
+            "text": "The sums of all the sides.",
+            "side": "right",
+            "color": "#60a5fa"
+          }
+        },
+        {
+          "id": "lb179",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|P| = 2*|s| + |b| + |B|"
+          }
+        },
+        {
+          "id": "lb180",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "replacements": "a=2,b=-3,c=1",
+            "var_s": "[trap]0",
+            "var_b": "[trap]1",
+            "var_B": "[trap]2"
+          }
+        },
+        {
+          "id": "lb181",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        }
+      ]
+    },
+    {
+      "title": "Circonférence d'un cercle",
+      "id": "lb182",
+      "layout": "geo-equation",
+      "steps": [
+        {
+          "id": "lb183",
+          "funcId": "geo3d-create-2d",
+          "inputs": {
+            "id": "circ",
+            "type": "circle",
+            "a": "3",
+            "color": "pink"
+          }
+        },
+        {
+          "id": "lb184",
+          "funcId": "geo3d-set-view",
+          "inputs": {
+            "zoom": "1.5",
+            "duration": "0.3"
+          }
+        },
+        {
+          "id": "lb185",
+          "funcId": "geo3d-label-sides",
+          "inputs": {
+            "id": "circ",
+            "labels": "r=3"
+          }
+        },
+        {
+          "id": "lb186",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "",
+            "title": "Peremeter of circle",
+            "text": "For the circle, peremeter = circonference, which is $C = 2 \\cdot \\pi \\cdot r$",
+            "side": "right",
+            "color": "#60a5fa"
+          }
+        },
+        {
+          "id": "lb187",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|C| = 2 * pi * |r|"
+          }
+        },
+        {
+          "id": "lb188",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "var_r": "[circ]r"
+          }
+        },
+        {
+          "id": "lb189",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        }
+      ]
+    }
+  ],
+  "line-types": [
+    {
+      "title": "Droites parallèles — même pente",
+      "id": "lb1101",
+      "layout": "single-graph",
+      "steps": [
+        {
+          "id": "lb1102",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "2*x + 1",
+            "id": "f1"
+          }
+        },
+        {
+          "id": "lb1103",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "2*x - 2",
+            "id": "f2"
+          }
+        },
+        {
+          "id": "lb1104",
+          "funcId": "graph-name-func",
+          "inputs": {
+            "funcId": "f1",
+            "label": "f₁ = 2x+1",
+            "x0": "0.5",
+            "y0": "3"
+          }
+        },
+        {
+          "id": "lb1105",
+          "funcId": "graph-name-func",
+          "inputs": {
+            "funcId": "f2",
+            "label": "f₂ = 2x−2",
+            "x0": "0.5",
+            "y0": "-1"
+          }
+        },
+        {
+          "id": "lb1106",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "",
+            "title": "",
+            "text": "y = ax+b, where a is the inclination",
+            "side": "right",
+            "color": "#60a5fa"
+          }
+        },
+        {
+          "id": "lb1107",
+          "funcId": "cmt-graph-func",
+          "inputs": {
+            "cmtId": "",
+            "text": "a = 2",
+            "funcId": "f1",
+            "x": "0",
+            "color": "#60a5fa"
+          }
+        },
+        {
+          "id": "lb1108",
+          "funcId": "cmt-graph-func",
+          "inputs": {
+            "cmtId": "",
+            "text": "a = 2",
+            "funcId": "f2",
+            "x": "2",
+            "color": "#60a5fa"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Droites sécantes — trouver l'intersection",
+      "id": "lb1109",
+      "layout": "graph-equation",
+      "steps": [
+        {
+          "id": "lb1110",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "2*x + 1",
+            "id": "f1"
+          }
+        },
+        {
+          "id": "lb1111",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "-x + 4",
+            "id": "f2"
+          }
+        },
+        {
+          "id": "lb1112",
+          "funcId": "graph-find-intersections",
+          "inputs": {
+            "f1": "f1",
+            "f2": "f2"
+          }
+        },
+        {
+          "id": "lb1113",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "2x + 1 = -x + 4"
+          }
+        },
+        {
+          "id": "lb1114",
+          "funcId": "eq-send-other-side",
+          "inputs": {
+            "term": "+1"
+          }
+        },
+        {
+          "id": "lb1115",
+          "funcId": "eq-send-other-side",
+          "inputs": {
+            "term": "-x"
+          }
+        },
+        {
+          "id": "lb1116",
+          "funcId": "eq-combine",
+          "inputs": {}
+        },
+        {
+          "id": "lb1117",
+          "funcId": "eq-divide",
+          "inputs": {
+            "divisor": "3"
+          }
+        }
+      ]
+    }
+  ],
+  "parabola": [
+    {
+      "title": "f(x) = ax² + bx + c — drag to explore",
+      "id": "lb160",
+      "layout": "text-graph",
+      "steps": [
+        {
+          "id": "lb161",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "intro",
+            "title": "The parameters a, b, and c",
+            "content": "$a$ controls how wide the parabola is, and whether it opens upward ($a>0$) or downward ($a<0$).|$b$ shifts the vertex left or right (together with $a$).|$c$ is the y-intercept — where the parabola crosses the $y$-axis.",
+            "isList": "true"
+          }
+        },
+        {
+          "id": "lb162",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "|a|*x^2+|b|*x+|c|",
+            "id": "explore",
+            "hideLabel": "0"
+          }
+        },
+        {
+          "id": "lb163",
+          "funcId": "graph-adjust-view",
+          "inputs": {
+            "cx": "0",
+            "cy": "4",
+            "range": "10"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Key Features — Roots, Vertex, Axis of Symmetry",
+      "id": "lb164",
+      "layout": "single-graph",
+      "steps": [
+        {
+          "id": "lb165",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "x^2 - 4*x + 3",
+            "id": "par"
+          }
+        },
+        {
+          "id": "lb166",
+          "funcId": "graph-name-func",
+          "inputs": {
+            "funcId": "par",
+            "label": "x² − 4x + 3",
+            "x0": "3",
+            "y0": "2"
+          }
+        },
+        {
+          "id": "lb167",
+          "funcId": "graph-mark-roots",
+          "inputs": {
+            "funcId": "par"
+          }
+        },
+        {
+          "id": "lb168",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "2",
+            "y": "-1",
+            "id": "vert",
+            "label": "Vertex (2, −1)",
+            "showCoords": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "correlation": [
+    {
+      "title": "What is Correlation?",
+      "id": "lb125",
+      "layout": "text-grid",
+      "steps": [
+        {
+          "id": "lb126",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "intro",
+            "title": "Correlation",
+            "content": "Correlation measures the link between two variables.|Positive correlation: as $x$ increases, $y$ increases too.|Negative correlation: as $x$ increases, $y$ decreases.|No correlation: no clear link between the two.",
+            "isList": "true"
+          }
+        },
+        {
+          "id": "lb127",
+          "funcId": "table-create",
+          "inputs": {
+            "data": "[[\"x (study hours)\",\"y (score %)\"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]",
+            "headerRow": "true",
+            "gridId": "etude1"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Scatter Plot — Positive Trend",
+      "id": "lb128",
+      "layout": "grid-graph",
+      "steps": [
+        {
+          "id": "lb129",
+          "funcId": "table-create",
+          "inputs": {
+            "data": "[[\"x (study hours)\",\"y (score %)\"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]",
+            "headerRow": "true",
+            "gridId": "etude2"
+          }
+        },
+        {
+          "id": "lb130",
+          "funcId": "graph-set-viewport",
+          "inputs": {
+            "xMin": "0",
+            "xMax": "8",
+            "yMin": "0",
+            "yMax": "100"
+          }
+        },
+        {
+          "id": "lb131",
+          "funcId": "graph-batch-add-points",
+          "inputs": {
+            "points": "p0:1:55|p1:2:62|p2:3:68|p3:4:75|p4:5:82|p5:6:90",
+            "showCoords": "true"
+          }
+        },
+        {
+          "id": "lb249",
+          "funcId": "graph-best-fit-line",
+          "inputs": {
+            "pointIds": "",
+            "id": "f",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb250",
+          "funcId": "cmt-graph-func",
+          "inputs": {
+            "cmtId": "",
+            "text": "The average line goes up, so the trend is positive.",
+            "funcId": "f",
+            "x": "4",
+            "color": "#60a5fa"
+          }
+        }
+      ]
+    },
+    {
+      "title": "The Correlation Coefficient r",
+      "id": "lb132",
+      "layout": "text-grid",
+      "steps": [
+        {
+          "id": "lb133",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "formula",
+            "title": "Coefficient r",
+            "content": "$r = \\dfrac{\\sum (x_i-\\bar{x})(y_i-\\bar{y})}{\\sqrt{\\sum(x_i-\\bar{x})^2 \\sum (y_i-\\bar{y})^2}}$|$r$ is always between $-1$ and $1$.",
+            "isList": "true"
+          }
+        },
+        {
+          "id": "lb134",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "interp",
+            "title": "Interpretation",
+            "content": "$r$ close to $1$: strong positive correlation|$r$ close to $-1$: strong negative correlation|$r$ close to $0$: no correlation",
+            "isList": "true"
+          }
+        },
+        {
+          "id": "lb135",
+          "funcId": "table-create",
+          "inputs": {
+            "data": "[[\"x (study hours)\",\"y (score %)\"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]",
+            "headerRow": "true",
+            "gridId": "etude3"
+          }
+        },
+        {
+          "id": "lb136",
+          "funcId": "set-layout",
+          "inputs": {
+            "mode": "grid-equation"
+          }
+        },
+        {
+          "id": "lb137",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "(1+2+3+4+5+6)/6 = 3.5"
+          }
+        },
+        {
+          "id": "lb138",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "(55+62+68+75+82+90)/6 = 72"
+          }
+        },
+        {
+          "id": "lb139",
+          "funcId": "tab-highlight-row",
+          "inputs": {
+            "gridId": "etude3",
+            "rowIndex": "1"
+          }
+        },
+        {
+          "id": "lb140",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "(1-3.5)*(55-72) = 42.5"
+          }
+        },
+        {
+          "id": "lb141",
+          "funcId": "tab-highlight-row",
+          "inputs": {
+            "gridId": "etude3",
+            "rowIndex": "2"
+          }
+        },
+        {
+          "id": "lb142",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "(2-3.5)*(62-72) = 15"
+          }
+        },
+        {
+          "id": "lb143",
+          "funcId": "tab-highlight-row",
+          "inputs": {
+            "gridId": "etude3",
+            "rowIndex": "3"
+          }
+        },
+        {
+          "id": "lb144",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "(3-3.5)*(68-72) = 2"
+          }
+        },
+        {
+          "id": "lb145",
+          "funcId": "tab-highlight-row",
+          "inputs": {
+            "gridId": "etude3",
+            "rowIndex": "4"
+          }
+        },
+        {
+          "id": "lb146",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "(4-3.5)*(75-72) = 1.5"
+          }
+        },
+        {
+          "id": "lb147",
+          "funcId": "tab-highlight-row",
+          "inputs": {
+            "gridId": "etude3",
+            "rowIndex": "5"
+          }
+        },
+        {
+          "id": "lb148",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "(5-3.5)*(82-72) = 15"
+          }
+        },
+        {
+          "id": "lb149",
+          "funcId": "tab-highlight-row",
+          "inputs": {
+            "gridId": "etude3",
+            "rowIndex": "6"
+          }
+        },
+        {
+          "id": "lb150",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "(6-3.5)*(90-72) = 45"
+          }
+        },
+        {
+          "id": "lb151",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "42.5+15+2+1.5+15+45 = 121"
+          }
+        },
+        {
+          "id": "lb152",
+          "funcId": "tab-clear-row-highlight",
+          "inputs": {
+            "gridId": "etude3"
+          }
+        },
+        {
+          "id": "lb153",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "",
+            "title": "",
+            "text": "$\\sum(x_i-\\bar{x})^2 = 17.5, \\ \\sum(y_i-\\bar{y})^2 = 838$",
+            "side": "left",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb154",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "r = 121/121.099"
+          }
+        },
+        {
+          "id": "lb155",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "",
+            "title": "",
+            "text": "r ≈ 0.999 → very strong positive correlation",
+            "side": "right",
+            "color": "green"
+          }
+        }
+      ]
+    }
+  ],
+  "law-of-sines": [
+    {
+      "title": "The Triangle — Sides and Angles",
+      "id": "lb1",
+      "layout": "text-geo",
+      "steps": [
+        {
+          "id": "lb2",
+          "funcId": "geo3d-create-2d",
+          "inputs": {
+            "id": "tri",
+            "type": "triangle",
+            "a": "5",
+            "b": "7",
+            "c": "9",
+            "color": "blue"
+          }
+        },
+        {
+          "id": "lb3",
+          "funcId": "geo3d-set-view",
+          "inputs": {
+            "zoom": "1.2",
+            "duration": "0.3"
+          }
+        },
+        {
+          "id": "lb4",
+          "funcId": "geo3d-show-angles",
+          "inputs": {
+            "id": "tri",
+            "color": "yellow",
+            "showValues": "true"
+          }
+        },
+        {
+          "id": "lb5",
+          "funcId": "geo3d-label-sides",
+          "inputs": {
+            "id": "tri",
+            "labels": "a=5,b=7,c=9"
+          }
+        },
+        {
+          "id": "lb6",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "sines",
+            "title": "The Law of Sines",
+            "content": "Every side, divided by the sine of the angle facing it, gives the same number:|$$\\dfrac{a}{\\sin A} = \\dfrac{b}{\\sin B} = \\dfrac{c}{\\sin C}$$|$$\\dfrac{5}{\\sin([tri]a2^\\circ)} = \\dfrac{7}{\\sin([tri]a0^\\circ)} = \\dfrac{9}{\\sin([tri]a1^\\circ)} = {{ 5/sin([tri]a2 deg) }}$$",
+            "isList": "false"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Find b: a=7, A=60°, B=45°",
+      "id": "lb7",
+      "layout": "geo-equation",
+      "steps": [
+        {
+          "id": "lb8",
+          "funcId": "geo3d-create-2d",
+          "inputs": {
+            "id": "tri2",
+            "type": "triangle",
+            "a": "7",
+            "b": "5.7",
+            "c": "7.8",
+            "color": "purple"
+          }
+        },
+        {
+          "id": "lb9",
+          "funcId": "geo3d-set-view",
+          "inputs": {
+            "zoom": "1.5",
+            "duration": "0.3"
+          }
+        },
+        {
+          "id": "lb10",
+          "funcId": "geo3d-show-angles",
+          "inputs": {
+            "id": "tri2",
+            "color": "yellow",
+            "showValues": "true"
+          }
+        },
+        {
+          "id": "lb11",
+          "funcId": "geo3d-label-sides",
+          "inputs": {
+            "id": "tri2",
+            "labels": "a=7,b=?,c=7.8"
+          }
+        },
+        {
+          "id": "lb12",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|b|/sin(|B|)=|a|/sin(|A|)"
+          }
+        },
+        {
+          "id": "lb13",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "replacements": "a=2,b=-3,c=1",
+            "var_B": "[tri2]a0",
+            "var_a": "[tri2]0",
+            "var_A": "[tri2]a2"
+          }
+        },
+        {
+          "id": "lb14",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        }
+      ]
+    }
+  ],
+  "unit-circle": [
+    {
+      "title": "The Unit Circle",
+      "id": "lb65",
+      "layout": "text-graph",
+      "steps": [
+        {
+          "id": "lb66",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "intro",
+            "title": "Unit Circle",
+            "content": "Circle of radius $1$ centered at the origin.|For an angle $\\theta$: $x = \\cos\\theta$ and $y = \\sin\\theta$.",
+            "isList": "true"
+          }
+        },
+        {
+          "id": "lb67",
+          "funcId": "graph-set-viewport",
+          "inputs": {
+            "xMin": "-1.8",
+            "xMax": "1.8",
+            "yMin": "-1.8",
+            "yMax": "1.8"
+          }
+        },
+        {
+          "id": "lb68",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "sqrt(1-x^2)",
+            "id": "top"
+          }
+        },
+        {
+          "id": "lb69",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "-sqrt(1-x^2)",
+            "id": "bot"
+          }
+        },
+        {
+          "id": "lb70",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "1",
+            "y": "0",
+            "id": "p0",
+            "label": "0°"
+          }
+        },
+        {
+          "id": "lb71",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "0",
+            "y": "1",
+            "id": "p90",
+            "label": "90°"
+          }
+        },
+        {
+          "id": "lb72",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "-1",
+            "y": "0",
+            "id": "p180",
+            "label": "180°"
+          }
+        },
+        {
+          "id": "lb73",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "0",
+            "y": "-1",
+            "id": "p270",
+            "label": "270°"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Special Angles — 30°, 45°, 60°",
+      "id": "lb74",
+      "layout": "text-graph",
+      "steps": [
+        {
+          "id": "lb75",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "vals",
+            "title": "Special Values",
+            "content": "$30°$ → $(\\frac{\\sqrt3}{2}, \\frac12)$|$45°$ → $(\\frac{\\sqrt2}{2}, \\frac{\\sqrt2}{2})$|$60°$ → $(\\frac12, \\frac{\\sqrt3}{2})$",
+            "isList": "true"
+          }
+        },
+        {
+          "id": "lb76",
+          "funcId": "graph-set-viewport",
+          "inputs": {
+            "xMin": "-1.8",
+            "xMax": "1.8",
+            "yMin": "-1.8",
+            "yMax": "1.8"
+          }
+        },
+        {
+          "id": "lb77",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "sqrt(1-x^2)",
+            "id": "top"
+          }
+        },
+        {
+          "id": "lb78",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "-sqrt(1-x^2)",
+            "id": "bot"
+          }
+        },
+        {
+          "id": "lb79",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "0.866",
+            "y": "0.5",
+            "id": "p30",
+            "label": "30°"
+          }
+        },
+        {
+          "id": "lb80",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "0.707",
+            "y": "0.707",
+            "id": "p45",
+            "label": "45°"
+          }
+        },
+        {
+          "id": "lb81",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "0.5",
+            "y": "0.866",
+            "id": "p60",
+            "label": "60°"
+          }
+        }
+      ]
+    },
+    {
+      "id": "lb83",
+      "layout": "single-grid",
+      "background": "default",
+      "title": "",
+      "notes": "",
+      "steps": [
+        {
+          "id": "lb84",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "",
+            "title": "",
+            "text": "Chaotic card",
+            "side": "right",
+            "color": "#60a5fa"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -660,7 +660,8 @@
 .lesson-layout--single-arith   .display-slot--arith,
 .lesson-layout--single-mult    .display-slot--mult,
 .lesson-layout--single-clock   .display-slot--clock,
-.lesson-layout--single-numbers .display-slot--numbers {
+.lesson-layout--single-numbers .display-slot--numbers,
+.lesson-layout--single-text    .display-slot--text {
   left: 168px; right: 168px; top: 0; bottom: 0;
   width: auto; height: auto;
   opacity: 1; pointer-events: auto;

@@ -57,7 +57,7 @@ const LAYOUTS = {
   sg: 'single-graph',     sG: 'single-geo',    sq: 'single-grid',
   se: 'single-equation',  sc: 'single-calc',   s3: 'single-3d',
   sm: 'single-mult',      sk: 'single-clock',  sn: 'single-numbers',
-  sM: 'text-mdas',
+  sM: 'text-mdas',        sT: 'single-text',
   // Dual-panel
   tg: 'text-graph',       tG: 'text-geo',      tq: 'text-grid',
   te: 'text-equation',

@@ -1,5 +1,5 @@
 import { useState, useImperativeHandle, forwardRef, useEffect, useRef } from 'react'
-import MathText from './RichText.jsx'
+import MathText, { isPureMathLine } from './RichText.jsx'
 
 // Single animated item row
 function ListItem({ text, entering }) {
@@ -50,7 +50,7 @@ function TextBox({ box }) {
         ) : (
           <div className="tb-body">
             {box.items.map((item, i) => (
-              <p key={i} className="tb-para"><MathText text={item} /></p>
+              <p key={i} className={`tb-para${isPureMathLine(item) ? ' tb-para--eq' : ''}`}><MathText text={item} /></p>
             ))}
           </div>
         )}

@@ -98,6 +98,16 @@ function FitKatex({ html, block }) {
   )
 }
 
+// A line/item whose ENTIRE content is one $...$ or $$...$$ block, with no
+// surrounding words — e.g. a text-box item that's nothing but the formula
+// itself. Callers use this to center that line instead of left-aligning it
+// like ordinary sentences.
+export function isPureMathLine(text) {
+  const resolved = evalExprs(resolveGeoRefs(text ?? '')).trim()
+  const parts = parseMath(resolved)
+  return parts.length === 1 && parts[0].t === 'math'
+}
+
 function renderParts(parts) {
   return parts.map((p, i) => {
     if (p.t === 'text')  return <span key={i}>{p.s}</span>

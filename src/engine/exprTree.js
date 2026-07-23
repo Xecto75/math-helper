@@ -22,6 +22,10 @@ export const negN    = (arg)       => ({ t: 'neg',    id: nextId(), arg })
 // each branch (x₁/x₂) — this node only ever appears in the general, not-yet-
 // branched "x = (-b ± √Δ) / 2a" display.
 export const pm      = (a, b)      => ({ t: 'pm',     id: nextId(), a, b })
+// sin/cos/tan of a numeric argument — same convention as every other angle
+// value in the app (showAngles arcs, [id]aN refs): the argument is DEGREES,
+// not radians, so "sin(45)" means 45°.
+export const trigFn  = (name, arg) => ({ t: 'fn',     id: nextId(), name, arg })
 
 export function isNum(node) { return node?.t === 'num' }
 
@@ -53,7 +57,7 @@ export function findReady(node) {
     return (isSettled(node.a) && isSettled(node.b)) ? node : null
   }
   if (node.t === 'pow')  return isSettled(node.base) ? node : findReady(node.base)
-  if (node.t === 'sqrt' || node.t === 'neg') return isSettled(node.arg) ? node : findReady(node.arg)
+  if (node.t === 'sqrt' || node.t === 'neg' || node.t === 'fn') return isSettled(node.arg) ? node : findReady(node.arg)
   if (node.t === 'pm') {
     // Never "ready" itself — resolving ± is a branch choice made by building
     // a fresh tree per branch (x₁/x₂), not a generic operation. Still dig
@@ -79,6 +83,15 @@ function evalOne(node) {
   if (node.t === 'pow')  return Math.pow(node.base.v, node.exp)
   if (node.t === 'sqrt') return Math.sqrt(node.arg.v)
   if (node.t === 'neg')  return -node.arg.v
+  if (node.t === 'fn') {
+    const rad = node.arg.v * Math.PI / 180
+    switch (node.name) {
+      case 'sin': return Math.sin(rad)
+      case 'cos': return Math.cos(rad)
+      case 'tan': return Math.tan(rad)
+      default:    return NaN
+    }
+  }
   return NaN
 }
 
@@ -112,7 +125,7 @@ export function substituteLabel(node, name, value) {
   }
   if (node.t === 'bin' || node.t === 'pm') { substituteLabel(node.a, name, value); substituteLabel(node.b, name, value) }
   else if (node.t === 'pow') substituteLabel(node.base, name, value)
-  else if (node.t === 'sqrt' || node.t === 'neg') substituteLabel(node.arg, name, value)
+  else if (node.t === 'sqrt' || node.t === 'neg' || node.t === 'fn') substituteLabel(node.arg, name, value)
 }
 
 export function collectLabels(node, out = new Set()) {
@@ -120,7 +133,7 @@ export function collectLabels(node, out = new Set()) {
   if (node.t === 'label') out.add(node.name)
   else if (node.t === 'bin' || node.t === 'pm') { collectLabels(node.a, out); collectLabels(node.b, out) }
   else if (node.t === 'pow') collectLabels(node.base, out)
-  else if (node.t === 'sqrt' || node.t === 'neg') collectLabels(node.arg, out)
+  else if (node.t === 'sqrt' || node.t === 'neg' || node.t === 'fn') collectLabels(node.arg, out)
   return out
 }
 
@@ -132,7 +145,7 @@ export function collectLabelNodeIds(node, name, out = []) {
   if (node.t === 'label' && node.name === name) out.push(node.id)
   else if (node.t === 'bin' || node.t === 'pm') { collectLabelNodeIds(node.a, name, out); collectLabelNodeIds(node.b, name, out) }
   else if (node.t === 'pow') collectLabelNodeIds(node.base, name, out)
-  else if (node.t === 'sqrt' || node.t === 'neg') collectLabelNodeIds(node.arg, name, out)
+  else if (node.t === 'sqrt' || node.t === 'neg' || node.t === 'fn') collectLabelNodeIds(node.arg, name, out)
   return out
 }
 
@@ -143,7 +156,7 @@ export function findPm(node) {
   if (node.t === 'pm') return node
   if (node.t === 'bin') return findPm(node.a) || findPm(node.b)
   if (node.t === 'pow') return findPm(node.base)
-  if (node.t === 'sqrt' || node.t === 'neg') return findPm(node.arg)
+  if (node.t === 'sqrt' || node.t === 'neg' || node.t === 'fn') return findPm(node.arg)
   return null
 }
 
@@ -203,6 +216,17 @@ export function parseTermExpr(content, labels) {
     const rest = s.slice(i)
     const labelM = rest.match(/^__S(\d+)__/)
     if (labelM) { i += labelM[0].length; return label(labels[+labelM[1]]) }
+    // sin/cos/tan — must be checked before the single-letter variable match
+    // below, or "sin(45)" would parse as just the label "s" and silently
+    // drop everything from "in(45)" onward.
+    const fnM = rest.match(/^(sin|cos|tan)\(/)
+    if (fnM) {
+      i += fnM[0].length
+      const arg = parseAddSub()
+      skipWs()
+      if (s[i] === ')') i++
+      return trigFn(fnM[1], arg)
+    }
     const numM = rest.match(/^\d+\.?\d*/)
     if (numM) { i += numM[0].length; return num(parseFloat(numM[0])) }
     const varM = rest.match(/^[a-zA-Zα-ω]/)
@@ -229,6 +253,11 @@ export function parseTermExpr(content, labels) {
       const c = s[i]
       if (c === '*' || c === '×' || c === '·') { i++; node = bin('*', node, parsePow()) }
       else if (c === '/')                      { i++; node = bin('/', node, parsePow()) }
+      // Implicit multiplication: "2(x+4)", "(x+1)(x+2)" — no explicit
+      // operator between a finished factor and the next '(' means '*'.
+      // Without this the parser just stopped here and silently dropped
+      // everything from the '(' onward.
+      else if (c === '(')                      { node = bin('*', node, parsePow()) }
       else break
     }
     return node

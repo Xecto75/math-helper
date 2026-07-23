@@ -13,23 +13,17 @@ export function generateScript(initialSnapshot, originalInput) {
   distributeAllParens(state, script)
 
   // ── 1-2. Combine like terms on both sides ──────────────────────────────────
-  // Collected rather than pushed immediately: the last one (if any) may end
-  // up paired with the very next cross-side move below (see step 3) so the
-  // two settle together instead of one finishing before the other starts.
-  const pendingCombines = [
-    combineOnSide(state, 1, 'left'),   // x-terms
-    combineOnSide(state, 0, 'left'),   // constants
-    combineOnSide(state, 1, 'right'),
-    combineOnSide(state, 0, 'right'),
-  ].filter(acts => acts.length > 0)
+  // Always one step at a time, in order — never bundle with anything else.
+  combineOnSide(state, 1, 'left').forEach(a => script.push(a))   // x-terms
+  combineOnSide(state, 0, 'left').forEach(a => script.push(a))   // constants
+  combineOnSide(state, 1, 'right').forEach(a => script.push(a))
+  combineOnSide(state, 0, 'right').forEach(a => script.push(a))
 
   // ── Quadratic branch — intercept before linear steps ──────────────────────
-  // No pairing opportunity down this path — flush any pending combines now.
   const hasQuadVar  = [...state.left, ...state.right].some(t => t.degree === 2 && t.variable)
   const hasLinearVar = [...state.left, ...state.right].some(t => t.degree === 1 && t.variable)
   const isQuadratic = hasQuadVar && hasLinearVar
   if (isQuadratic) {
-    pendingCombines.forEach(acts => script.push(...acts))
     generateQuadraticScript(state, script)
     return script
   }
@@ -41,9 +35,8 @@ export function generateScript(initialSnapshot, originalInput) {
   const otherSide = varSide === 'left' ? 'right' : 'left'
 
   // ── 3. Move x-terms from the other side onto the variable's side ──────────
-  // sendToOtherSide absorbs the subsequent combine step. Build the action
-  // groups first (without pushing) so the first one can be paired below.
-  const moveGroups = [...state.findByDegree(1, otherSide)].map(term => {
+  // sendToOtherSide absorbs the subsequent combine step.
+  for (const term of [...state.findByDegree(1, otherSide)]) {
     const resultId   = crypto.randomUUID()
     const targetSame = state.findByDegree(1, varSide)
     const combineWithIds = targetSame.map(t => t.id)
@@ -54,18 +47,16 @@ export function generateScript(initialSnapshot, originalInput) {
       ? state[varSide].indexOf(targetSame[0])
       : state[varSide].length
 
-    const acts = [
-      { type: 'showNarration', text: `Move ${fmtTerm(term)} to the other side.` },
-      {
-        type: 'sendToOtherSide',
-        id:            term.id,
-        resultId,
-        combineWithIds,
-        combinedVal,
-        variable:      term.variable,
-        degree:        term.degree,
-      },
-    ]
+    script.push({ type: 'showNarration', text: `Move ${fmtTerm(term)} to the other side.` })
+    script.push({
+      type: 'sendToOtherSide',
+      id:            term.id,
+      resultId,
+      combineWithIds,
+      combinedVal,
+      variable:      term.variable,
+      degree:        term.degree,
+    })
 
     state.remove(term.id)
     combineWithIds.forEach(cid => state.remove(cid))
@@ -78,26 +69,7 @@ export function generateScript(initialSnapshot, originalInput) {
         degree:      1,
       }), varSide, firstPos)
     }
-    return acts
-  })
-
-  // Push the leading combines untouched. If there's a trailing combine AND
-  // an x-term about to move, run that last combine and the first move
-  // together — they touch different terms, so nothing is lost by letting
-  // them settle in the same beat instead of one finishing before the next
-  // starts (avoids the "gap, then fill" pause the sequential version had).
-  const trailingCombine = moveGroups.length > 0 ? pendingCombines.pop() : null
-  pendingCombines.forEach(acts => script.push(...acts))
-  if (trailingCombine) {
-    script.push({
-      type: 'ggb-parallel',
-      actions: [
-        { type: 'sequence', actions: trailingCombine },
-        { type: 'sequence', actions: moveGroups.shift() },
-      ],
-    })
   }
-  moveGroups.forEach(acts => script.push(...acts))
 
   // ── 4. Move the constant off the variable's side ──────────────────────────
   // Skip if there is no variable term to isolate (e.g. pure numeric equation like 25 = 25)
@@ -191,12 +163,26 @@ export function generateScript(initialSnapshot, originalInput) {
     }
   }
 
-  // ── 5. Divide ──────────────────────────────────────────────────────────────
-  const xTerm   = state.findByDegree(1, varSide)[0]
-  const divisor = xTerm?.coefficient ?? 1
-  if (xTerm && divisor !== 1) {
-    script.push({ type: 'showNarration', text: `Divide both sides by ${divisor}.` })
-    script.push({ type: 'divideBothSides', divisor })
+  // ── 5. Divide / multiply to isolate the variable ───────────────────────────
+  // "x/2 = 4" is more naturally cleared by multiplying both sides by 2 than
+  // by dividing both sides by 0.5 — same result, but "multiply by 2" is how
+  // this is actually taught, and it's the operation a unit-fraction
+  // coefficient (1/n) came from in the first place. Only fires when the
+  // reciprocal is itself a clean whole number; every other coefficient
+  // (whole numbers, non-unit fractions) still divides exactly as before.
+  const xTerm = state.findByDegree(1, varSide)[0]
+  const coeff = xTerm?.coefficient ?? 1
+  if (xTerm && Math.abs(coeff - 1) > 1e-9) {
+    const reciprocal    = 1 / coeff
+    const roundedRecip  = Math.round(reciprocal)
+    const isUnitFraction = coeff < 1 && Math.abs(reciprocal - roundedRecip) < 1e-6 && roundedRecip > 1
+    if (isUnitFraction) {
+      script.push({ type: 'showNarration', text: `Multiply both sides by ${roundedRecip}.` })
+      script.push({ type: 'multiplyBothSides', multiplier: roundedRecip })
+    } else {
+      script.push({ type: 'showNarration', text: `Divide both sides by ${coeff}.` })
+      script.push({ type: 'divideBothSides', divisor: coeff })
+    }
   }
 
   // ── 5b. Square root — if a degree-2 term remains isolated, take √ both sides ──
@@ -206,8 +192,9 @@ export function generateScript(initialSnapshot, originalInput) {
     script.push({ type: 'racineDesBords' })
   }
 
-  // ── 6. Done — no answer box; just hold on the solved equation for a beat ─────
-  script.push({ type: 'pause', seconds: 1.5 })
+  // ── 6. Done — full-solve-current's own highlight box fires right after this
+  // script finishes, so there's no need to hold here too (used to, back before
+  // that highlight existed — this pause was just adding dead air in front of it).
 
   return script
 }
@@ -228,15 +215,36 @@ function distributeAllParens(state, script) {
     const groups = arr.filter(t => t.isParenGroup)
     for (const group of [...groups]) {
       const outerVal = group.sign === '-' ? -group.parenCoeff : group.parenCoeff
+      const outerVar = group.parenCoeffVariable ?? null
+      const outerDeg = group.parenCoeffDegree ?? 1
       const expandedTerms = (group.innerTerms ?? []).map(inner => {
-        const innerVal   = inner.sign === '-' ? -inner.coefficient : inner.coefficient
+        const innerVal    = inner.sign === '-' ? -inner.coefficient : inner.coefficient
         const expandedVal = outerVal * innerVal
+
+        // Polynomial multiplication: same variable on both sides → degrees
+        // add (x·x=x²); only one side has a variable → it carries straight
+        // through (2x·4=8x, 2·x=2x); genuinely different variables (rare,
+        // e.g. 2x(y+4)) has no clean single-variable representation here —
+        // fall back to treating it as a plain product label.
+        let variable = inner.variable ?? outerVar
+        let degree   = 0
+        if (outerVar && inner.variable && outerVar === inner.variable) {
+          degree = outerDeg + inner.degree
+        } else if (outerVar && !inner.variable) {
+          degree = outerDeg
+        } else if (!outerVar && inner.variable) {
+          degree = inner.degree
+        } else if (outerVar && inner.variable) {
+          variable = `${outerVar}${inner.variable}`
+          degree   = 1
+        }
+
         return {
           id:          crypto.randomUUID(),
           sign:        expandedVal >= 0 ? '+' : '-',
           coefficient: Math.abs(expandedVal),
-          variable:    inner.variable,
-          degree:      inner.degree,
+          variable,
+          degree,
         }
       })
 
@@ -261,14 +269,15 @@ function distributeAllParens(state, script) {
 }
 
 function fmtParenGroup(group) {
-  const coeff = group.parenCoeff === 1 ? '' : String(parseFloat(group.parenCoeff.toFixed(4)))
+  const pgVar = group.parenCoeffVariable ?? ''
+  const coeff = (group.parenCoeff === 1 && pgVar) ? '' : String(parseFloat(group.parenCoeff.toFixed(3)))
   const sign  = group.sign === '-' ? '−' : ''
   const inner = (group.innerTerms ?? []).map((t, i) => {
     const sep = i > 0 ? (t.sign === '-' ? ' − ' : ' + ') : (t.sign === '-' ? '−' : '')
-    const c   = t.coefficient === 1 && t.variable ? '' : String(parseFloat(Math.abs(t.coefficient).toFixed(4)))
+    const c   = t.coefficient === 1 && t.variable ? '' : String(parseFloat(Math.abs(t.coefficient).toFixed(3)))
     return `${sep}${c}${t.variable ?? ''}`
   }).join('')
-  return `${sign}${coeff}(${inner})`
+  return `${sign}${coeff}${pgVar}(${inner})`
 }
 
 // ── combineOnSide ─────────────────────────────────────────────────────────────
@@ -344,7 +353,7 @@ function fmtTermFull(term) {
   const sup  = { 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' }
   const deg  = term.degree >= 2 ? (sup[term.degree] ?? `^${term.degree}`) : ''
   const sign = term.sign === '-' ? '−' : ''
-  const coeff = (term.coefficient === 1 && term.variable) ? '' : String(parseFloat(term.coefficient.toFixed(4)))
+  const coeff = (term.coefficient === 1 && term.variable) ? '' : String(parseFloat(term.coefficient.toFixed(3)))
   return `${sign}${coeff}${term.variable ?? ''}${deg}`
 }
 
@@ -430,10 +439,10 @@ export function generateQuadraticScript(state, script) {
   // the substitution happens live in the equation panel below).
   script.push({
     type: 'text-create', id: 'quad-formula',
-    title: 'Formule quadratique',
+    title: 'Quadratic Formula',
     items: [
       `$${v} = \\dfrac{-b \\pm \\sqrt{b^2-4ac}}{2a}$`,
-      'où $\\Delta = b^2-4ac$ est le **discriminant** : son signe indique le nombre de solutions (2, 1 ou 0).',
+      'where $\\Delta = b^2-4ac$ is the **discriminant**: its sign indicates the number of solutions (2, 1, or 0).',
     ],
     isList: false,
   })
@@ -512,10 +521,10 @@ export function generateQuadraticScript(state, script) {
     script.push({ type: 'pause', seconds: 0.5 })
     script.push({ type: 'full-solve-current' })
     script.push({ type: 'pause', seconds: 0.8 })
-    script.push({ type: 'text-add-item', id: 'quad-formula', text: '$\\Delta = 0$ → une seule solution' })
+    script.push({ type: 'text-add-item', id: 'quad-formula', text: '$\\Delta = 0$ → one solution' })
     script.push({ type: 'showAnswer', text: `${v} = ${fmt(x)}` })
   } else {
-    script.push({ type: 'text-add-item', id: 'quad-formula', text: '$\\Delta < 0$ → pas de solution réelle' })
+    script.push({ type: 'text-add-item', id: 'quad-formula', text: '$\\Delta < 0$ → no real solution' })
   }
 
   script.push({ type: 'pause', seconds: 2.0 })

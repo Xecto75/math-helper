@@ -4,8 +4,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const PAGE_BACKGROUNDS = [
-  { id: 'board',   icon: '🖊️', label: { en: 'Blackboard', fr: 'Tableau' } },
-  { id: 'stomp',   icon: '🌿', label: { en: 'Outdoor',    fr: 'Extérieur' } },
+  { id: 'board',   icon: '🖊️', label: 'Blackboard' },
+  { id: 'stomp',   icon: '🌿', label: 'Outdoor' },
 ]
 
 // Input definition shape:  { id, label, type: 'text'|'number'|'select', options?, default?, placeholder? }
@@ -13,15 +13,15 @@ export const PAGE_BACKGROUNDS = [
 export const SECONDARY_ACTIONS = [
   {
     funcId: 'narrate',
-    icon: '💬', label: { en: 'Narration',   fr: 'Narration' },
-    desc:  { en: 'Spoken + written text', fr: 'Texte parlé et écrit' },
+    icon: '💬', label: 'Narration',
+    desc:  'Spoken + written text',
     inputs: { text: '' },
     inputDefs: [{ id: 'text', label: 'Text', type: 'text', placeholder: 'What the teacher says…' }],
   },
   {
     funcId: 'celebrate',
-    icon: '🎉', label: { en: 'Celebration', fr: 'Célébration' },
-    desc:  { en: 'Confetti burst', fr: 'Confettis' },
+    icon: '🎉', label: 'Celebration',
+    desc:  'Confetti burst',
     inputs: {},
     inputDefs: [],
   },
@@ -33,14 +33,14 @@ export const PRIMARY_DISPLAYS = [
   {
     id: 'clock',
     icon: '🕐', color: '#22d3ee',
-    label:  { en: 'Clock',         fr: 'Horloge' },
-    desc:   { en: 'Set and read an analog clock', fr: 'Règle et lis une horloge analogique' },
+    label:  'Clock',
+    desc:   'Set and read an analog clock',
     layout: 'single-clock',
     initAction: { funcId: 'clock-show', inputs: { hour: '3', minute: '0' } },
     subActions: [
       {
         funcId: 'clock-show', icon: '🕐',
-        label: { en: 'Show Clock',       fr: 'Afficher horloge' },
+        label: 'Show Clock',
         inputs: { hour: '3', minute: '0' },
         inputDefs: [
           { id: 'hour',   label: 'Hour',   type: 'number', default: '3', placeholder: '1–12' },
@@ -49,7 +49,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'clock-set-time', icon: '⏩',
-        label: { en: 'Animate to Time', fr: 'Animer' },
+        label: 'Animate to Time',
         inputs: { hour: '6', minute: '30' },
         inputDefs: [
           { id: 'hour',   label: 'Hour',   type: 'number', default: '6', placeholder: '1–12' },
@@ -58,7 +58,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'clock-highlight-hand', icon: '👆',
-        label: { en: 'Highlight Hand', fr: 'Mettre en évidence' },
+        label: 'Highlight Hand',
         inputs: { hand: 'hour' },
         inputDefs: [
           { id: 'hand', label: 'Hand', type: 'select', default: 'hour', options: [{ value: 'hour', label: 'Hour' }, { value: 'minute', label: 'Minute' }] },
@@ -71,14 +71,14 @@ export const PRIMARY_DISPLAYS = [
   {
     id: 'numbers',
     icon: '🎲', color: '#4ade80',
-    label: { en: 'Number Dots',  fr: 'Points Chiffres' },
-    desc:  { en: 'Show 1–9 using subitizing dot patterns', fr: 'Affiche 1–9 avec des points comme sur un dé' },
+    label: 'Number Dots',
+    desc:  'Show 1–9 using subitizing dot patterns',
     layout: 'single-numbers',
     initAction: { funcId: 'numbers-show', inputs: {} },
     subActions: [
       {
         funcId: 'numbers-show-numeral', icon: '🔢',
-        label: { en: 'Reveal Numeral', fr: 'Reveal Numeral' },
+        label: 'Reveal Numeral',
         inputs: { n: '1' },
         inputDefs: [
           { id: 'n', label: 'Number (1–9)', type: 'number', default: '1', placeholder: '1–9' },
@@ -91,20 +91,20 @@ export const PRIMARY_DISPLAYS = [
   {
     id: 'mult',
     icon: '✖️', color: '#c084fc',
-    label:  { en: 'Times Table',  fr: 'Table de ×' },
-    desc:   { en: 'Interactive multiplication table', fr: 'Table de multiplication interactive' },
+    label:  'Times Table',
+    desc:   'Interactive multiplication table',
     layout: 'single-mult',
     initAction: { funcId: 'mult-table-show', inputs: { maxN: '10' } },
     subActions: [
       {
         funcId: 'mult-table-show', icon: '✖️',
-        label: { en: 'Show Table', fr: 'Afficher la table' },
+        label: 'Show Table',
         inputs: { maxN: '10' },
         inputDefs: [{ id: 'maxN', label: 'Size', type: 'number', default: '10', placeholder: 'up to 12' }],
       },
       {
         funcId: 'mult-table-highlight', icon: '✨',
-        label: { en: 'Highlight Cell', fr: 'Mettre en évidence une case' },
+        label: 'Highlight Cell',
         inputs: { row: '3', col: '4' },
         inputDefs: [
           { id: 'row', label: 'Row',    type: 'number', default: '3' },
@@ -118,14 +118,14 @@ export const PRIMARY_DISPLAYS = [
   {
     id: 'mdas',
     icon: '🧮', color: '#fb923c',
-    label:  { en: 'Order of Operations', fr: 'Ordre des Opérations' },
-    desc:   { en: 'Step-by-step PEMDAS walkthrough', fr: 'Résolution pas à pas PEMDAS' },
+    label:  'Order of Operations',
+    desc:   'Step-by-step PEMDAS walkthrough',
     layout: 'text-mdas',
     initAction: { funcId: 'mdas-example', inputs: { expr: '3 × 2 + 4' } },
     subActions: [
       {
         funcId: 'mdas-example', icon: '🧮',
-        label: { en: 'Solve Expression', fr: 'Résoudre l\'expression' },
+        label: 'Solve Expression',
         inputs: { expr: '3 × 2 + 4' },
         inputDefs: [{ id: 'expr', label: 'Expression', type: 'text', placeholder: '3 × 2 + 4' }],
       },
@@ -136,14 +136,14 @@ export const PRIMARY_DISPLAYS = [
   {
     id: 'pizza',
     icon: '🍕', color: '#f59e0b',
-    label:  { en: 'Pizza Fractions', fr: 'Pizza Fractions' },
-    desc:   { en: 'Visual fraction model with pizza slices', fr: 'Modèle visuel de fractions' },
+    label:  'Pizza Fractions',
+    desc:   'Visual fraction model with pizza slices',
     layout: 'single-pizza',
     initAction: { funcId: 'pizza-show', inputs: { slices: '4', shaded: '1', label: 'true' } },
     subActions: [
       {
         funcId: 'pizza-show', icon: '🍕',
-        label: { en: 'Show Pizza', fr: 'Afficher pizza' },
+        label: 'Show Pizza',
         inputs: { slices: '4', shaded: '1', label: 'true' },
         inputDefs: [
           { id: 'slices', label: 'Total slices', type: 'number', default: '4', placeholder: '2–12' },
@@ -153,7 +153,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'pizza-shade', icon: '🎨',
-        label: { en: 'Shade Slices', fr: 'Colorier des parts' },
+        label: 'Shade Slices',
         inputs: { shaded: '2' },
         inputDefs: [
           { id: 'shaded', label: 'Shaded slices', type: 'number', default: '2' },
@@ -161,7 +161,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'pizza-compare', icon: '⚖️',
-        label: { en: 'Compare Two Pizzas', fr: 'Comparer deux pizzas' },
+        label: 'Compare Two Pizzas',
         inputs: { slices2: '8', shaded2: '3', label2: 'true' },
         inputDefs: [
           { id: 'slices2', label: 'Slices (right)',  type: 'number', default: '8' },
@@ -176,14 +176,14 @@ export const PRIMARY_DISPLAYS = [
   {
     id: 'counter',
     icon: '🍎', color: '#ef4444',
-    label:  { en: 'Object Counter', fr: 'Compteur d\'Objets' },
-    desc:   { en: 'Count objects — great for addition & multiplication', fr: 'Compter des objets — idéal pour addition & multiplication' },
+    label:  'Object Counter',
+    desc:   'Count objects — great for addition & multiplication',
     layout: 'single-counter',
     initAction: { funcId: 'counter-show', inputs: { count: '5', type: '🍎' } },
     subActions: [
       {
         funcId: 'counter-show', icon: '🍎',
-        label: { en: 'Show Objects', fr: 'Afficher objets' },
+        label: 'Show Objects',
         inputs: { count: '5', type: '🍎' },
         inputDefs: [
           { id: 'count', label: 'Count', type: 'number', default: '5', placeholder: '1–30' },
@@ -192,7 +192,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'counter-add', icon: '➕',
-        label: { en: 'Add Objects', fr: 'Ajouter des objets' },
+        label: 'Add Objects',
         inputs: { count: '3', type: '' },
         inputDefs: [
           { id: 'count', label: 'How many to add', type: 'number', default: '3' },
@@ -201,7 +201,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'counter-group', icon: '⬛',
-        label: { en: 'Group Objects', fr: 'Grouper les objets' },
+        label: 'Group Objects',
         inputs: { groupSize: '2', color: '#818cf8' },
         inputDefs: [
           { id: 'groupSize', label: 'Group size', type: 'number', default: '2' },
@@ -210,7 +210,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'counter-remove', icon: '➖',
-        label: { en: 'Remove Objects', fr: 'Retirer des objets' },
+        label: 'Remove Objects',
         inputs: { count: '2' },
         inputDefs: [
           { id: 'count', label: 'How many to remove', type: 'number', default: '2' },
@@ -223,14 +223,14 @@ export const PRIMARY_DISPLAYS = [
   {
     id: 'numberline',
     icon: '📏', color: '#38bdf8',
-    label:  { en: 'Number Line',   fr: 'Droite Numérique' },
-    desc:   { en: 'Animated number line — counting, negatives, fractions', fr: 'Droite numérique animée — compter, négatifs, fractions' },
+    label:  'Number Line',
+    desc:   'Animated number line — counting, negatives, fractions',
     layout: 'single-numberline',
     initAction: { funcId: 'numberline-show', inputs: { from: '0', to: '10' } },
     subActions: [
       {
         funcId: 'numberline-show', icon: '📏',
-        label: { en: 'Show Number Line', fr: 'Afficher la droite' },
+        label: 'Show Number Line',
         inputs: { from: '0', to: '10' },
         inputDefs: [
           { id: 'from', label: 'Start', type: 'number', default: '0' },
@@ -239,7 +239,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'numberline-mark', icon: '📍',
-        label: { en: 'Mark a Point', fr: 'Marquer un point' },
+        label: 'Mark a Point',
         inputs: { value: '5', label: '', color: '#ef4444' },
         inputDefs: [
           { id: 'value', label: 'Value',       type: 'number', default: '5' },
@@ -249,7 +249,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'numberline-jump', icon: '🦘',
-        label: { en: 'Jump (add/subtract)', fr: 'Sauts (+ ou −)' },
+        label: 'Jump (add/subtract)',
         inputs: { from: '2', steps: '3', size: '1', color: '#4ade80', label: '' },
         inputDefs: [
           { id: 'from',  label: 'Start value',    type: 'number', default: '2' },
@@ -261,7 +261,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'numberline-shade', icon: '🎨',
-        label: { en: 'Shade a Range', fr: 'Colorier une plage' },
+        label: 'Shade a Range',
         inputs: { from: '0', to: '5', color: '#818cf840' },
         inputDefs: [
           { id: 'from',  label: 'From',  type: 'number', default: '0' },
@@ -276,14 +276,14 @@ export const PRIMARY_DISPLAYS = [
   {
     id: 'shapes',
     icon: '🔷', color: '#60a5fa',
-    label:  { en: 'Shape Board',  fr: 'Tableau de Formes' },
-    desc:   { en: 'Draw and label geometric shapes', fr: 'Dessine et étiquette des formes géométriques' },
+    label:  'Shape Board',
+    desc:   'Draw and label geometric shapes',
     layout: 'single-geo',
     initAction: { funcId: 'geo-create-polygon', inputs: { shapeId: 'shape1', 'shape-type': 'rectangle', values: '240,140', fillColor: '#818cf822', borderColor: '#818cf8' } },
     subActions: [
       {
         funcId: 'geo-create-polygon', icon: '🔷',
-        label: { en: 'Draw Shape', fr: 'Dessiner une forme' },
+        label: 'Draw Shape',
         inputs: { shapeId: 'shape1', 'shape-type': 'rectangle', values: '240,140', fillColor: '#818cf822', borderColor: '#818cf8' },
         inputDefs: [
           { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
@@ -307,7 +307,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'geo-label-sides', icon: '🏷️',
-        label: { en: 'Label Sides', fr: 'Étiqueter les côtés' },
+        label: 'Label Sides',
         inputs: { shapeId: 'shape1', labels: '6 cm,4 cm,6 cm,4 cm' },
         inputDefs: [
           { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
@@ -316,7 +316,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'geo-show-measure', icon: '📐',
-        label: { en: 'Show Measurement', fr: 'Afficher la mesure' },
+        label: 'Show Measurement',
         inputs: { shapeId: 'shape1', color: '#ef4444', angle: 'false', label: '' },
         inputDefs: [
           { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
@@ -327,7 +327,7 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'geo-show-angles', icon: '∠',
-        label: { en: 'Show Angles', fr: 'Afficher les angles' },
+        label: 'Show Angles',
         inputs: { shapeId: 'shape1', color: '#fbbf24' },
         inputDefs: [
           { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
@@ -336,19 +336,19 @@ export const PRIMARY_DISPLAYS = [
       },
       {
         funcId: 'geo-highlight-shape', icon: '✨',
-        label: { en: 'Highlight Shape', fr: 'Mettre en évidence' },
+        label: 'Highlight Shape',
         inputs: { shapeId: 'shape1' },
         inputDefs: [{ id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' }],
       },
       {
         funcId: 'geo-erase-shape', icon: '🗑️',
-        label: { en: 'Erase Shape', fr: 'Effacer la forme' },
+        label: 'Erase Shape',
         inputs: { shapeId: 'shape1' },
         inputDefs: [{ id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' }],
       },
       {
         funcId: 'geo-clear', icon: '🗑️',
-        label: { en: 'Clear All', fr: 'Tout effacer' },
+        label: 'Clear All',
         inputs: {}, inputDefs: [],
       },
     ],

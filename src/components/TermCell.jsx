@@ -9,7 +9,22 @@ function supStr(n) {
 // an eq-create string (see parseEquation.js's substitutePi) — show the glyph
 // instead of the raw decimal everywhere a coefficient is formatted for display.
 function fmtNum(n) {
-  return Math.abs(n - Math.PI) < 1e-9 ? 'π' : String(parseFloat(n.toFixed(4)))
+  return Math.abs(n - Math.PI) < 1e-9 ? 'π' : String(parseFloat(n.toFixed(3)))
+}
+
+// The ONE place an exponent's markup/color/font is decided — a plain sibling
+// span sitting just outside its base's own .term-cell, same as the generic
+// expr-tree's pow node always rendered it (e.g. "r²" in "π×r²×h"). A plain
+// polynomial term's power (e.g. "a³") now renders through this exact same
+// path instead of a second, separately-styled box-internal span — see the
+// "Regular polynomial cell" case below, which now wraps its .term-cell in an
+// .expr-group exactly like ExprNode's 'pow' case does.
+function Exponent({ value, color }) {
+  return (
+    <span className="term-exp" style={color ? { color } : undefined}>
+      {value}
+    </span>
+  )
 }
 
 function FracSubTerm({ sub, pos }) {
@@ -105,6 +120,16 @@ function ExprNode({ node, parentPrec = 0, isRightChild = false, color }) {
       </span>
     )
 
+  if (node.t === 'fn')
+    return (
+      <span className="expr-group" data-expr-id={node.id}>
+        <span className="fn-name">{node.name}</span>
+        <span className="pg-open">(</span>
+        <ExprNode node={node.arg} parentPrec={0} color={color} />
+        <span className="pg-close">)</span>
+      </span>
+    )
+
   if (node.t === 'pow') {
     const baseNeedsParens = node.base.t === 'bin' || node.base.t === 'neg'
     return (
@@ -112,7 +137,7 @@ function ExprNode({ node, parentPrec = 0, isRightChild = false, color }) {
         {baseNeedsParens && <span className="pg-open">(</span>}
         <ExprNode node={node.base} parentPrec={0} color={color} />
         {baseNeedsParens && <span className="pg-close">)</span>}
-        <span className="term-exp">{supStr(node.exp)}</span>
+        <Exponent value={supStr(node.exp)} color={color} />
       </span>
     )
   }
@@ -245,14 +270,24 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
     )
   }
 
-  // ── Paren-group cell e.g. 2(x+3) ─────────────────────────────────────────
+  // ── Paren-group cell e.g. 2(x+3) — same convention as the generic
+  // expression tree: every number is its own bordered .term-cell chip,
+  // parens/operators are plain unboxed text, never one shared box around
+  // the whole group. Class names (.pg-coeff / .pg-inner-val) are kept as
+  // additional markers so distributeParentheses's animation can still find
+  // these exact elements — only how they're boxed changes.
   if (term.isParenGroup) {
-    const coeffStr = term.parenCoeff === 1 ? '' : fmtNum(term.parenCoeff)
+    // The multiplier itself can carry a variable (2x(x+4)) — same monomial
+    // convention as an ordinary term: coefficient omitted only when it's
+    // exactly 1 AND there's a variable to stand on its own ("x", not "1x").
+    const pgVar    = term.parenCoeffVariable ?? ''
+    const pgDeg    = (term.parenCoeffDegree ?? 1) >= 2 ? supStr(term.parenCoeffDegree) : ''
+    const coeffStr = (term.parenCoeff === 1 && pgVar) ? '' : fmtNum(term.parenCoeff)
     return (
       <div className="term-wrap" ref={ref}>
         {showOp && <span className="term-op">{term.sign === '-' ? '−' : '+'}</span>}
-        <div className="term-cell term-cell--paren-group" data-id={term.id}>
-          <span className="pg-coeff">{coeffStr || '​'}</span>
+        <span className="expr-group" data-id={term.id}>
+          <div className="term-cell pg-coeff">{(coeffStr || pgVar) ? <>{coeffStr}{pgVar}{pgDeg}</> : '​'}</div>
           <span className="pg-open">(</span>
           {(term.innerTerms ?? []).map((inner, i) => {
             const isNeg = inner.sign === '-'
@@ -262,14 +297,14 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
             const deg   = inner.degree >= 2 ? supStr(inner.degree) : ''
             return (
               <span key={i} className="pg-inner-term">
-                {i > 0 && <span className="pg-sep">{isNeg ? ' − ' : ' + '}</span>}
-                {i === 0 && isNeg && <span className="pg-sep">−</span>}
-                <span className="pg-inner-val">{c}{v}{deg}</span>
+                {i > 0 && <span className="term-op">{isNeg ? '−' : '+'}</span>}
+                {i === 0 && isNeg && <span className="term-op">−</span>}
+                <div className="term-cell pg-inner-val">{c}{v}{deg}</div>
               </span>
             )
           })}
           <span className="pg-close">)</span>
-        </div>
+        </span>
       </div>
     )
   }
@@ -309,18 +344,29 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
   const showExp = !!(term.degree >= 2 || ((term.variable || term.symbolicLabel !== undefined) && (term.degree < 0 || term.showDegree)))
   const expText = showExp ? supStr(term.degree) : ''
 
+  // Exponent sits OUTSIDE the bordered box — same .expr-group wrapper
+  // ExprNode's 'pow' case uses for e.g. "r²", so a plain power like "a³"
+  // reads identically instead of boxing its exponent in with the base.
+  const cell = (
+    <div className="term-cell" data-id={term.id} data-degree={term.degree} style={term.color ? { color: term.color } : undefined}>
+      {term.negBase && <span className="term-coeff">(−</span>}
+      {showCoeff && <span className="term-coeff">{coeffText}</span>}
+      {term.variable && <span className="term-var">{term.variable}</span>}
+      {term.negBase && <span className="term-coeff">)</span>}
+    </div>
+  )
+
   return (
     <div className="term-wrap" ref={ref}>
       {showOp && (
         <span className="term-op">{term.sign === '-' ? '−' : '+'}</span>
       )}
-      <div className="term-cell" data-id={term.id} data-degree={term.degree} style={term.color ? { color: term.color } : undefined}>
-        {term.negBase && <span className="term-coeff">(−</span>}
-        {showCoeff && <span className="term-coeff">{coeffText}</span>}
-        {term.variable && <span className="term-var">{term.variable}</span>}
-        {term.negBase && <span className="term-coeff">)</span>}
-        {showExp && <span className="term-exp" style={term.color ? { color: 'var(--text-h)' } : undefined}>{expText}</span>}
-      </div>
+      {showExp ? (
+        <span className="expr-group" style={{ alignItems: 'flex-start' }}>
+          {cell}
+          <Exponent value={expText} color={term.color} />
+        </span>
+      ) : cell}
     </div>
   )
 })

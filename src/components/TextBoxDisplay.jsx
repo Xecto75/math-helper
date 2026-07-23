@@ -23,9 +23,9 @@ function TextBox({ box }) {
     return () => cancelAnimationFrame(id)
   }, [])
 
-  // No accent set → neutral gray, not a color pulled out of thin air. Only a
-  // real accent color (tied to a specific matching element) should show here.
-  const accent = (box.color && box.color !== '') ? box.color : 'var(--text)'
+  // No accent set → reserved blue, the app-wide default whenever a color is
+  // left empty.
+  const accent = (box.color && box.color !== '') ? box.color : '#60a5fa'
   const count  = box.items.length
   const scale  = count <= 1 ? 2.0 : count <= 2 ? 1.5 : count <= 3 ? 1.2 : 1.0
   return (
@@ -39,7 +39,11 @@ function TextBox({ box }) {
           <MathText text={box.title} />
         </div>
       )}
-      {box.isList ? (
+      {box.isList === 'steps' ? (
+          <ol className="tb-list tb-list--steps">
+            {box.items.map((item, i) => <ListItem key={`${i}_${item}`} text={item} />)}
+          </ol>
+        ) : box.isList ? (
           <ul className="tb-list">
             {box.items.map((item, i) => <ListItem key={`${i}_${item}`} text={item} />)}
           </ul>

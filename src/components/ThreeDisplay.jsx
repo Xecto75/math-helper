@@ -107,7 +107,7 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       const existing = labelsRef.current.get(id)
       if (existing) { existing.el.remove(); labelsRef.current.delete(id) }
 
-      const color = style.color ?? '#a855f7'
+      const color = style.color ?? '#60a5fa'
       const el = document.createElement('div')
       el.textContent = text
       Object.assign(el.style, {

@@ -62,12 +62,12 @@ export const T = {
 
 /**
  * Translate a key to the given language, with optional variable interpolation.
- * Falls back to French, then to the raw key if not found.
+ * Falls back to English, then to the raw key if not found.
  *
  * t('mdas.step.mult', 'en', { left: 4, right: 2, result: 8 })
  * → "Multiplication first: 4 × 2 = 8"
  */
-export function t(key, lang = 'fr', vars = {}) {
-  const str = T[lang]?.[key] ?? T.fr?.[key] ?? key
+export function t(key, lang = 'en', vars = {}) {
+  const str = T[lang]?.[key] ?? T.en?.[key] ?? key
   return str.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`)
 }

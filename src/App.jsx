@@ -11,11 +11,13 @@ import ObjectCounter        from './components/ObjectCounter.jsx'
 import NumberLineDisplay    from './components/NumberLineDisplay.jsx'
 import GeometryDisplay      from './components/GeometryDisplay.jsx'
 import DesmosDisplay        from './components/DesmosDisplay.jsx'
+import SliderPanel           from './components/SliderPanel.jsx'
 import ThreeDisplay         from './components/ThreeDisplay.jsx'
 import TableDisplay         from './components/TableDisplay.jsx'
 import TextBoxDisplay       from './components/TextBoxDisplay.jsx'
 import CommentLayer         from './components/CommentLayer.jsx'
 import LessonBuilder        from './components/LessonBuilder.jsx'
+import { ExerciseQuestionBar, ExerciseQuestionHero, ExerciseAnswerBar } from './components/ExercisePanel.jsx'
 import Sidebar             from './components/Sidebar.jsx'
 import MathText             from './components/RichText.jsx'
 import LibraryView          from './views/LibraryView.jsx'
@@ -29,6 +31,7 @@ import * as tableEngine     from './engine/tableEngine.js'
 import * as textEngine      from './engine/textEngine.js'
 import * as geometryEngine  from './engine/geometryEngine.js'
 import * as threeEngine     from './engine/threeEngine.js'
+import { clearSavedValues } from './engine/valueRefs.js'
 import { MDAS_PRESETS }     from './engine/demoScripts.js'
 import { LESSON_GRADES }   from './data/builtinLessons.js'
 import { u }               from './i18n/uiText.js'
@@ -43,9 +46,10 @@ import {
   demoEquationDivide, demoEquationFullSolve, demoEquationCreate, demoEquationDistribute, demoQuadraticSolve,
   demoGeoCreatePolygon, demoGeoEraseShape, demoGeoMoveShape,
   demoGeoHighlightShape, demoGeoLabelSides, demoGeoAddText, demoGeoClear, demoGeoShowMeasure, demoGeoShowAreaMeasures,
-  demoReplaceVariable, demoRacineDesBords, demoDisparitionExposant, demoApplyInverseTrig,
+  demoGeoShowPerimeterMeasures,
+  demoReplaceVariable, demoSaveResult, demoRacineDesBords, demoDisparitionExposant, demoApplyInverseTrig,
   demoShowAngles, demoShowArrow, demoRemoveArrow, demoHighlightAngle, demoGeoHighlightEdge,
-  demoGraphPlotFunction, demoGraphRemoveFunction, demoGraphShadeArea,
+  demoGraphPlotFunction, demoGraphRemoveFunction, demoGraphShadeArea, demoGraphBestFitLine,
   demoGraphFindIntersections, demoGraphAddPoint, demoGraphRemovePoint, demoGraphAdjustView,
   demoGraphScatterPlot, demoGraphRemoveScatterPlot,
   demoGraphAddSegment, demoGraphRemoveSegment, demoGraphSegmentTick, demoGraphRemoveSegmentTick,
@@ -65,6 +69,7 @@ import {
   demoTableCreate, demoTableCreateGrid, demoTableEraseGrid, demoTableAddColumn,
   demoTableRemoveColumn, demoTableAddRow, demoTableRemoveRow,
   demoTableChangeValue, demoTableChangeValues,
+  demoTableHighlightRow, demoTableClearRowHighlight,
   demoAddCommentGraph, demoAddCommentGraphFunc, demoAddCommentGraphArea,
   demoAddCommentGrid, demoAddCommentGeo, demoAddCommentGeoEdge,
   demoAddCommentEquation, demoAddCommentFree, demoClearComments, demoUpdateComment, demoNarrate,
@@ -76,6 +81,7 @@ import {
   demoMultTableShow, demoMultHighlight,
   demoClockShow, demoClockSetTime, demoClockHighlightHand,
   demoMdasExample,
+  demoSetLayout,
 } from './engine/demoScripts.js'
 import { generateLesson } from './api/generateLesson.js'
 import './App.css'
@@ -98,6 +104,23 @@ function pagesFromJson(jsonStr) {
       return { id: appUid(), funcId: s.func, inputs: { ...def, ...(s.inputs ?? {}) } }
     }),
   }))
+}
+
+// A 'set-layout' step splits its page into its own extra dot in the lesson
+// pagination — the layout change only actually happens once the viewer
+// clicks to it, instead of firing automatically mid-page. Each segment
+// always replays its page from step 0 (never a lightweight continuation),
+// so jumping straight to a later segment — e.g. skipping page 1 entirely —
+// still renders correctly instead of assuming the prior segment already ran.
+function expandPageSegments(pg) {
+  const breaks = []
+  pg.steps.forEach((s, i) => { if (s.funcId === 'set-layout') breaks.push(i) })
+  if (!breaks.length) return [{ pg, stopStep: null }]
+  return [...breaks.map(stopStep => ({ pg, stopStep })), { pg, stopStep: null }]
+}
+
+function expandLessonPages(pages) {
+  return (pages ?? []).flatMap(expandPageSegments)
 }
 
 const AI_HINTS_APP = [
@@ -141,10 +164,29 @@ export default function App() {
   const [tableGridIds, setTableGridIds] = useState([])
   const [geoShapeIds,  setGeoShapeIds]  = useState([])
 
+  // Whether the current graph has any |name| slider vars — the graph panel
+  // only reserves screen space for the slider strip/column when this is true
+  // (see App.css .has-sliders), so a graph-only page doesn't lose real estate
+  // to an empty slider zone.
+  const [hasSliders, setHasSliders] = useState(false)
+  useEffect(() => {
+    const update = vars => setHasSliders(vars.length > 0)
+    update(graphEngine.getSliderVars())
+    graphEngine.onSliderChange(update)
+    return () => graphEngine.offSliderChange(update)
+  }, [])
+
   // ── Layout + comments ──────────────────────────────────────────────────────
   const [layoutMode,      setLayoutMode]      = useState('empty')
   const [pageBackground,  setPageBackground]  = useState('default')
   const [comments,        setComments]        = useState([])
+
+  // ── Exercise pages ─────────────────────────────────────────────────────────
+  // exercise = null on a normal script page; otherwise {question, exerciseType,
+  // choices, correctChoice, answer} for the current page (see buildPage).
+  const [exercise,        setExercise]        = useState(null)
+  const [exerciseAnswer,  setExerciseAnswer]  = useState(null) // selected choice index, or input text
+  const [exerciseResult,  setExerciseResult]  = useState(null) // 'correct' | 'incorrect' | null
 
   // ── Section navigation ─────────────────────────────────────────────────────
   const [activeTool,    setActiveTool]    = useState(null)
@@ -299,6 +341,16 @@ export default function App() {
     setUI(u)
   }, [])
 
+  // A 'set-layout' script step stashes the requested layout on ui._layout
+  // (see ActionExecutor.js) rather than touching layoutMode directly, so it
+  // flows through the same snapshot/undo plumbing as title/narration/answer.
+  // This effect is what actually applies it — CSS transitions on
+  // .display-slot (App.css) turn the swap into a smooth resize/reposition/fade
+  // instead of an instant pop.
+  useEffect(() => {
+    if (ui._layout) setLayoutMode(ui._layout)
+  }, [ui._layout])
+
   const refreshFuncIds  = () => setGraphFuncIds(graphEngine.getFunctionIds())
   const refreshGridIds  = () => setTableGridIds(tableEngine.getGridIds())
   const refreshShapeIds = () => setGeoShapeIds(geometryEngine.getShapeIds())
@@ -336,7 +388,8 @@ export default function App() {
   const clearAll = useCallback(() => {
     if (cancelRef.current) cancelRef.current.cancelled = true
     cancelAllAnimations()
-    if (graphRef.current?.calculator) graphEngine.clearAll(graphRef.current.calculator)
+    graphEngine.clearAll(graphRef.current?.calculator)
+    clearSavedValues()
     tableEngine.clearAll(tableRef)
     geoRef.current?.clearAll?.()
     textEngine.clearAll(textRef)
@@ -357,6 +410,9 @@ export default function App() {
     setComments([])
     latestUIRef.current = { title: null, narration: null, answer: null }
     setUI({ title: null, narration: null, answer: null })
+    setExercise(null)
+    setExerciseAnswer(null)
+    setExerciseResult(null)
     setError(null)
     setGraphFuncIds([])
     setTableGridIds([])
@@ -461,6 +517,7 @@ export default function App() {
       case 'geo-create-polygon':      return demoGeoCreatePolygon(inputs.shapeId, inputs['shape-type'], inputs.values, inputs.flipX, inputs.flipY, inputs.fillColor, inputs.borderColor)
       case 'geo-show-measure':        return demoGeoShowMeasure(inputs.shapeId, inputs.color, inputs.angle, inputs.label)
       case 'geo-show-area-measures':  return demoGeoShowAreaMeasures(inputs.shapeId, inputs.color)
+      case 'geo-show-perimeter-measures': return demoGeoShowPerimeterMeasures(inputs.shapeId, inputs.color)
       case 'geo-erase-shape':         return demoGeoEraseShape(inputs.shapeId)
       case 'geo-move-shape':          return demoGeoMoveShape(inputs.shapeId, inputs.dx, inputs.dy)
       case 'geo-highlight-shape':     return demoGeoHighlightShape(inputs.shapeId)
@@ -479,13 +536,15 @@ export default function App() {
           .join(',')
         return demoReplaceVariable(null, replacements || inputs.replacements || '')
       }
+      case 'eq-save-result':         return demoSaveResult(inputs.name)
       case 'eq-racine-des-bords':     return demoRacineDesBords(inputs.eq)
       case 'eq-disparition-exposant': return demoDisparitionExposant(inputs.eq, inputs.newDegree)
       case 'eq-apply-inverse-trig':   return demoApplyInverseTrig(inputs.trig)
       case 'graph-plot-function':     return demoGraphPlotFunction(inputs.expr, inputs.id, inputs.hideLabel)
+      case 'graph-best-fit-line':     return demoGraphBestFitLine(inputs.pointIds, inputs.id, inputs.color)
       case 'graph-remove-function':   return demoGraphRemoveFunction(inputs.funcId)
       case 'graph-shade-area':        return demoGraphShadeArea(inputs.funcId, inputs.a, inputs.b)
-      case 'graph-find-intersections':return demoGraphFindIntersections(inputs.f1, inputs.f2)
+      case 'graph-find-intersections':return demoGraphFindIntersections(inputs.f1, inputs.f2, inputs.color, inputs.hideLabel)
       case 'graph-add-point':              return demoGraphAddPoint(inputs.x, inputs.y, inputs.id, inputs.funcId, inputs.label, inputs.showCoords)
       case 'graph-remove-point':           return demoGraphRemovePoint(inputs.id)
       case 'graph-scatter-plot':           return demoGraphScatterPlot(inputs.slope, inputs.intercept, inputs.coeff, inputs.count, inputs.xMin, inputs.xMax, inputs.color, inputs.id)
@@ -504,7 +563,7 @@ export default function App() {
       case 'graph-mark-roots':             return demoGraphMarkRoots(inputs.funcId)
       case 'graph-show-projection':        return demoGraphShowProjection(inputs.pointId, inputs.showValues)
       case 'graph-trig-circle':            return demoGraphTrigCircle()
-      case 'graph-batch-add-points':       return demoGraphBatchAddPoints(inputs.points, inputs.showCoords)
+      case 'graph-batch-add-points':       return demoGraphBatchAddPoints(inputs.points, inputs.showCoords, inputs.color)
       case 'graph-batch-show-projections': return demoGraphBatchShowProjections(inputs.pointIds)
       case 'graph-plot-derivative':   return demoGraphPlotDerivative(inputs.funcId)
       case 'graph-riemann-sum':       return demoGraphRiemannSum(inputs.funcId, inputs.a, inputs.b, inputs.n, inputs.method)
@@ -520,6 +579,8 @@ export default function App() {
       case 'tab-remove-row':          return demoTableRemoveRow(inputs.rowIndex, inputs.gridId)
       case 'tab-change-value':        return demoTableChangeValue(inputs.col, inputs.row, inputs.value, inputs.gridId)
       case 'tab-change-values':       return demoTableChangeValues(inputs.changes, inputs.gridId)
+      case 'tab-highlight-row':       return demoTableHighlightRow(inputs.gridId, inputs.rowIndex, inputs.color)
+      case 'tab-clear-row-highlight': return demoTableClearRowHighlight(inputs.gridId)
       case 'cmt-graph':               return demoAddCommentGraph(inputs.text, inputs.x, inputs.y, inputs.color, inputs.cmtId)
       case 'cmt-graph-func':          return demoAddCommentGraphFunc(inputs.text, inputs.funcId, inputs.x, inputs.color, inputs.cmtId)
       case 'cmt-graph-area':          return demoAddCommentGraphArea(inputs.text, inputs.funcId, inputs.x, inputs.color, inputs.cmtId)
@@ -555,6 +616,7 @@ export default function App() {
       case 'numberline-jump':  return demoNumberlineJump(inputs.from, inputs.steps, inputs.size, inputs.color, inputs.label)
       case 'numberline-shade': return demoNumberlineShade(inputs.from, inputs.to, inputs.color)
       case 'celebrate':        return demoCelebrate()
+      case 'set-layout':       return demoSetLayout(inputs.mode)
       case 'text-create':             return demoTextCreate(inputs.boxId, inputs.title, inputs.content, inputs.isList, inputs.color)
       case 'text-add-item':           return demoTextAddItem(inputs.boxId, inputs.item)
       case 'text-remove-item':        return demoTextRemoveItem(inputs.boxId, inputs.index)
@@ -570,7 +632,7 @@ export default function App() {
       case 'geo2d-rotate':         return demoGeo2dRotate(inputs.id)
       case 'geo3d-highlight':      return demoGeo3dHighlight(inputs.id)
       case 'geo3d-label-sides':    return demoGeo3dLabelSides(inputs.id, inputs.labels)
-      case 'geo3d-show-angles':       return demoGeo3dShowAngles(inputs.id, inputs.color)
+      case 'geo3d-show-angles':       return demoGeo3dShowAngles(inputs.id, inputs.color, inputs.showValues)
       case 'geo3d-highlight-angle':   return demoGeo3dHighlightAngle(inputs.id, inputs.angleIndex, inputs.color)
       case 'geo3d-highlight-edge':    return demoGeo3dHighlightEdge(inputs.id, inputs.edgeIndex, inputs.color)
       case 'geo3d-remove-edge-highlight': return demoGeo3dRemoveEdgeHighlight(inputs.id, inputs.edgeIndex)
@@ -615,7 +677,7 @@ export default function App() {
 
   const buildPage = useCallback(async (pg, speed = 1, opts = {}) => {
     if (!pg) return
-    const { startFromStep = 0, stopAtStep = null, clearCanvas = true } = opts
+    const { startFromStep = 0, stopAtStep = null, clearCanvas = true, pauseAtStop = true } = opts
 
     if (cancelRef.current) cancelRef.current.cancelled = true
     const signal = { cancelled: false }
@@ -625,7 +687,8 @@ export default function App() {
     currentPageRef.current = pg
 
     if (clearCanvas) {
-      if (graphRef.current?.calculator) graphEngine.clearAll(graphRef.current.calculator)
+      graphEngine.clearAll(graphRef.current?.calculator)
+      clearSavedValues()
       tableEngine.clearAll(tableRef)
       geoRef.current?.clearAll?.()
       textEngine.clearAll(textRef)
@@ -657,6 +720,15 @@ export default function App() {
       setGeoShapeIds([])
       setLayoutMode(pg.layout)
       setPageBackground(pg.background ?? 'default')
+      setExercise(pg.type === 'exercise' ? {
+        question:      pg.question ?? '',
+        exerciseType:  pg.exerciseType ?? 'choices4',
+        choices:       pg.choices ?? [],
+        correctChoice: pg.correctChoice ?? 0,
+        answer:        pg.answer ?? '',
+      } : null)
+      setExerciseAnswer(null)
+      setExerciseResult(null)
       setLastBuiltPage(pg)
       pageStepIdxRef.current = 0
       stepSnapshotsRef.current = []
@@ -676,7 +748,8 @@ export default function App() {
       textBoxes:      textRef.current?.getBoxesState()   ?? [],
       textRegistry:   textEngine.serializeRegistry(),
       tableDisplay:   tableRef.current
-        ? { lines: tableRef.current.getLines(), cells: tableRef.current.getCells(), grid: tableRef.current.getGrid() }
+        ? { lines: tableRef.current.getLines(), cells: tableRef.current.getCells(), grid: tableRef.current.getGrid(),
+            rowHighlights: tableRef.current.getRowHighlights() }
         : null,
       tableRegistry:  tableEngine.serializeRegistry(),
       graphCalcState: graphRef.current?.calculator?.getState() ?? null,
@@ -692,6 +765,12 @@ export default function App() {
       }
 
       if (signal.cancelled) return
+
+      // Re-sync the tracked viewport now that the new layout's CSS has settled —
+      // the graph container's aspect ratio varies per layout (e.g. the slider
+      // column narrows single-graph/graph-equation), so Desmos' auto-fitted
+      // bounds only match reality once this has run post-layout.
+      if (graphRef.current?.calculator) graphEngine.syncViewport(graphRef.current.calculator)
 
       // Second cleanup: any animation coroutine that raced through GSAP-killed
       // tween promises during the settle window may have queued new tweens or
@@ -724,7 +803,7 @@ export default function App() {
         }
       }
 
-      if (!signal.cancelled && (signal.pausePending || stopAtStep !== null)) {
+      if (!signal.cancelled && (signal.pausePending || (stopAtStep !== null && pauseAtStop))) {
         pausedRef.current = true
         setPaused(true)
       }
@@ -754,10 +833,11 @@ export default function App() {
   const handleBuilderBuildAll = useCallback((pages, speed = 1) => {
     if (!pages?.length) return
     animSpeedRef.current = speed
-    setLessonPages(pages)
+    const segments = expandLessonPages(pages)
+    setLessonPages(segments)
     setLessonPageIdx(0)
     setActiveTool(null)
-    buildPage(pages[0], speed)
+    buildPage(segments[0].pg, speed, { stopAtStep: segments[0].stopStep, pauseAtStop: false })
   }, [buildPage])
 
   const handleSendPrompt = useCallback(async (text) => {
@@ -790,18 +870,43 @@ export default function App() {
     }
   }, [promptVal, aiLoading, handleBuilderBuildAll])
 
+  // Stepping forward onto the very next segment of the SAME page (a
+  // set-layout split) continues from exactly where the previous segment
+  // stopped — animate the layout swap, then keep going — instead of
+  // clearing everything and replaying the whole page from step 0. Anything
+  // else (backward, skipping several, or a different page entirely) still
+  // does a full deterministic replay, since there's no "undo" and no
+  // guarantee the target segment was ever actually built yet.
+  const navigateToSegment = useCallback((fromIdx, toIdx) => {
+    if (!lessonPages) return
+    setLessonPageIdx(toIdx)
+    const spd = animSpeedRef.current
+    const seg = lessonPages[toIdx]
+    const prevSeg = lessonPages[fromIdx]
+    const continuing = toIdx === fromIdx + 1 && prevSeg?.pg === seg.pg
+    if (continuing) {
+      buildPage(seg.pg, spd, {
+        startFromStep: prevSeg.stopStep ?? 0,
+        stopAtStep:    seg.stopStep,
+        pauseAtStop:   false,
+        clearCanvas:   false,
+      })
+    } else {
+      buildPage(seg.pg, toIdx < fromIdx ? spd * 5 : spd, { stopAtStep: seg.stopStep, pauseAtStop: false })
+    }
+  }, [lessonPages, buildPage])
+
   const handleLessonNav = useCallback((dir) => {
     if (!lessonPages) return
     const next = Math.max(0, Math.min(lessonPages.length - 1, lessonPageIdx + dir))
     if (next === lessonPageIdx) return
-    setLessonPageIdx(next)
-    const spd = animSpeedRef.current
-    buildPage(lessonPages[next], dir < 0 ? spd * 5 : spd)
-  }, [lessonPages, lessonPageIdx, buildPage])
+    navigateToSegment(lessonPageIdx, next)
+  }, [lessonPages, lessonPageIdx, navigateToSegment])
 
   const handleReplay = useCallback(() => {
-    const pg = lessonPages ? lessonPages[lessonPageIdx] : lastBuiltPage
-    if (pg) buildPage(pg, animSpeedRef.current)
+    const seg = lessonPages ? lessonPages[lessonPageIdx] : null
+    if (seg) buildPage(seg.pg, animSpeedRef.current, { stopAtStep: seg.stopStep, pauseAtStop: false })
+    else if (lastBuiltPage) buildPage(lastBuiltPage, animSpeedRef.current)
   }, [lessonPages, lessonPageIdx, lastBuiltPage, buildPage])
 
   const handlePause = useCallback(() => {
@@ -836,6 +941,39 @@ export default function App() {
     restoreSnapshot(snap)
     pageStepIdxRef.current = N - 1
   }, [restoreSnapshot])
+
+  // ── Exercise pages ───────────────────────────────────────────────────────
+  const handleExerciseSelectChoice = useCallback((idx) => {
+    setExerciseAnswer(idx)
+  }, [])
+
+  const handleExerciseInputChange = useCallback((text) => {
+    setExerciseAnswer(text)
+    // Clear a stale "Incorrect" the moment they start retyping — an input
+    // exercise stays editable after a wrong guess, so nothing should lock it.
+    setExerciseResult(r => (r === 'incorrect' ? null : r))
+  }, [])
+
+  const handleExerciseConfirm = useCallback(() => {
+    if (!exercise) return
+    let correct
+    if (exercise.exerciseType === 'input') {
+      const given    = String(exerciseAnswer ?? '').trim()
+      const expected = String(exercise.answer ?? '').trim()
+      const gNum = Number(given), eNum = Number(expected)
+      correct = given.length > 0 && expected.length > 0 && (
+        given.toLowerCase() === expected.toLowerCase() ||
+        (isFinite(gNum) && isFinite(eNum) && Math.abs(gNum - eNum) < 1e-6)
+      )
+    } else {
+      correct = exerciseAnswer === exercise.correctChoice
+    }
+    setExerciseResult(correct ? 'correct' : 'incorrect')
+  }, [exercise, exerciseAnswer])
+
+  const handleExerciseGiveUp = useCallback(() => {
+    setExerciseResult('revealed')
+  }, [])
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -901,12 +1039,16 @@ export default function App() {
         <div className="top-bar-right" />
       </header>
 
+      {exercise && layoutMode && layoutMode !== 'empty' && <ExerciseQuestionBar question={exercise.question} />}
+
       {/* ── MAIN CANVAS ──────────────────────────────────────────────────────── */}
-      <div className={`lesson-content lesson-layout--${layoutMode} lesson-bg--${pageBackground}`} ref={contentRef}>
+      <div className={`lesson-content lesson-layout--${layoutMode} lesson-bg--${pageBackground}${hasSliders ? ' has-sliders' : ''}`} ref={contentRef}>
+        {exercise && (!layoutMode || layoutMode === 'empty') && <ExerciseQuestionHero question={exercise.question} />}
         <div className="display-slot display-slot--text"><TextBoxDisplay ref={textRef} /></div>
         <div className="display-slot display-slot--geo"><GeometryDisplay ref={geoRef} /></div>
         <div className="display-slot display-slot--3d"><ThreeDisplay ref={threeRef} /></div>
         <div className="display-slot display-slot--graph"><DesmosDisplay ref={graphRef} /></div>
+        <div className="display-slot display-slot--slider"><SliderPanel graphRef={graphRef} /></div>
         <div className="display-slot display-slot--table"><TableDisplay ref={tableRef} /></div>
         <div className="display-slot display-slot--equation"><EquationDisplay ref={equationRef} snapshot={equationSnap} /></div>
         <div className="display-slot display-slot--calc"><CalcDisplay ref={calcRef} /></div>
@@ -945,6 +1087,21 @@ export default function App() {
       {/* ── BOTTOM CONTROLS ──────────────────────────────────────────────────── */}
       <div className="bottom-area">
 
+        {/* ── Exercise answer bar — choices/input + Confirm, above playback ─── */}
+        {exercise && (
+          <div className="bottom-section bottom-section--exercise">
+            <ExerciseAnswerBar
+              exercise={exercise}
+              answer={exerciseAnswer}
+              result={exerciseResult}
+              onSelectChoice={handleExerciseSelectChoice}
+              onInputChange={handleExerciseInputChange}
+              onConfirm={handleExerciseConfirm}
+              onGiveUp={handleExerciseGiveUp}
+            />
+          </div>
+        )}
+
         {/* ── Playback toolbar ─────────────────────────────────────────────── */}
         <div className="bottom-section bottom-section--toolbar">
           <div className="playback-bar">
@@ -963,7 +1120,7 @@ export default function App() {
                       {lessonPages.map((_, i) => (
                         i === lessonPageIdx
                           ? <button key={i} className="pb-pause-dot" onClick={handlePause} disabled={!running} title="Pause">⏸</button>
-                          : <button key={i} className="pb-dot" onClick={() => { const d = i - lessonPageIdx; setLessonPageIdx(i); buildPage(lessonPages[i], d < 0 ? 5 : 1) }} />
+                          : <button key={i} className="pb-dot" onClick={() => navigateToSegment(lessonPageIdx, i)} />
                       ))}
                     </div>
                     <button className="pb-btn" onClick={() => handleLessonNav(1)} disabled={lessonPageIdx >= lessonPages.length - 1}>›</button>

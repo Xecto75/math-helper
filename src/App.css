@@ -236,6 +236,116 @@
   padding-top: 8px;
   padding-bottom: 10px;
 }
+.bottom-section--exercise {
+  background: var(--bg-raised);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+/* ── Exercise answer bar ──────────────────────────────────────────────────── */
+
+.exercise-answer-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.exercise-choices {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  max-width: 720px;
+}
+.exercise-choices--2 { grid-template-columns: repeat(2, 1fr); }
+.exercise-choices--4 { grid-template-columns: repeat(2, 1fr); }
+
+.exercise-choice-btn {
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.exercise-choice-btn:hover:not(:disabled) { border-color: var(--accent-2); background: rgba(165,180,252,0.08); }
+.exercise-choice-btn:disabled { cursor: default; }
+.exercise-choice-btn--selected {
+  border-color: var(--accent-2);
+  background: rgba(165,180,252,0.14);
+  color: var(--text-h);
+}
+.exercise-choice-btn--correct {
+  border-color: var(--green);
+  background: rgba(34,197,94,0.16);
+  color: var(--text-h);
+  transform: scale(1.02);
+}
+.exercise-choice-btn--wrong {
+  border-color: #ef4444;
+  background: rgba(239,68,68,0.14);
+  color: var(--text-h);
+}
+
+.exercise-input {
+  width: 100%;
+  max-width: 320px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-h);
+  font-size: 0.95rem;
+  text-align: center;
+}
+.exercise-input:focus { outline: none; border-color: var(--accent-2); }
+.exercise-input--correct { border-color: var(--green); background: rgba(34,197,94,0.12); }
+.exercise-input--incorrect { border-color: #ef4444; background: rgba(239,68,68,0.1); }
+
+.exercise-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 36px;
+}
+.exercise-confirm-btn {
+  height: 36px;
+  padding: 0 24px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent-2);
+  color: var(--bg);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.exercise-confirm-btn:disabled { opacity: 0.35; cursor: default; }
+.exercise-confirm-btn:hover:not(:disabled) { filter: brightness(1.08); }
+
+.exercise-feedback {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.exercise-feedback--correct { color: var(--green); }
+.exercise-feedback--incorrect { color: #ef4444; }
+
+.exercise-retry-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.exercise-retry-btn:hover { border-color: var(--accent-2); color: var(--accent-2); }
 
 /* Playback toolbar */
 .playback-bar {
@@ -462,6 +572,46 @@
 .lang-btn:hover { border-color: var(--accent); color: var(--accent-2); }
 .lang-btn--active { border-color: var(--accent); color: var(--accent-2); background: rgba(168,85,247,0.10); }
 
+/* ── Exercise question bar ────────────────────────────────────────────────── */
+/* Sits above .lesson-content, independent of layoutMode — the question stays
+   in view no matter what the page's layout shows underneath (a graph, a
+   shape, nothing at all). */
+
+.exercise-question-bar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+}
+.exercise-question-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-h);
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* No layout/visual on this exercise page — the question itself fills the
+   canvas area instead of leaving it an empty void. */
+.exercise-question-hero {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.exercise-question-hero-text {
+  max-width: 720px;
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--text-h);
+  line-height: 1.45;
+  text-align: center;
+}
+
 /* ── Lesson content ───────────────────────────────────────────────────────── */
 
 .lesson-content {
@@ -483,6 +633,20 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* A set-layout script step (or picking a new layout in the Builder) swaps
+     which rule below applies — animate the swap instead of popping. A slot
+     shared by both the old and new layout (e.g. the equation panel across
+     text-equation → single-equation → graph-equation) just glides to its new
+     size/position; a slot that only exists in one of the two fades in/out
+     along the way (its box is 1x1 and see-through at either end anyway). */
+  transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              right 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              top 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              bottom 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.4s ease,
+              opacity 0.4s ease;
 }
 
 /* ── Single layouts — comment margins 160 px each side ── */
@@ -490,7 +654,6 @@
 /* Comment gutter = MARGIN(10) + BOX_W(150) + a small gap. Display slots that can
    host comments must reserve at least this much on each side so a comment box
    (fixed width) never overlaps the content. */
-.lesson-layout--single-graph .display-slot--graph,
 .lesson-layout--single-geo   .display-slot--geo,
 .lesson-layout--single-grid  .display-slot--table,
 .lesson-layout--single-calc  .display-slot--calc,
@@ -500,6 +663,21 @@
 .lesson-layout--single-numbers .display-slot--numbers {
   left: 168px; right: 168px; top: 0; bottom: 0;
   width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+
+/* single-graph reserves a right-hand column for variable sliders (only
+   populated when a plotted function has |name| slider tokens) */
+.lesson-layout--single-graph .display-slot--graph {
+  left: 168px; right: 168px; top: 0; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--single-graph.has-sliders .display-slot--graph {
+  right: calc(168px + 220px);
+}
+.lesson-layout--single-graph .display-slot--slider {
+  left: auto; right: 168px; width: 220px; top: 0; bottom: 0; height: auto;
   opacity: 1; pointer-events: auto;
 }
 
@@ -516,6 +694,7 @@
   border-radius: 18px;
   border-width: 2px;
 }
+.lesson-layout--single-equation .fn-name   { font-size: 3.2rem; }
 .lesson-layout--single-equation .term-op   { font-size: 2.4rem; padding: 0 10px; }
 .lesson-layout--single-equation .equals-sign { font-size: 3.8rem; }
 .lesson-layout--single-equation .term-zero  { font-size: 3.2rem; }
@@ -546,6 +725,30 @@
   width: auto; height: auto;
   opacity: 1; pointer-events: auto;
 }
+.lesson-layout--grid-graph.has-sliders .display-slot--graph {
+  bottom: 164px;
+}
+.lesson-layout--grid-graph .display-slot--slider {
+  left: calc(50% + 2px); right: 140px; top: auto; bottom: 0; height: 164px; width: auto;
+  opacity: 1; pointer-events: auto;
+}
+
+/* ── Grid-Equation split ── */
+
+.lesson-layout--grid-equation .display-slot--table {
+  left: 140px; right: calc(50% + 2px); top: 0; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--grid-equation .display-slot--table::after {
+  content: ''; position: absolute; top: 24px; bottom: 24px; right: 0;
+  width: 3px; border-radius: 2px; background: var(--border);
+}
+.lesson-layout--grid-equation .display-slot--equation {
+  left: calc(50% + 2px); right: 140px; top: 0; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
 
 /* ── Geo + Equation stacked ── */
 
@@ -572,9 +775,21 @@
   width: auto; height: auto;
   opacity: 1; pointer-events: auto;
 }
-.lesson-layout--graph-equation .display-slot--graph::after {
-  content: ''; position: absolute; left: 24px; right: 24px; bottom: 0;
+.lesson-layout--graph-equation.has-sliders .display-slot--graph {
+  right: calc(168px + 220px);
+}
+/* Divider lives on the stable outer container, not on .display-slot--graph
+   itself — that box's own right edge moves when has-sliders reserves the
+   220px slider column, which used to leave the divider stopping short of
+   it (right:24px is relative to the box's OWN edge, wherever that lands). */
+.lesson-layout--graph-equation::after {
+  content: ''; position: absolute; left: 192px; right: 192px; bottom: 38%;
   height: 3px; border-radius: 2px; background: var(--border);
+  pointer-events: none;
+}
+.lesson-layout--graph-equation .display-slot--slider {
+  left: auto; right: 168px; width: 220px; top: 0; bottom: 38%; height: auto;
+  opacity: 1; pointer-events: auto;
 }
 .lesson-layout--graph-equation .display-slot--equation {
   left: 100px; right: 100px; top: 62%; bottom: 0;
@@ -607,6 +822,13 @@
 
 .lesson-layout--text-graph .display-slot--graph {
   left: calc(35% + 2px); right: 168px; top: 0; bottom: 0; width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--text-graph.has-sliders .display-slot--graph {
+  bottom: 164px;
+}
+.lesson-layout--text-graph .display-slot--slider {
+  left: calc(35% + 2px); right: 168px; top: auto; bottom: 0; height: 164px; width: auto;
   opacity: 1; pointer-events: auto;
 }
 .lesson-layout--text-geo .display-slot--geo {
@@ -662,6 +884,8 @@
 .lesson-layout--single-equation .display-slot--equation,
 .lesson-layout--grid-graph    .display-slot--table,
 .lesson-layout--grid-graph    .display-slot--graph,
+.lesson-layout--grid-equation .display-slot--table,
+.lesson-layout--grid-equation .display-slot--equation,
 .lesson-layout--geo-equation  .display-slot--geo,
 .lesson-layout--geo-equation  .display-slot--equation,
 .lesson-layout--graph-equation .display-slot--graph,
@@ -677,6 +901,158 @@
 .lesson-layout--single-clock   .display-slot--clock,
 .lesson-layout--single-numbers .display-slot--numbers {
   padding: 24px;
+}
+
+.lesson-layout--single-graph   .display-slot--slider,
+.lesson-layout--graph-equation .display-slot--slider,
+.lesson-layout--text-graph     .display-slot--slider,
+.lesson-layout--grid-graph     .display-slot--slider {
+  padding: 12px;
+}
+
+/* ── Variable sliders (plotFunction |name| tokens) ──────────────────────────
+   Right-of-graph layouts (single-graph, graph-equation): vertical faders,
+   80% of the graph's height, arranged side by side.
+   Under-graph layouts (text-graph, grid-graph): horizontal tracks, 80% of
+   the graph's width, stacked one per row. */
+.slider-panel {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+.lesson-layout--single-graph .slider-panel,
+.lesson-layout--graph-equation .slider-panel {
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  /* nowrap on purpose: 3+ sliders used to overflow the fixed-width column
+     and wrap onto a second row, where the wrapped one landed squished and
+     way off-position (see .var-slider's flex-shrink below — sliders shrink
+     to fit instead of ever wrapping). */
+  flex-wrap: nowrap;
+}
+.lesson-layout--text-graph .slider-panel,
+.lesson-layout--grid-graph .slider-panel {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.var-slider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.lesson-layout--single-graph .var-slider,
+.lesson-layout--graph-equation .var-slider {
+  height: 80%;
+  flex: 1 1 0;
+  min-width: 28px;
+  max-width: 50px;
+  gap: 8px;
+}
+.lesson-layout--text-graph .var-slider,
+.lesson-layout--grid-graph .var-slider {
+  width: 80%;
+  gap: 4px;
+}
+
+.var-slider-track {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+.lesson-layout--single-graph .var-slider-track,
+.lesson-layout--graph-equation .var-slider-track {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+.lesson-layout--text-graph .var-slider-track,
+.lesson-layout--grid-graph .var-slider-track {
+  width: 100%;
+  height: 20px;
+  align-items: center;
+}
+
+.var-slider-name {
+  position: absolute;
+  background: #60a5fa;
+  color: #0b1220;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.lesson-layout--single-graph .var-slider-name,
+.lesson-layout--graph-equation .var-slider-name {
+  left: 50%;
+  top: calc(100% - var(--pct));
+  transform: translate(-50%, -50%);
+}
+.lesson-layout--text-graph .var-slider-name,
+.lesson-layout--grid-graph .var-slider-name {
+  top: 50%;
+  left: var(--pct);
+  transform: translate(-50%, -50%);
+}
+
+.var-slider-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.var-slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 2px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+  accent-color: #60a5fa;
+}
+.lesson-layout--single-graph .var-slider-input,
+.lesson-layout--graph-equation .var-slider-input {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  -webkit-appearance: slider-vertical;
+  width: 6px;
+  height: 100%;
+}
+.lesson-layout--text-graph .var-slider-input,
+.lesson-layout--grid-graph .var-slider-input {
+  width: 100%;
+  height: 6px;
+}
+.var-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #60a5fa;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.var-slider-input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #60a5fa;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.var-slider-input::-moz-range-track {
+  background: var(--border);
+  border-radius: 2px;
 }
 
 /* ── ArithmeticDisplay ── */
@@ -1170,6 +1546,7 @@
   width: 100%;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .calc-step {
@@ -1597,6 +1974,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -1606,6 +1984,7 @@
   flex-shrink: 0;
   max-height: 42vh;
   overflow-y: auto;
+  overflow-x: hidden;
   border-bottom: 1px solid var(--border);
 }
 .dev-menu-section .left-menu {
@@ -1680,6 +2059,7 @@
 .left-menu {
   background: var(--bg);
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px 0 24px;
 }
 
@@ -2238,26 +2618,27 @@
 .frac-sub-wrap { display: inline; white-space: nowrap; }
 .frac-op { opacity: 0.85; }
 .term-op--mul { opacity: 0.75; }
+/* A function name (sin/cos/tan) reads as part of the expression itself, not
+   a thin +/- connector between chips — same text scale as a .term-cell's
+   digits (mirrored in the single-equation override below) with its own
+   parens promoted to the same big .pg-open/.pg-close bracket glyphs a
+   distributed group like "39(2+y)" uses, instead of a tiny inline "(". */
+.fn-name {
+  font-family: var(--mono);
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--text-h);
+}
 /* $$…$$ display math: trim KaTeX's large default vertical margin and left-align
    it (KaTeX centers it by default, which clashes with our left-aligned content). */
 .katex-display { margin: 0.25em 0 !important; text-align: left !important; }
 .katex-display > .katex { text-align: left !important; }
 
-/* ── Paren-group cell (e.g. 2(x+3) before distribution) ── */
-
-.term-cell--paren-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  padding: 3px 6px;
-}
-
-.pg-coeff {
-  font-weight: 700;
-  color: #60a5fa;
-  margin-right: 1px;
-  min-width: 0.5ch;
-}
+/* ── Paren-group cell (e.g. 2(x+3) before distribution) ──────────────────────
+   Same convention as the generic expression tree: .pg-coeff and each
+   .pg-inner-val ARE .term-cell chips (see TermCell.jsx) — these two classes
+   are now just extra hooks for distributeParentheses's animation to find
+   them, not their own visual style. Only the neutral connectors below. */
 
 .pg-open,
 .pg-close {
@@ -2271,17 +2652,6 @@
 .pg-inner-term {
   display: inline-flex;
   align-items: center;
-}
-
-.pg-sep {
-  color: #94a3b8;
-  margin: 0 2px;
-  font-weight: 400;
-}
-
-.pg-inner-val {
-  color: #e2e8f0;
-  font-weight: 600;
 }
 
 /* Inline operator token — used by arcsin( / arccos( / arctan( and ) wrappers */
@@ -2300,6 +2670,7 @@
   width: 100%;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -2361,6 +2732,21 @@
 .tb-item--in {
   opacity: 1;
   transform: translateX(0);
+}
+
+/* Steps mode — numbered instead of bulleted, e.g. "1. Define the two
+   equations". Pure CSS counter so adding/removing items (text-add-item /
+   text-remove-item) renumbers automatically without any extra logic. */
+.tb-list--steps {
+  counter-reset: tb-step;
+}
+.tb-list--steps .tb-item {
+  counter-increment: tb-step;
+}
+.tb-list--steps .tb-item::before {
+  content: counter(tb-step) '.';
+  font-weight: 700;
+  color: var(--tb-accent, #a855f7);
 }
 
 .tb-body {
@@ -2470,6 +2856,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ── Footer ──────────────────────────────────────────────────────────────── */
@@ -2656,6 +3043,7 @@
   padding: 12px;
   gap: 10px;
   overflow-y: auto;
+  overflow-x: hidden;
   height: 100%;
   box-sizing: border-box;
 }
@@ -2941,6 +3329,11 @@
   transition: opacity 0.15s;
 }
 .lb-insert-divider:hover { opacity: 1; }
+.lb-insert-divider--picking {
+  opacity: 1;
+  cursor: default;
+  padding: 4px 0;
+}
 .lb-insert-line {
   flex: 1;
   height: 1px;
@@ -2994,6 +3387,46 @@
 }
 .lb-layout-sel:focus { outline: none; border-color: var(--accent); }
 .lb-layout-sel option, .lb-layout-sel optgroup { background: var(--bg-raised); color: var(--text); }
+
+/* ── Exercise page editor ─────────────────────────────────────────────────── */
+.lb-exercise-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+}
+.lb-toggle-btn {
+  flex: 1;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lb-toggle-btn--active { background: var(--accent); color: var(--bg); }
+
+.lb-exercise-editor {
+  padding: 2px 0 6px;
+  border-bottom: 1px solid var(--border);
+}
+.lb-exercise-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 16px 10px;
+}
+.lb-exercise-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lb-exercise-choice-row input[type="radio"] { flex-shrink: 0; accent-color: var(--green); cursor: pointer; }
+.lb-exercise-choice-row .lb-input { flex: 1; }
 
 /* Function picker dropdown in builder */
 .lb-fn-select {
@@ -3315,6 +3748,7 @@
   background: var(--bg-2);
   max-height: 220px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .lb-slots-empty {
@@ -3701,6 +4135,7 @@
 .browser-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 32px 28px 40px;
 }
 
@@ -4899,6 +5334,7 @@
   gap: 16px;
   padding: 8px 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .lb-display-picker-title {
   font-size: 0.72rem;
@@ -5091,6 +5527,7 @@
   flex-direction: column;
   padding: 28px 36px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .exsets-topbar {
   display: flex;
@@ -5311,6 +5748,7 @@
 .exbuilder-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 18px 20px;
   display: flex;
   flex-direction: column;

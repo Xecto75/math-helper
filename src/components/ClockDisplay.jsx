@@ -27,7 +27,7 @@ function handMid(hand, hour, minute) {
   }
 }
 
-const ClockDisplay = forwardRef(function ClockDisplay({ lang = 'fr' }, ref) {
+const ClockDisplay = forwardRef(function ClockDisplay({ lang = 'en' }, ref) {
   const [s, setS] = useState(null)
   const elRefs    = useRef({})
   const setRef    = k => el => { elRefs.current[k] = el }

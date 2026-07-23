@@ -23,7 +23,7 @@ const LAYOUTS = {
   // Dual-panel
   tg: 'text-graph',       tG: 'text-geo',      tq: 'text-grid',
   te: 'text-equation',
-  ge: 'graph-equation',   Ge: 'geo-equation',
+  ge: 'graph-equation',   Ge: 'geo-equation',   qe: 'grid-equation',
 }
 
 const FUNCS = {
@@ -36,13 +36,14 @@ const FUNCS = {
   es: 'eq-send-other-side',  eo: 'eq-reorder',          ed: 'eq-divide',
   ef: 'eq-full-solve',       ev: 'eq-replace-variable', er: 'eq-racine-des-bords',
   ea: 'eq-apply-inverse-trig', ee: 'eq-disparition-exposant',
+  eS: 'eq-save-result',
 
   // ── Canvas geometry (SVG) ───────────────────────────────────────────────────
   gp: 'geo-create-polygon',  gx: 'geo-erase-shape',     gm: 'geo-move-shape',
   gh: 'geo-highlight-shape', gl: 'geo-label-sides',     gt: 'geo-add-text',
   ga: 'geo-show-angles',     gw: 'geo-show-arrow',      gW: 'geo-remove-arrow',
   gE: 'geo-highlight-edge',  gA: 'geo-highlight-angle', gC: 'geo-clear',
-  gr: 'geo-show-measure',    gM: 'geo-show-area-measures',
+  gr: 'geo-show-measure',    gM: 'geo-show-area-measures', gP: 'geo-show-perimeter-measures',
 
   // ── 2D shapes — Three.js flat (screen-locked) ───────────────────────────────
   S2c: 'geo3d-create-2d',
@@ -73,6 +74,7 @@ const FUNCS = {
   fp:  'graph-plot-function',      fx:  'graph-remove-function',
   fs:  'graph-shade-area',         fi:  'graph-find-intersections',
   fa:  'graph-add-point',          fap: 'graph-remove-point',
+  fbf: 'graph-best-fit-line',
   fsc: 'graph-scatter-plot',       fscx: 'graph-remove-scatter-plot',
   fsg: 'graph-add-segment',       fsgx: 'graph-remove-segment',
   fst: 'graph-segment-tick',      fstx: 'graph-remove-segment-tick',
@@ -91,12 +93,16 @@ const FUNCS = {
   Tc: 'tab-create-grid',    Tx: 'tab-erase-grid',     Ta: 'tab-add-column',
   Tr: 'tab-remove-column',  TR: 'tab-add-row',        TrR: 'tab-remove-row',
   Tv: 'tab-change-value',   TV: 'tab-change-values',
+  Th: 'tab-highlight-row',  Thx: 'tab-clear-row-highlight',
 
   // ── Comments & misc ──────────────────────────────────────────────────────────
   cg: 'cmt-graph',       cf: 'cmt-graph-func',   cA: 'cmt-graph-area',
   cq: 'cmt-grid',        cG: 'cmt-geo',          cE: 'cmt-geo-edge',
   ce: 'cmt-equation',    cx: 'cmt-clear',         cu: 'cmt-update',
   n:  'narrate',
+
+  // ── Page flow ────────────────────────────────────────────────────────────────
+  sL: 'set-layout',
 
   // ── Step-by-step calc ────────────────────────────────────────────────────────
   Cs: 'calc-step',   Cc: 'calc-clear',
@@ -187,16 +193,16 @@ async function routeModules(prompt) {
   console.log(`\n─── Router (haiku) ${Date.now() - t0}ms  in:${u.input_tokens} out:${u.output_tokens}  $${cost.toFixed(5)}`)
   console.log('  raw:', raw)
 
-  let modules = []
+  let result
   try {
     const parsed = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1))
-    modules = parsed.modules ?? []
+    result = { status: parsed.status ?? 'ok', modules: parsed.modules ?? [], message: parsed.message }
   } catch {
     console.warn('  Router parse failed — falling back to equation+text')
-    modules = ['equation', 'text']
+    result = { status: 'ok', modules: ['equation', 'text'] }
   }
-  console.log('  selected modules:', modules)
-  return modules
+  console.log('  status:', result.status, result.status === 'ok' ? `modules:${result.modules}` : result.message ?? '')
+  return result
 }
 
 // ── Request 2: Generator ──────────────────────────────────────────────────────
@@ -242,7 +248,12 @@ app.post('/api/generate-lesson', async (req, res) => {
   let rawApiText = null
   try {
     // ── Step 1: Route ────────────────────────────────────────────────────────
-    const moduleIds = await routeModules(prompt)
+    const route = await routeModules(prompt)
+
+    if (route.status !== 'ok') {
+      return res.json({ status: route.status, message: route.message })
+    }
+    const moduleIds = route.modules
 
     // ── Step 2: Generate ─────────────────────────────────────────────────────
     rawApiText = await generateCompact(prompt, moduleIds)

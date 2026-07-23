@@ -10,9 +10,34 @@ import { EquationState }  from './EquationState.js'
 import { MathObject }     from './MathObject.js'
 import { generateScript, generateDistributeScript } from './solveScript.js'
 import { nextFuncId, getFunctionIds } from './desmosEngine.js'
-import { getSideLengths, getShapeHeight, getShapeRadius, getVertexAngle } from './geometryEngine.js'
+import { resolveValueRef, VALUE_TOKEN_PATTERN } from './valueRefs.js'
 import { resolveColor }   from './palette.js'
 import { t }              from '../i18n/translations.js'
+import { evaluate }       from 'mathjs'
+
+// Resolves every [id]token inside an eq-create string to its live numeric
+// value, then evaluates any {{ mathjs expression }} block — BEFORE the
+// equation ever reaches the parser. E.g. "m = {{ ([pB]y - [pA]y) / ([pB]x
+// - [pA]x) }}" becomes "m = (8 - 2) / (3 - 0)" then "m = 2". This matters
+// because the classic/rich equation parsers only understand a coefficient
+// (a plain number) times ONE symbol per term: a division whose denominator
+// isn't a single literal number, or a product of two symbols (e.g. literal
+// "m*x"), silently fails to parse (empty/bogus side, no error) — wrapping
+// the arithmetic in {{ }} sidesteps that entirely, since mathjs evaluates
+// it to one plain number before the equation parser ever sees the string,
+// exactly as if it had been typed by hand — just without the risk of
+// retyping the wrong number.
+const VALUE_REF_RE_G = new RegExp(`\\[([^\\]]+)\\](${VALUE_TOKEN_PATTERN})`, 'g')
+function substituteValueRefs(str) {
+  const withRefs = str.replace(VALUE_REF_RE_G, (m, id, tok) => {
+    const v = resolveValueRef(id, tok)
+    if (v === undefined) return m
+    return typeof v === 'number' ? String(parseFloat(v.toFixed(4))) : String(v)
+  })
+  return withRefs.replace(/\{\{([^{}]+)\}\}/g, (m, expr) => {
+    try { return String(parseFloat(Number(evaluate(expr)).toFixed(4))) } catch { return m }
+  })
+}
 
 // ── eq-combine ────────────────────────────────────────────────────────────────
 export function demoEquationCombine() {
@@ -44,12 +69,15 @@ function fmtTerm(term) {
 }
 
 // ── eq-replace-variable ───────────────────────────────────────────────────────
+const VALUE_REF_RE = new RegExp(`^\\[([^\\]]+)\\](${VALUE_TOKEN_PATTERN})$`)
+
 export function demoReplaceVariable(eqText, replacementsRaw) {
-  // Parse "a=2,b=-3,c=1" or a live geo reference instead of a hardcoded number:
-  // "a=[shapeId]0" (Nth side length), "a=[shapeId]h" (height/diameter),
-  // "a=[shapeId]r" (circle radius), "a=[shapeId]a2" (interior angle at vertex 2)
-  // — same [shapeId]token syntax used in text boxes/comments, so a lesson never
-  // needs the same number typed twice (once at shape creation, once here).
+  // Parse "a=2,b=-3,c=1" or a live value reference instead of a hardcoded
+  // number — same [id]token syntax used in text boxes/comments (see
+  // valueRefs.js for the full list: geometry side/height/radius/angle, a
+  // 3D solid's dimensions, a graph point/segment/function, a table cell) —
+  // so a lesson never needs the same number typed twice (once at creation,
+  // once here, with the risk of the two silently drifting apart).
   const replacements = String(replacementsRaw || 'a=2,b=-3,c=1')
     .split(',')
     .map(s => {
@@ -57,18 +85,8 @@ export function demoReplaceVariable(eqText, replacementsRaw) {
       if (eq < 0) return null
       const lbl = s.slice(0, eq).trim()
       const rhs = s.slice(eq + 1).trim()
-      const geoM = rhs.match(/^\[([^\]]+)\](a\d+|\d+|h|r)$/)
-      let val
-      if (geoM) {
-        const [, shapeId, tok] = geoM
-        val = tok === 'h'    ? getShapeHeight(shapeId)
-            : tok === 'r'    ? getShapeRadius(shapeId)
-            : tok[0] === 'a' ? getVertexAngle(shapeId, parseInt(tok.slice(1)))
-            : getSideLengths(shapeId)[parseInt(tok)]
-        val = val ?? NaN
-      } else {
-        val = Number(rhs)
-      }
+      const refM = rhs.match(VALUE_REF_RE)
+      const val = refM ? (resolveValueRef(refM[1], refM[2]) ?? NaN) : Number(rhs)
       return { label: lbl, value: val }
     })
     .filter(r => r?.label && isFinite(r.value))
@@ -93,6 +111,17 @@ export function demoReplaceVariable(eqText, replacementsRaw) {
       { type: 'replaceVariable', replacements },
     ],
   }
+}
+
+// ── eq-save-result ────────────────────────────────────────────────────────────
+// Silently stashes the current equation's solved numeric result under a name
+// (no visual change — the equation itself already showed the value when it
+// solved). Read it back anywhere else via [name]v: another eq-create/
+// eq-replace-variable, a text box, or a comment.
+export function demoSaveResult(name) {
+  const n = (name || '').trim()
+  if (!n) throw new Error('Enter a name to save the result as, e.g. "m"')
+  return { snapshot: null, script: [{ type: 'save-value', name: n }] }
 }
 
 // ── eq-racine-des-bords ───────────────────────────────────────────────────────
@@ -205,6 +234,23 @@ export function demoGeoShowAreaMeasures(shapeIdRaw, colorRaw) {
   return { snapshot: null, script }
 }
 
+// ── geo-show-perimeter-measures ────────────────────────────────────────────────
+// Every side labeled with its length (circle → radius line instead, same as
+// showAreaMeasures) — unlike area, perimeter always needs every side, not a
+// per-shape-type subset.
+export function demoGeoShowPerimeterMeasures(shapeIdRaw, colorRaw) {
+  const id    = (shapeIdRaw || 'shape1').trim()
+  const color = (colorRaw || '').trim()
+  const opts  = {}
+  if (color) opts.color = color
+
+  const script = [
+    { type: 'showTitle', text: `showPerimeterMeasures("${id}")` },
+    { type: 'ggb-show-perimeter-measures', id, opts },
+  ]
+  return { snapshot: null, script }
+}
+
 // ── geo-erase-shape ───────────────────────────────────────────────────────────
 export function demoGeoEraseShape(shapeIdRaw) {
   const id = (shapeIdRaw || '').trim()
@@ -266,7 +312,7 @@ export function demoGeoAddText(labelIdRaw, textRaw, xRaw, yRaw) {
 
   const script = [
     { type: 'showTitle', text: `addText("${id}", "${txt}", ${x}, ${y})` },
-    { type: 'ggb-add-text', id, text: txt, x, y, opts: { color: [168, 85, 247] } },
+    { type: 'ggb-add-text', id, text: txt, x, y, opts: { color: [96, 165, 250] } },
   ]
   return { snapshot: null, script }
 }
@@ -359,7 +405,9 @@ export function demoGeoClear() {
 
 // ── graph-plot-function ───────────────────────────────────────────────────────
 // Auto-labels the curve as "f(x) = <expr>" (or g/h/… — whichever letter isn't
-// already taken) unless hideLabel is "1".
+// already taken) unless hideLabel is "1". If expr already spells out its own
+// left-hand side (e.g. "y = x+3"), that would double up into a nonsensical
+// "f(x) = y = x+3" — use the expr as-is instead, it's already a full equation.
 export function demoGraphPlotFunction(exprRaw, idRaw, hideLabelRaw) {
   const expr        = (exprRaw || 'x^2 - 2*x - 1').trim()
   const existingCount = getFunctionIds().length
@@ -371,7 +419,8 @@ export function demoGraphPlotFunction(exprRaw, idRaw, hideLabelRaw) {
     { type: 'ggb-plot-function', id, expr, opts: { thickness: 3 } },
   ]
   if (!hideLabel) {
-    script.push({ type: 'ggb-name-func', id, funcId: id, label: `${id}(x) = ${expr}`, x: 3 + existingCount * 1.5 })
+    const label = expr.includes('=') ? expr : `${id}(x) = ${expr}`
+    script.push({ type: 'ggb-name-func', id, funcId: id, label, x: 3 + existingCount * 1.5 })
   }
   script.push({ type: 'showNarration', text: `Courbe "${id}" tracée.` })
   return { snapshot: null, script }
@@ -389,6 +438,13 @@ export function demoGraphRemoveFunction(funcIdRaw) {
   return { snapshot: null, script }
 }
 
+// ── graph-best-fit-line ───────────────────────────────────────────────────────
+export function demoGraphBestFitLine(pointIdsRaw, idRaw, colorRaw) {
+  const id    = (idRaw || '').trim() || nextFuncId()
+  const color = colorRaw ? resolveColor(colorRaw) : undefined
+  return { snapshot: null, script: [{ type: 'ggb-best-fit-line', id, pointIds: pointIdsRaw ?? '', opts: { color } }] }
+}
+
 // ── graph-shade-area ──────────────────────────────────────────────────────────
 export function demoGraphShadeArea(funcIdRaw, aRaw, bRaw) {
   const funcId = (funcIdRaw || 'f').trim()
@@ -404,14 +460,16 @@ export function demoGraphShadeArea(funcIdRaw, aRaw, bRaw) {
 }
 
 // ── graph-find-intersections ──────────────────────────────────────────────────
-export function demoGraphFindIntersections(f1IdRaw, f2IdRaw) {
+export function demoGraphFindIntersections(f1IdRaw, f2IdRaw, colorRaw, hideLabelRaw) {
   const f1Id = (f1IdRaw || 'f').trim()
   const f2Id = (f2IdRaw || 'g').trim()
+  const color = colorRaw ? resolveColor(colorRaw) : undefined
+  const hideLabel = String(hideLabelRaw ?? '').trim() === '1'
   const script = [
     { type: 'showTitle',     text: `findIntersections("${f1Id}", "${f2Id}")` },
     { type: 'showNarration', text: `Recherche des intersections entre "${f1Id}" et "${f2Id}"` },
-    { type: 'ggb-find-intersections', id: 'pts', f1Id, f2Id },
-    { type: 'showNarration', text: 'Points d\'intersection marqués en jaune.' },
+    { type: 'ggb-find-intersections', id: 'pts', f1Id, f2Id, opts: { color, hideLabel } },
+    { type: 'showNarration', text: 'Points d\'intersection marqués.' },
   ]
   return { snapshot: null, script }
 }
@@ -427,7 +485,7 @@ export function demoGraphAddPoint(xRaw, yRaw, idRaw, funcIdRaw, labelRaw, showCo
   const showCoords = showCoordsRaw === true || String(showCoordsRaw).trim() === 'true'
   const opts = { size: 6, label, showCoords }
   if (funcId) opts.funcId = funcId
-  else        opts.color  = [248, 113, 113]
+  else        opts.color  = [96, 165, 250]
   const script = [
     { type: 'showTitle', text: `addPoint("${id}", ${x}, ${y})` },
     { type: 'ggb-add-point', id, x, y, opts },
@@ -457,7 +515,7 @@ export function demoGraphScatterPlot(slopeRaw, interceptRaw, coeffRaw, countRaw,
   const xMin      = Number(xMinRaw) || -5
   const xMax      = Number(xMaxRaw) || 5
   const color     = (colorRaw || '').trim()
-  const id        = (idRaw || 'nuage1').trim()
+  const id        = (idRaw || 'cloud1').trim()
   const opts = {}
   if (color) opts.color = color
   const script = [
@@ -469,7 +527,7 @@ export function demoGraphScatterPlot(slopeRaw, interceptRaw, coeffRaw, countRaw,
 
 // ── graph-remove-scatter-plot ─────────────────────────────────────────────────
 export function demoGraphRemoveScatterPlot(idRaw) {
-  const id = (idRaw || 'nuage1').trim()
+  const id = (idRaw || 'cloud1').trim()
   return {
     snapshot: null,
     script: [{ type: 'ggb-remove-scatter-plot', id }],
@@ -484,7 +542,7 @@ export function demoGraphAddSegment(x1Raw, y1Raw, x2Raw, y2Raw, colorRaw, idRaw)
   const y1 = Number(y1Raw) || 0
   const x2 = Number(x2Raw) || 4
   const y2 = Number(y2Raw) || 0
-  const color = (colorRaw || '').trim()
+  const color = colorRaw ? resolveColor(colorRaw) : ''
   const id = (idRaw || 'seg1').trim()
   const opts = {}
   if (color) opts.color = color
@@ -551,11 +609,19 @@ export function demoGraphAdjustView(cxRaw, cyRaw, rangeRaw) {
 }
 
 // ── graph-set-viewport ────────────────────────────────────────────────────────
+// `Number(raw) || fallback` silently discards an intentional 0 (0 is falsy),
+// which is exactly the value a viewport bound legitimately needs — use this
+// instead so only a genuinely missing/non-numeric input falls back.
+function numOr(raw, fallback) {
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : fallback
+}
+
 export function demoGraphSetViewport(xMinR, xMaxR, yMinR, yMaxR) {
-  const xMin = Number(xMinR) || -5
-  const xMax = Number(xMaxR) ||  5
-  const yMin = Number(yMinR) || -4
-  const yMax = Number(yMaxR) ||  4
+  const xMin = numOr(xMinR, -5)
+  const xMax = numOr(xMaxR,  5)
+  const yMin = numOr(yMinR, -4)
+  const yMax = numOr(yMaxR,  4)
   const script = [
     { type: 'showTitle',     text: `setViewport(${xMin}, ${xMax}, ${yMin}, ${yMax})` },
     { type: 'showNarration', text: `setViewport(${xMin}, ${xMax}, ${yMin}, ${yMax})` },
@@ -587,7 +653,7 @@ export function demoGraphAddHorizontalLine(yRaw) {
   const script = [
     { type: 'showTitle',     text: `addHorizontalLine(y = ${y})` },
     { type: 'showNarration', text: `Trace la droite horizontale y = ${y}` },
-    { type: 'ggb-horizontal-line', id: `hl_${Date.now()}`, y, opts: { color: [248, 113, 113], thickness: 2 } },
+    { type: 'ggb-horizontal-line', id: `hl_${Date.now()}`, y, opts: { color: [96, 165, 250], thickness: 2 } },
     { type: 'showNarration', text: `Droite y = ${y} tracée.` },
   ]
   return { snapshot: null, script }
@@ -615,13 +681,14 @@ export function demoGraphTrigCircle() {
 
 // ── graph-batch-add-points ────────────────────────────────────────────────────
 // points = "id:x:y:label|id:x:y:label|..."  (label is optional)
-export function demoGraphBatchAddPoints(pointsRaw, showCoordsRaw) {
+export function demoGraphBatchAddPoints(pointsRaw, showCoordsRaw, colorRaw) {
   const showCoords = showCoordsRaw === true || String(showCoordsRaw).trim() === 'true'
+  const color = colorRaw ? resolveColor(colorRaw) : [96, 165, 250]
   const entries = String(pointsRaw || '').split('|').map(s => s.trim()).filter(Boolean)
   const actions = entries.map(entry => {
     const [id, x, y, ...labelParts] = entry.split(':')
     const label = labelParts.join(':').trim()
-    const opts = { size: 6, label: label || '', showCoords, color: [248, 113, 113] }
+    const opts = { size: 6, label: label || '', showCoords, color }
     return { type: 'ggb-add-point', id: id.trim(), x: x.trim(), y: y.trim(), opts }
   })
   return { snapshot: null, script: [{ type: 'ggb-parallel', actions }] }
@@ -689,7 +756,7 @@ export function demoGraphDrawVector(x1Raw, y1Raw, x2Raw, y2Raw) {
   const script = [
     { type: 'showTitle',     text: `drawVector((${x1},${y1}) → (${x2},${y2}))` },
     { type: 'showNarration', text: `Trace un vecteur de (${x1}, ${y1}) vers (${x2}, ${y2})` },
-    { type: 'ggb-draw-vector', id: `vec_${Date.now()}`, x1, y1, x2, y2, opts: { color: [248, 113, 113], thickness: 2 } },
+    { type: 'ggb-draw-vector', id: `vec_${Date.now()}`, x1, y1, x2, y2, opts: { color: [96, 165, 250], thickness: 2 } },
     { type: 'showNarration', text: `Vecteur tracé de (${x1}, ${y1}) vers (${x2}, ${y2}).` },
   ]
   return { snapshot: null, script }
@@ -912,6 +979,22 @@ export function demoTableChangeValues(changesRaw, gridIdRaw) {
   return { snapshot: null, script }
 }
 
+// ── tab-highlight-row ──────────────────────────────────────────────────────────
+// Silent, like eq-save-result/set-layout — no title/narration, since this is
+// an accent step meant to sit alongside other steps rather than announce itself.
+export function demoTableHighlightRow(gridIdRaw, rowIndexRaw, colorRaw) {
+  const gid      = (gridIdRaw ?? '').trim() || 'grid1'
+  const rowIndex = Math.max(0, Math.round(Number(rowIndexRaw) || 0))
+  const color    = colorRaw ? resolveColor(colorRaw) : undefined
+  return { snapshot: null, script: [{ type: 'table-highlight-row', id: gid, rowIndex, color }] }
+}
+
+// ── tab-clear-row-highlight ────────────────────────────────────────────────────
+export function demoTableClearRowHighlight(gridIdRaw) {
+  const gid = (gridIdRaw ?? '').trim() || 'grid1'
+  return { snapshot: null, script: [{ type: 'table-clear-row-highlight', id: gid }] }
+}
+
 // ── Comments ──────────────────────────────────────────────────────────────────
 
 // Exact point — user provides (x, y) directly
@@ -958,7 +1041,7 @@ export function demoAddCommentGrid(textRaw, gridIdRaw, colRaw, rowRaw, colorRaw,
   const gridId = (gridIdRaw || 'grid1').trim()
   const col    = Number(colRaw) || 0
   const row    = Number(rowRaw) || 0
-  const color  = (colorRaw || '#a855f7').trim()
+  const color  = (colorRaw || '#60a5fa').trim()
   const id     = (cmtIdRaw || '').trim() || crypto.randomUUID()
   return {
     snapshot: null,
@@ -970,7 +1053,7 @@ export function demoAddCommentGeo(textRaw, shapeIdRaw, vertexIndexRaw, colorRaw,
   const text        = (textRaw   || 'Vertex A').trim()
   const shapeId     = (shapeIdRaw || 'triangle').trim()
   const vertexIndex = Number(vertexIndexRaw) || 0
-  const color       = (colorRaw || '#a855f7').trim()
+  const color       = (colorRaw || '#60a5fa').trim()
   const id          = (cmtIdRaw || '').trim() || crypto.randomUUID()
   return {
     snapshot: null,
@@ -1036,6 +1119,18 @@ export function demoNarrate(textRaw) {
   return { snapshot: null, script: [{ type: 'set-narration', text }] }
 }
 
+// ── set-layout ────────────────────────────────────────────────────────────────
+// Switches the page's layout mid-script (e.g. text-equation → single-equation
+// → graph-equation as a derivation progresses). App.jsx's display slots are
+// always mounted, so this doesn't remount anything — CSS transitions on
+// .display-slot turn it into a smooth resize/reposition (shared slots) or
+// fade (slots appearing/disappearing) instead of an instant pop.
+export function demoSetLayout(modeRaw) {
+  const mode = (modeRaw || '').trim()
+  if (!mode) throw new Error('Choose a layout for set-layout.')
+  return { snapshot: null, script: [{ type: 'set-layout', mode }] }
+}
+
 // ── eq-full-solve ─────────────────────────────────────────────────────────────
 // Animated step-by-step solve of the equation currently on the page. No answer-jump.
 export function demoEquationFullSolve() {
@@ -1069,7 +1164,7 @@ export function demoEquationDistribute(eqText, currentSnapshot) {
 
 // ── eq-create ─────────────────────────────────────────────────────────────────
 export function demoEquationCreate(eqText) {
-  const eq = (eqText || '3x + 5 = 14').trim()
+  const eq = substituteValueRefs((eqText || '3x + 5 = 14').trim())
   const isRich = /\|[^|]+\|/.test(eq) || /\//.test(eq) || /\b(sin|cos|tan|cot|sec|csc)\s*\(/.test(eq)
   const snapshot = (isRich ? parseRichEquation(eq) : parseEquation(eq)).snapshot()
   const script = [{ type: 'renderEquation' }]
@@ -1093,7 +1188,10 @@ export function demoTextCreate(boxId, title, content, isList, color) {
   const titleV = (title  || '').trim()
   const items  = (content || 'This is the first line.|Second line with $x^2 + y^2 = r^2$.')
     .split('|').map(s => s.trim()).filter(Boolean)
-  const isListV = String(isList) === 'true'
+  // 'steps' stays a string (numbered list); anything else collapses to the
+  // existing bullet/paragraph boolean so old 'true'/'false' content is unaffected.
+  const isListRaw = String(isList)
+  const isListV   = isListRaw === 'steps' ? 'steps' : isListRaw === 'true'
   const colorV  = (color || '').trim()
   return {
     snapshot: null,
@@ -1207,7 +1305,7 @@ export const MDAS_PRESETS = [
   '4 + 8 ÷ 2 - 1 × 3',
 ]
 
-export function demoMdasExample(exprRaw, lang = 'fr') {
+export function demoMdasExample(exprRaw, lang = 'en') {
   const raw = (exprRaw || MDAS_PRESETS[0]).trim()
   const parsed = tokenizeMdas(raw)
 
@@ -1706,10 +1804,13 @@ export function demoGeo3dLabelSides(idRaw, labelsRaw) {
   }
 }
 
-export function demoGeo3dShowAngles(idRaw, colorRaw) {
+export function demoGeo3dShowAngles(idRaw, colorRaw, showValuesRaw) {
   return {
     snapshot: null,
-    script: [{ type: 'ggb-3d-show-angles', id: (idRaw || 'shape1').trim(), color: colorRaw || 'blue' }],
+    script: [{
+      type: 'ggb-3d-show-angles', id: (idRaw || 'shape1').trim(), color: colorRaw || 'blue',
+      showValues: showValuesRaw === true || showValuesRaw === 'true',
+    }],
   }
 }
 

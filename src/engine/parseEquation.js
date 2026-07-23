@@ -126,6 +126,51 @@ function splitBySigns(s) {
   return parts
 }
 
+// Reuses the plain (mathjs-backed) parser's own paren-group detection —
+// the same logic that already turns "2(x+4)" into a proper isParenGroup
+// term for the classic path — so a rich-syntax term gets the identical
+// treatment instead of falling into the generic arithmetic tree, which has
+// no notion of "distribute across an unresolved variable".
+// Returns null (never throws) for anything that isn't cleanly exactly one
+// such term — content carrying rich-only syntax (|label| placeholders,
+// trig calls) is deliberately excluded and left on the exprTree path.
+function tryClassicParenGroup(content) {
+  if (/__S\d+__/.test(content)) return null
+  if (/\b(sin|cos|tan|cot|sec|csc)\s*\(/.test(content)) return null
+  try {
+    const raw = extractTerms(content)
+    if (raw.length === 1 && raw[0].isParenGroup) return raw[0]
+  } catch {
+    // Not mathjs-parseable (stray placeholders, unusual characters) —
+    // caller falls back to the generic tree parser.
+  }
+  return null
+}
+
+// "x/2", "2x/3", "x^2/5" — a variable term with a fractional coefficient.
+// Needs to become an ORDINARY algebra term (its own degree, coefficient
+// 1/2 etc.) so it combines/moves/divides like any other x term — routing
+// it into the generic tree instead (as needsExprTree's "/" check would)
+// loses the variable entirely: the term becomes a placeholder
+// {variable:null, degree:0} the classic engine reads as a bare constant,
+// so it silently gets combined with unrelated constants (e.g. "x/2 + 3"
+// collapsing into "4"). Deliberately a strict, narrow regex — NOT the
+// mathjs fallback tryClassicParenGroup uses — so it can never misfire on
+// a real arithmetic sub-expression (pi*r^2, (B+b)*h/2, sqrt(disc)/2a…)
+// that's SUPPOSED to stay on the generic-tree path.
+function tryFractionMonomial(content) {
+  const m = content.match(/^(\d+\.?\d*)?([a-zA-Zα-ω])(?:\^(\d+))?\/(\d+\.?\d*)$/)
+  if (!m) return null
+  const [, coeffStr, varName, degStr, denStr] = m
+  const den = parseFloat(denStr)
+  if (den === 0) return null
+  const coeff = coeffStr ? parseFloat(coeffStr) : 1
+  return {
+    sign: '+', coefficient: coeff / den, variable: varName,
+    degree: degStr ? parseInt(degStr, 10) : 1,
+  }
+}
+
 function parseRichSide(str) {
   // Protect |label| groups from sign-splitting
   const labels = []
@@ -160,6 +205,24 @@ function parseRichSide(str) {
     const outerStripped = stripColorsDepth0(content)   // inner __Cn__ still present
 
     if (needsExprTree(outerStripped)) {
+      // "2(x+4)", "-3(2x-1)" — a coefficient distributed over a sum that
+      // still has a free variable in it isn't arithmetic the generic tree
+      // can ever finish (findReady only resolves operations where BOTH
+      // sides are plain numbers; "x" never becomes one). This is algebra —
+      // distribute first, same as the classic (non-rich) parser already
+      // does correctly — not a number to reduce.
+      const classic = tryClassicParenGroup(outerStripped)
+      if (classic) {
+        const finalSign = (sign === '-') !== (classic.sign === '-') ? '-' : '+'
+        terms.push({ ...classic, sign: finalSign, color: termColor })
+        continue
+      }
+      const fracMono = tryFractionMonomial(outerStripped)
+      if (fracMono) {
+        const finalSign = (sign === '-') !== (fracMono.sign === '-') ? '-' : '+'
+        terms.push({ ...fracMono, sign: finalSign, color: termColor })
+        continue
+      }
       // A real arithmetic sub-expression — (B+b)*h/2, pi*r^2, (-b+sqrtDisc)/2a…
       // ONE generic tree, resolved later one operation at a time by the
       // order-of-operations walker in exprTree.js. Every number is its own
@@ -382,13 +445,59 @@ function collectTerms(node, positive, out) {
           return
         }
       }
-      // constant * (expression)  →  parenGroup e.g. 2(x+3), 3*(2x-1)
+      // coefficient(-with-optional-variable) * (expression) → parenGroup
+      // e.g. 2(x+3), 3*(2x-1), 2x(x+4), x(x+4), -3x²(x-1)
       {
-        let coeffVal = null, parenContent = null
-        if (a.type === 'ConstantNode' && b.type === 'ParenthesisNode') {
-          coeffVal = a.value; parenContent = b.content
-        } else if (b.type === 'ConstantNode' && a.type === 'ParenthesisNode') {
-          coeffVal = b.value; parenContent = a.content
+        // Reads a node as "a coefficient, optionally times a variable" —
+        // the same shapes already recognized above as a plain term, just
+        // captured here instead of pushed, since it's actually the
+        // multiplier in front of a parenthesis, not a term of its own.
+        const asCoeffNode = (node) => {
+          if (node.type === 'ConstantNode') return { val: node.value, v: null, d: 1 }
+          if (node.type === 'SymbolNode') return { val: 1, v: node.name, d: 1 }
+          if (node.type === 'OperatorNode' && node.op === '*' && node.args.length === 2) {
+            const [x, y] = node.args
+            if (x.type === 'ConstantNode' && y.type === 'SymbolNode') return { val: x.value, v: y.name, d: 1 }
+            if (y.type === 'ConstantNode' && x.type === 'SymbolNode') return { val: y.value, v: x.name, d: 1 }
+          }
+          if (node.type === 'OperatorNode' && node.op === '^') {
+            const [base, exp] = node.args
+            if (base.type === 'SymbolNode' && exp.type === 'ConstantNode') return { val: 1, v: base.name, d: exp.value }
+          }
+          return null
+        }
+
+        // mathjs's grammar is ambiguous between implicit multiplication and
+        // a function call for "identifier(...)" — it always resolves "x(...)"
+        // as calling a function named "x", never as x * (...). So "2x(x+4)"
+        // arrives as 2 * FunctionNode{fn: x, args: [x+4]}, not 2 * Parenthesis.
+        // Recognize that shape too: the "function name" IS the variable
+        // multiplying the parens.
+        const asParenSide = (node) => {
+          if (node.type === 'ParenthesisNode') return { content: node.content, extraVar: null }
+          if (node.type === 'FunctionNode' && node.fn.type === 'SymbolNode' && node.args.length === 1) {
+            return { content: node.args[0], extraVar: node.fn.name }
+          }
+          return null
+        }
+
+        let coeffVal = null, coeffVar = null, coeffDeg = 1, parenContent = null
+        const pB = asParenSide(b)
+        const pA = !pB ? asParenSide(a) : null
+        if (pB) {
+          const c = asCoeffNode(a)
+          if (c) {
+            coeffVal = c.val; coeffDeg = c.d
+            coeffVar = c.v ?? pB.extraVar
+            parenContent = pB.content
+          }
+        } else if (pA) {
+          const c = asCoeffNode(b)
+          if (c) {
+            coeffVal = c.val; coeffDeg = c.d
+            coeffVar = c.v ?? pA.extraVar
+            parenContent = pA.content
+          }
         }
         if (coeffVal !== null && parenContent !== null) {
           const rawInner = []
@@ -402,6 +511,8 @@ function collectTerms(node, positive, out) {
               degree:       -1,
               isParenGroup: true,
               parenCoeff:   Math.abs(rawVal),
+              parenCoeffVariable: coeffVar,
+              parenCoeffDegree:   coeffDeg,
               innerTerms:   rawInner.map(t => ({
                 sign:        t.sign,
                 coefficient: t.coefficient,
@@ -511,5 +622,25 @@ function collectTerms(node, positive, out) {
 
   if (node.type === 'ParenthesisNode') {
     collectTerms(node.content, positive, out)
+  }
+
+  // Bare "x(x+4)" with no leading coefficient at all — mathjs parses this
+  // as calling a function named "x", not x * (...). Same paren-group as
+  // the coefficient*(...) case above, just with an implicit magnitude 1.
+  if (node.type === 'FunctionNode' && node.fn.type === 'SymbolNode' && node.args.length === 1) {
+    const rawInner = []
+    collectTerms(node.args[0], true, rawInner)
+    if (rawInner.length > 0) {
+      out.push({
+        sign, coefficient: 1, variable: null, degree: -1,
+        isParenGroup: true,
+        parenCoeff: 1,
+        parenCoeffVariable: node.fn.name,
+        parenCoeffDegree: 1,
+        innerTerms: rawInner.map(t => ({
+          sign: t.sign, coefficient: t.coefficient, variable: t.variable, degree: t.degree,
+        })),
+      })
+    }
   }
 }

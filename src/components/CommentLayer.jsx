@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, memo, forwardRef, useImperativeHandle } from 'react'
 import MathText from './RichText.jsx'
 import { getShapePoint3D } from '../engine/threeEngine.js'
+import { onGraphInteractiveChange, offGraphInteractiveChange } from '../engine/desmosEngine.js'
 
 const BOX_W   = 150
 const BOX_H   = 56
@@ -102,6 +103,16 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
   // Cache of placed positions: id -> { boxX, boxY, side }
   // Existing comments keep their position; only new ones are placed fresh.
   const placedRef = useRef({})
+
+  // While the graph's pan/zoom toggle is on, a comment's connector line
+  // (drawn to a graph point/curve) goes stale the instant the user pans —
+  // re-deriving its position live through an arbitrary pan/zoom isn't worth
+  // it, so the line just fades out. The comment box itself is unaffected.
+  const [graphInteractive, setGraphInteractiveState] = useState(false)
+  useEffect(() => {
+    onGraphInteractiveChange(setGraphInteractiveState)
+    return () => offGraphInteractiveChange(setGraphInteractiveState)
+  }, [])
 
   const resolveItems = useCallback((clearCache) => {
     if (clearCache) placedRef.current = {}
@@ -329,17 +340,24 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
             dotTy = nearest.y - 2
           }
 
+          // Only a graph-anchored connector goes stale during pan/zoom — a
+          // table cell, geometry vertex, or equation term doesn't move when
+          // the GRAPH is panned, so their lines stay put and stay visible.
+          const fadeForPan = graphInteractive && c.target?.type === 'graph'
+
           return (
             <g key={c.id} style={{ animation: 'cmtFadeIn 0.35s ease both' }}>
-              {c.cellRects?.map((r, i) => (
-                <rect key={i}
-                  x={r.x - 2} y={r.y - 2} width={r.w + 4} height={r.h + 4}
-                  fill={color} fillOpacity={0.14}
-                  stroke={color} strokeOpacity={0.65} strokeWidth={1.5} rx={3} />
-              ))}
-              <line x1={lx} y1={ly} x2={c.tx} y2={dotTy}
-                stroke={color} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.8} />
-              <circle cx={c.tx} cy={dotTy} r={DOT_R} fill={color} opacity={0.9} />
+              <g style={{ opacity: fadeForPan ? 0 : 1, transition: 'opacity 0.25s ease' }}>
+                {c.cellRects?.map((r, i) => (
+                  <rect key={i}
+                    x={r.x - 2} y={r.y - 2} width={r.w + 4} height={r.h + 4}
+                    fill={color} fillOpacity={0.14}
+                    stroke={color} strokeOpacity={0.65} strokeWidth={1.5} rx={3} />
+                ))}
+                <line x1={lx} y1={ly} x2={c.tx} y2={dotTy}
+                  stroke={color} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.8} />
+                <circle cx={c.tx} cy={dotTy} r={DOT_R} fill={color} opacity={0.9} />
+              </g>
             </g>
           )
         })}

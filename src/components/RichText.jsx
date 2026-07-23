@@ -1,24 +1,25 @@
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { evaluate } from 'mathjs'
+import { useLayoutEffect, useRef } from 'react'
 import { resolveLatexColors, resolveColor } from '../engine/palette.js'
-import { getSideLengths, getShapeHeight, getShapeRadius, getVertexAngle } from '../engine/geometryEngine.js'
+import { resolveValueRef, VALUE_TOKEN_PATTERN } from '../engine/valueRefs.js'
 
-// Replace geo references with live values from the shape:
-//   [shapeId]N  → side N's length         (e.g. "[trap]0" → "10")
-//   [shapeId]h  → the shape height        (e.g. "[para]h" → "4")
-//   [shapeId]r  → circle radius           (e.g. "[circ]r" → "3")
-//   [shapeId]aN → interior angle at vtx N (e.g. "[tri]a1" → "90")
-// Leaves the token untouched if the shape isn't found (usually means it hasn't
-// been created yet — create the geo before the text/narration).
+// Replace live value references with the actual stored value from the
+// object that created them — see valueRefs.js for the full token list:
+//   [id]N    → side N's length (geometry)        [id]h    → height
+//   [id]r    → radius (circle / cylinder / cone)  [id]aN   → vertex angle N
+//   [id]l/d/R→ 3D-solid length/depth/outer-radius [id]x/y  → graph point
+//   [id]x1/y1/x2/y2/len → graph segment           [id]expr → plotted f(x)
+//   [id]r<row>c<col>    → table cell
+// Leaves the token untouched if the object isn't found (usually means it
+// hasn't been created yet — create it before the text/narration/comment).
+const GEO_REF_RE = new RegExp(`\\[([^\\]]+)\\](${VALUE_TOKEN_PATTERN})`, 'g')
 function resolveGeoRefs(str) {
-  return str.replace(/\[([^\]]+)\](a\d+|\d+|h|r)/g, (m, id, n) => {
-    const sid = id.trim()
-    const v   = n === 'h'      ? getShapeHeight(sid)
-              : n === 'r'      ? getShapeRadius(sid)
-              : n[0] === 'a'   ? getVertexAngle(sid, parseInt(n.slice(1)))
-              : getSideLengths(sid)[parseInt(n)]
-    return v === undefined ? m : String(parseFloat(v.toFixed(2)))
+  return str.replace(GEO_REF_RE, (m, id, tok) => {
+    const v = resolveValueRef(id, tok)
+    if (v === undefined) return m
+    return typeof v === 'number' ? String(parseFloat(v.toFixed(2))) : v
   })
 }
 
@@ -56,6 +57,47 @@ function parseMath(str) {
   return parts
 }
 
+// A rendered KaTeX formula never wraps — a chained equality like
+// "a/sinA = b/sinB = c/sinC" can be wider than its box. Rather than let it
+// spill out (forcing an overflow-x scrollbar) or clip it, shrink the whole
+// formula down with `zoom` until it fits the nearest block-level ancestor
+// (walking past the inline wrapper spans MathText itself renders).
+function FitKatex({ html, block }) {
+  const ref = useRef(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const blockAncestor = () => {
+      let cur = el.parentElement
+      while (cur && getComputedStyle(cur).display === 'inline') cur = cur.parentElement
+      return cur
+    }
+    const fit = () => {
+      el.style.zoom = 1
+      const container = blockAncestor()
+      if (!container) return
+      const cs = getComputedStyle(container)
+      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+      const available = container.clientWidth - padX
+      const natural = el.scrollWidth
+      if (available > 0 && natural > available) el.style.zoom = Math.max(0.4, available / natural)
+    }
+    fit()
+    const container = blockAncestor()
+    if (!container) return
+    const ro = new ResizeObserver(fit)
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [html])
+  return (
+    <span
+      ref={ref}
+      style={block ? { display: 'block', fontSize: '1.45em' } : { display: 'inline-block', maxWidth: '100%', verticalAlign: 'middle' }}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+}
+
 function renderParts(parts) {
   return parts.map((p, i) => {
     if (p.t === 'text')  return <span key={i}>{p.s}</span>
@@ -67,8 +109,7 @@ function renderParts(parts) {
         throwOnError: false, displayMode: p.block, output: 'html', trust: true,
       })
       // $$…$$ (display math) sits on its own line AND renders larger; $…$ stays inline.
-      return <span key={i} style={p.block ? { display: 'block', fontSize: '1.45em' } : undefined}
-                   dangerouslySetInnerHTML={{ __html: html }} />
+      return <FitKatex key={i} html={html} block={p.block} />
     } catch {
       return <span key={i} className="tb-math-err">{p.s}</span>
     }

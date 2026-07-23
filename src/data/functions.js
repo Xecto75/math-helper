@@ -18,7 +18,7 @@ export const CATEGORIES = [
   // Individual animations from the equation engine, each independently testable.
   {
     id: 'equation',
-    label: 'Équation',
+    label: 'Equation',
     defaultOpen: true,
     functions: [
       {
@@ -48,7 +48,7 @@ export const CATEGORIES = [
         inputs: [
           {
             id:          'eq',
-            label:       'Équation',
+            label:       'Equation',
             type:        'text',
             placeholder: '2(x + 3) = 10',
             default:     '2(x + 3) = 10',
@@ -85,7 +85,7 @@ export const CATEGORIES = [
         inputs: [
           {
             id:      'divisor',
-            label:   'Diviseur',
+            label:   'Divisor',
             type:    'number',
             default: 2,
             min:     1,
@@ -95,10 +95,19 @@ export const CATEGORIES = [
       {
         id:          'eq-replace-variable',
         label:       'Replace Variable',
-        description: 'Fade symbolic letters and replace with numeric values — equation must already be on the page. A value can be a hardcoded number OR a live shape reference: [shapeId]0 (Nth side), [shapeId]h (height), [shapeId]r (circle radius), [shapeId]a2 (angle at vertex 2) — so it never goes out of sync with the shape.',
+        description: 'Fade symbolic letters and replace with numeric values — equation must already be on the page. A value can be a hardcoded number OR a live reference to whatever created it, so it never goes out of sync: [id]0/[id]h/[id]r/[id]aN (2D or flat-2D shape side/height/radius/vertex-angle), [id]a/[id]r/[id]h/[id]l/[id]d/[id]R (a 3D solid\'s dimension — matches the letter shown by Show Volume Measures for that shape type), [id]x/[id]y (a graph point), [id]x1/[id]y1/[id]x2/[id]y2/[id]len (a graph segment), [id]r<row>c<col> (a table cell, 0-indexed), [funcId]N (the Nth number written in a plotted expression, left to right — a literal like "2x+4"\'s 2/4 OR a |slider| var\'s live value), [sliderName]v (a slider addressed directly by its own name).',
         status:      'ready',
         inputs: [
-          { id: 'replacements', label: 'Replacements (a=v,b=v,...)', type: 'text', default: 'a=2,b=-3,c=1', placeholder: 'a=2,b=-3,c=1  or  a=[shapeId]0,r=[circ]r' },
+          { id: 'replacements', label: 'Replacements (a=v,b=v,...)', type: 'text', default: 'a=2,b=-3,c=1', placeholder: 'a=2,b=-3,c=1  or  m=[fx1]0,b=[fx1]1  or  a=[a]v,b=[b]v' },
+        ],
+      },
+      {
+        id:          'eq-save-result',
+        label:       'Save Result As...',
+        description: 'Silently stash the equation\'s current solved numeric result under a name — no visual change, the equation already showed it. Read it back anywhere else via [name]v: another eq-create/eq-replace-variable, a text box, or a comment. Use this to chain solves — e.g. compute the slope m between two points and save it, then use [m]v to solve for b, save that too, then show "y = mx + b" with both substituted in.',
+        status:      'ready',
+        inputs: [
+          { id: 'name', label: 'Save as name', type: 'text', default: 'm', placeholder: 'm' },
         ],
       },
       {
@@ -166,7 +175,7 @@ export const CATEGORIES = [
     functions: [
       {
         id: 'table-create', label: 'Create Table',
-        description: 'Simplest way to make a table — give one 2D array, size is auto-detected (no need to also specify rows/cols)',
+        description: 'Simplest way to make a table — give one 2D array, size is auto-detected (no need to also specify rows/cols). Any cell is referenceable elsewhere via [gridId]r<row>c<col>, 0-indexed (see eq-replace-variable), including after table-change-value edits it.',
         status: 'ready', useTable: true,
         inputs: [
           { id: 'data', label: 'Data (2D array)', type: 'text',
@@ -262,6 +271,24 @@ export const CATEGORIES = [
             placeholder: 'col,row,value|col,row,value' },
         ],
       },
+      {
+        id: 'tab-highlight-row', label: 'highlightRow',
+        description: 'Highlight one table row — useful for walking through a calculation row by row alongside the equation panel. Calling again just slides the same bar to the new row, so no clear step is needed between rows.',
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'gridId',    label: 'Grid',            type: 'grid-id', default: '' },
+          { id: 'rowIndex',  label: 'Row (0-based)',    type: 'number',  default: 0 },
+          { id: 'color',     label: 'Color (optional)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id: 'tab-clear-row-highlight', label: 'clearRowHighlight',
+        description: 'Fade out the row highlight bar',
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'gridId', label: 'Grid', type: 'grid-id', default: '' },
+        ],
+      },
     ],
   },
 
@@ -269,17 +296,17 @@ export const CATEGORIES = [
   // Desmos graphing engine functions — each independently testable.
   {
     id: 'graphiques',
-    label: 'Graphiques',
+    label: 'Graphs',
     defaultOpen: false,
     functions: [
       {
         id: 'graph-plot-function',
         label: 'plotFunction',
-        description: 'Trace f(x) sur le graphique — étiquette "f(x) = …" (ou g/h/…) affichée automatiquement, sauf si masquée',
+        description: 'Plot f(x) on the graph — label "f(x) = …" (or g/h/…) shown automatically unless hidden. Wrap a variable in |pipes| (e.g. |a|x+|b|) to turn it into a slider. Its expression is reusable elsewhere via [id]expr (text, e.g. "f(x) = [f1]expr" in a text-create).',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'expr', label: 'f(x)', type: 'text', default: 'x^2 - 2*x - 1', placeholder: 'ex: x^2 + 1' },
-          { id: 'id',   label: 'ID (optionnel)', type: 'text', default: '', placeholder: 'auto' },
+          { id: 'expr', label: 'f(x)', type: 'text', default: 'x^2 - 2*x - 1', placeholder: 'e.g.: x^2 + 1' },
+          { id: 'id',   label: 'ID (optional)', type: 'text', default: '', placeholder: 'auto' },
           { id: 'hideLabel', label: 'Hide label', type: 'select', default: '0',
             options: [
               { value: '0', label: 'Show (default)' },
@@ -290,19 +317,19 @@ export const CATEGORIES = [
       {
         id: 'graph-remove-function',
         label: 'removeFunction',
-        description: 'Supprime une fonction existante (+ ses étiquettes et tangentes)',
+        description: 'Remove an existing function (+ its labels and tangents)',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'funcId', label: 'Fonction', type: 'func-id', default: '' },
+          { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
         ],
       },
       {
         id: 'graph-shade-area',
         label: 'shadeUnderCurve',
-        description: 'Ombre l\'aire sous une courbe existante entre x = a et x = b',
+        description: 'Shade the area under an existing curve between x = a and x = b',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'funcId', label: 'Fonction', type: 'func-id', default: '' },
+          { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
           { id: 'a',      label: 'a',        type: 'number',  default: 0 },
           { id: 'b',      label: 'b',        type: 'number',  default: 3 },
         ],
@@ -310,17 +337,20 @@ export const CATEGORIES = [
       {
         id: 'graph-find-intersections',
         label: 'findIntersections',
-        description: 'Marque le(s) point(s) d\'intersection de f et g',
+        description: 'Mark the intersection point(s) of f and g — works even if one is written as a general equation (e.g. "-6x+3y=12") rather than solved for y. Shows the (x, y) coordinates by default.',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'f1', label: 'f(x)', type: 'func-id', default: '' },
-          { id: 'f2', label: 'g(x)', type: 'func-id', default: '' },
+          { id: 'f1',        label: 'f(x)', type: 'func-id', default: '' },
+          { id: 'f2',        label: 'g(x)', type: 'func-id', default: '' },
+          { id: 'color',     label: 'Color (optional)', type: 'color-name', default: '' },
+          { id: 'hideLabel', label: 'Hide coordinates', type: 'select', default: '0',
+            options: [{ value: '0', label: 'Show (default)' }, { value: '1', label: 'Hide' }] },
         ],
       },
       {
         id: 'graph-add-point',
         label: 'addPoint',
-        description: 'Place un point (x, y) — donne un ID unique pour en garder plusieurs',
+        description: 'Place a point (x, y) — give it a unique ID to keep several. Coordinates reusable elsewhere via [id]x / [id]y (see eq-replace-variable).',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'x', label: 'x', type: 'text', default: '2', placeholder: '2  or  sqrt(3)/2  or  pi/4' },
@@ -334,111 +364,122 @@ export const CATEGORIES = [
       {
         id: 'graph-remove-point',
         label: 'removePoint',
-        description: 'Supprime un point par son ID',
+        description: 'Remove a point by its ID',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'id', label: 'Point ID', type: 'text', default: '', placeholder: 'same ID used in addPoint' },
         ],
       },
       {
-        id: 'graph-scatter-plot',
-        label: 'scatterPlot',
-        description: 'Nuage de points dispersés autour de y = pente·x + ordonnée — coeff contrôle la dispersion (0 = tous sur la droite)',
+        id: 'graph-best-fit-line',
+        label: 'bestFitLine',
+        description: 'Least-squares regression line through a set of already-placed points (see addPoint) — the "line through a cloud of points" trend line. Leave Point IDs blank to use every point currently on the graph. Dashed by default so it reads as a fitted line rather than more data.',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'slope',     label: 'Pente (m)',       type: 'number', default: 1 },
-          { id: 'intercept', label: 'Ordonnée à l\'origine (b)', type: 'number', default: 0 },
-          { id: 'coeff',     label: 'Dispersion (coefficient)', type: 'number', default: 1 },
-          { id: 'count',     label: 'Nombre de points', type: 'number', default: 20 },
+          { id: 'pointIds', label: 'Point IDs (comma-separated, blank = all points)', type: 'text', default: '', placeholder: 'blank = all points, or p1,p2,p3,p4,p5,p6' },
+          { id: 'id',       label: 'Line ID (blank = auto)', type: 'text', default: '', placeholder: 'e.g. trend' },
+          { id: 'color',    label: 'Color (optional)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id: 'graph-scatter-plot',
+        label: 'scatterPlot',
+        description: 'Scatter of points dispersed around y = slope·x + intercept — coeff controls the spread (0 = all on the line)',
+        status: 'ready', useGraph: true,
+        inputs: [
+          { id: 'slope',     label: 'Slope (m)',       type: 'number', default: 1 },
+          { id: 'intercept', label: 'Y-intercept (b)', type: 'number', default: 0 },
+          { id: 'coeff',     label: 'Spread (coefficient)', type: 'number', default: 1 },
+          { id: 'count',     label: 'Number of points', type: 'number', default: 20 },
           { id: 'xMin',      label: 'x min', type: 'number', default: -5 },
           { id: 'xMax',      label: 'x max', type: 'number', default: 5 },
-          { id: 'color',     label: 'Couleur (optionnel)', type: 'color-name', default: '' },
-          { id: 'id',        label: 'ID', type: 'text', default: 'nuage1' },
+          { id: 'color',     label: 'Color (optional)', type: 'color-name', default: '' },
+          { id: 'id',        label: 'ID', type: 'text', default: 'cloud1' },
         ],
       },
       {
         id: 'graph-remove-scatter-plot',
         label: 'removeScatterPlot',
-        description: 'Supprime un nuage de points par son ID',
+        description: 'Remove a scatter plot by its ID',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'id', label: 'ID', type: 'text', default: 'nuage1' },
+          { id: 'id', label: 'ID', type: 'text', default: 'cloud1' },
         ],
       },
       {
         id: 'graph-add-segment',
         label: 'addSegment',
-        description: 'Trace un segment de droite FINI entre deux points (pas une droite infinie)',
+        description: 'Draw a FINITE line segment between two points (not an infinite line). Reusable elsewhere via [id]x1/[id]y1/[id]x2/[id]y2/[id]len (see eq-replace-variable).',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'x1', label: 'x1', type: 'number', default: 0 },
           { id: 'y1', label: 'y1', type: 'number', default: 0 },
           { id: 'x2', label: 'x2', type: 'number', default: 4 },
           { id: 'y2', label: 'y2', type: 'number', default: 0 },
-          { id: 'color', label: 'Couleur (optionnel)', type: 'color-name', default: '' },
+          { id: 'color', label: 'Color (optional)', type: 'color-name', default: '' },
           { id: 'id', label: 'ID', type: 'text', default: 'seg1' },
         ],
       },
       {
         id: 'graph-remove-segment',
         label: 'removeSegment',
-        description: 'Supprime un segment par son ID',
+        description: 'Remove a segment by its ID',
         status: 'ready', useGraph: true,
         inputs: [{ id: 'id', label: 'ID', type: 'text', default: 'seg1' }],
       },
       {
         id: 'graph-segment-tick',
         label: 'segmentTick',
-        description: 'Marque de côtés égaux (1 à 3 tirets perpendiculaires) au milieu d\'un segment — change le nombre pour marquer une autre paire égale',
+        description: 'Equal-side mark (1 to 3 perpendicular ticks) at the segment midpoint — change the count to mark a different equal pair',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'id',    label: 'Segment ID', type: 'text',   default: 'seg1' },
-          { id: 'ticks', label: 'Nombre de tirets (1-3)', type: 'number', default: 1, min: 1, max: 3 },
-          { id: 'color', label: 'Couleur', type: 'color-name', default: 'blue' },
+          { id: 'ticks', label: 'Number of ticks (1-3)', type: 'number', default: 1, min: 1, max: 3 },
+          { id: 'color', label: 'Color', type: 'color-name', default: 'blue' },
         ],
       },
       {
         id: 'graph-remove-segment-tick',
         label: 'removeSegmentTick',
-        description: 'Supprime la marque de côté égal d\'un segment',
+        description: 'Remove the equal-side mark from a segment',
         status: 'ready', useGraph: true,
         inputs: [{ id: 'id', label: 'Segment ID', type: 'text', default: 'seg1' }],
       },
       {
         id: 'graph-divide-segment',
         label: 'divideSegment',
-        description: 'Marque les points de partage qui séparent un segment en N sections égales',
+        description: 'Mark the division points that split a segment into N equal sections',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'id',    label: 'Segment ID', type: 'text', default: 'seg1' },
           { id: 'parts', label: 'Sections (N)', type: 'number', default: 2, min: 2 },
-          { id: 'color', label: 'Couleur', type: 'color-name', default: 'purple' },
-          { id: 'showLabels', label: 'Afficher les étiquettes (P1, P2…)', type: 'select', default: 'false',
-            options: [{ value: 'false', label: 'Non' }, { value: 'true', label: 'Oui' }] },
+          { id: 'color', label: 'Color', type: 'color-name', default: 'purple' },
+          { id: 'showLabels', label: 'Show labels (P1, P2…)', type: 'select', default: 'false',
+            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
         ],
       },
       {
         id: 'graph-remove-divide-segment',
         label: 'removeDivideSegment',
-        description: 'Supprime les points de partage d\'un segment',
+        description: 'Remove the division points of a segment',
         status: 'ready', useGraph: true,
         inputs: [{ id: 'id', label: 'Segment ID', type: 'text', default: 'seg1' }],
       },
       {
         id: 'graph-adjust-view',
         label: 'adjustView',
-        description: 'Centre le graphique sur (cx, cy), plage visible = range',
+        description: 'Center the graph on (cx, cy), visible range = range',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'cx',    label: 'Centre x', type: 'number', default: 0 },
-          { id: 'cy',    label: 'Centre y', type: 'number', default: 0 },
+          { id: 'cx',    label: 'Center x', type: 'number', default: 0 },
+          { id: 'cy',    label: 'Center y', type: 'number', default: 0 },
           { id: 'range', label: 'Range',    type: 'number', default: 10, min: 0.1 },
         ],
       },
       {
         id: 'graph-set-viewport',
         label: 'setViewport',
-        description: 'Définit les limites visibles du graphique',
+        description: 'Set the visible bounds of the graph',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'xMin', label: 'xMin', type: 'number', default: -5 },
@@ -450,30 +491,29 @@ export const CATEGORIES = [
       {
         id: 'graph-name-func',
         label: 'nameFunc',
-        description: 'Affiche une étiquette flottante sur une courbe déjà tracée',
+        description: 'Show a floating label on an already-plotted curve — y is always recalculated from f(x0), never typed in',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'funcId', label: 'Fonction',    type: 'func-id' , default: '' },
-          { id: 'label',  label: 'Étiquette',   type: 'text',    default: 'f(x)' },
+          { id: 'funcId', label: 'Function',    type: 'func-id' , default: '' },
+          { id: 'label',  label: 'Label',       type: 'text',    default: 'f(x)' },
           { id: 'x0',     label: 'x₀',          type: 'number',  default: 3 },
-          { id: 'y0',     label: 'y₀ (optionnel)', type: 'number', default: '', placeholder: 'auto' },
         ],
       },
       {
         id: 'graph-tangent',
         label: 'tangent',
-        description: 'Trace la tangente d\'une courbe déjà tracée en (x₀, y₀)',
+        description: 'Draw the tangent of an already-plotted curve at (x₀, y₀)',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'funcId', label: 'Fonction',    type: 'func-id', default: '' },
+          { id: 'funcId', label: 'Function',    type: 'func-id', default: '' },
           { id: 'x0',     label: 'x₀',          type: 'number',  default: 1 },
-          { id: 'y0',     label: 'y₀ (optionnel)', type: 'number', default: '', placeholder: 'auto' },
+          { id: 'y0',     label: 'y₀ (optional)', type: 'number', default: '', placeholder: 'auto' },
         ],
       },
       {
         id: 'graph-horizontal-line',
         label: 'addHorizontalLine',
-        description: 'Trace une droite horizontale y = c',
+        description: 'Draw a horizontal line y = c',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'y', label: 'y', type: 'number', default: 1 },
@@ -482,10 +522,10 @@ export const CATEGORIES = [
       {
         id: 'graph-mark-roots',
         label: 'markRoots',
-        description: 'Marque les racines f(x) = 0 d\'une courbe existante',
+        description: 'Mark the roots f(x) = 0 of an existing curve',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'funcId', label: 'Fonction', type: 'func-id', default: '' },
+          { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
         ],
       },
       {
@@ -503,6 +543,7 @@ export const CATEGORIES = [
         inputs: [
           { id: 'points',     label: 'Points (id:x:y:label|...)', type: 'text', default: 'p0:1:0:0°|p90:0:1:90°', placeholder: 'p0:1:0:0°|p30:sqrt(3)/2:1/2:30°' },
           { id: 'showCoords', label: 'Show coords outside', type: 'text', default: 'true', placeholder: 'true / false' },
+          { id: 'color',      label: 'Color (optional)', type: 'color-name', default: '' },
         ],
       },
       {
@@ -527,28 +568,28 @@ export const CATEGORIES = [
       {
         id: 'graph-plot-derivative',
         label: 'plotDerivative',
-        description: 'Trace la dérivée f\'(x) d\'une courbe existante',
+        description: 'Draw the derivative f\'(x) of an existing curve',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'funcId', label: 'Fonction', type: 'func-id', default: '' },
+          { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
         ],
       },
       {
         id: 'graph-riemann-sum',
         label: 'riemannSum',
-        description: 'Dessine les rectangles de Riemann sous une courbe',
+        description: 'Draw the Riemann rectangles under a curve',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'funcId', label: 'Fonction', type: 'func-id', default: '' },
+          { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
           { id: 'a',      label: 'a',        type: 'number',  default: -2 },
           { id: 'b',      label: 'b',        type: 'number',  default:  2 },
           { id: 'n',      label: 'n (rectangles)', type: 'number', default: 5, min: 1, max: 50 },
           {
-            id: 'method', label: 'Méthode', type: 'select', default: 'midpoint',
+            id: 'method', label: 'Method', type: 'select', default: 'midpoint',
             options: [
-              { value: 'left',     label: 'Gauche (left)' },
-              { value: 'right',    label: 'Droite (right)' },
-              { value: 'midpoint', label: 'Milieu (midpoint)' },
+              { value: 'left',     label: 'Left' },
+              { value: 'right',    label: 'Right' },
+              { value: 'midpoint', label: 'Midpoint' },
             ],
           },
         ],
@@ -556,7 +597,7 @@ export const CATEGORIES = [
       {
         id: 'graph-draw-vector',
         label: 'drawVector',
-        description: 'Dessine un vecteur (flèche) de (x1,y1) vers (x2,y2)',
+        description: 'Draw a vector (arrow) from (x1,y1) to (x2,y2)',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'x1', label: 'x₁', type: 'number', default: 0 },
@@ -568,7 +609,7 @@ export const CATEGORIES = [
       {
         id: 'graph-draw-angle',
         label: 'drawAngle',
-        description: 'Marque l\'angle ABC (sommet B) avec un arc + sa mesure calculée (carré auto si 90°)',
+        description: 'Mark angle ABC (vertex B) with an arc + its computed measure (auto square if 90°)',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'ax', label: 'A x', type: 'number', default: 4 },
@@ -583,22 +624,22 @@ export const CATEGORIES = [
       {
         id: 'graph-transform-function',
         label: 'transformFunction',
-        description: 'Applique une transformation géométrique à une courbe existante',
+        description: 'Apply a geometric transformation to an existing curve',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'funcId', label: 'Fonction', type: 'func-id', default: '' },
+          { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
           {
             id: 'transformType', label: 'Transformation', type: 'select', default: 'translateX',
             options: [
-              { value: 'translateX', label: 'Décalage horizontal (→)' },
-              { value: 'translateY', label: 'Décalage vertical (↑)' },
-              { value: 'scaleY',     label: 'Étirement vertical' },
-              { value: 'scaleX',     label: 'Étirement horizontal' },
-              { value: 'reflectX',   label: 'Réflexion axe-x (−f)' },
-              { value: 'reflectY',   label: 'Réflexion axe-y (f(−x))' },
+              { value: 'translateX', label: 'Horizontal shift (→)' },
+              { value: 'translateY', label: 'Vertical shift (↑)' },
+              { value: 'scaleY',     label: 'Vertical stretch' },
+              { value: 'scaleX',     label: 'Horizontal stretch' },
+              { value: 'reflectX',   label: 'X-axis reflection (−f)' },
+              { value: 'reflectY',   label: 'Y-axis reflection (f(−x))' },
             ],
           },
-          { id: 'value', label: 'Valeur', type: 'number', default: 2 },
+          { id: 'value', label: 'Value', type: 'number', default: 2 },
         ],
       },
     ],
@@ -612,12 +653,12 @@ export const CATEGORIES = [
     functions: [
       {
         id: 'ext-annotation', label: 'Annotations',
-        description: 'Pointer visuel sur un élément ou un point', status: 'soon',
+        description: 'Visual pointer on an element or point', status: 'soon',
         inputs: [],
       },
       {
         id: 'ext-navigation', label: 'Navigation',
-        description: 'Boutons Suivant / Précédent entre sections', status: 'soon',
+        description: 'Next / Previous buttons between sections', status: 'soon',
         inputs: [],
       },
     ],
@@ -632,22 +673,26 @@ export const CATEGORIES = [
       {
         id: 'text-create', label: 'Create Text Box', status: 'ready',
         useText: true,
-        description: 'Create a text panel with optional title, paragraph or list mode, supports $LaTeX$ inline',
+        description: 'Create a text panel with optional title, paragraph or list mode, supports $LaTeX$ inline, {{ mathjs expr }}, and live [id]token value references (same as eq-replace-variable — see its description for the full token list) so numbers shown here never drift from the shape/graph/table that produced them',
         inputs: [
           { id: 'boxId',  label: 'Box ID',  type: 'text', default: 'box1', placeholder: 'box1' },
           { id: 'title',  label: 'Title (optional)', type: 'text', default: '', placeholder: 'My title' },
           { id: 'content', label: 'Content (lines separated by |)', type: 'text',
             default: 'This is the first line.|Second line with $x^2 + y^2 = r^2$.',
-            placeholder: 'Line 1|Line 2|Line 3' },
+            placeholder: 'Line 1|Line 2|Line 3, e.g. Area = {{ [trap]0 * [trap]h }}' },
           { id: 'isList', label: 'List mode', type: 'select', default: 'false',
-            options: [{ value: 'false', label: 'Paragraph' }, { value: 'true', label: 'Bullet list' }] },
+            options: [
+              { value: 'false', label: 'Paragraph' },
+              { value: 'true',  label: 'Bullet list' },
+              { value: 'steps', label: 'Steps (numbered)' },
+            ] },
           { id: 'color',  label: 'Accent color (optional)', type: 'color-name', default: '' },
         ],
       },
       {
         id: 'text-add-item', label: 'Add List Item', status: 'ready',
         useText: true,
-        description: 'Append a new item to an existing list text box',
+        description: 'Append a new item to an existing list text box — supports the same $LaTeX$/{{ }}/[id]token syntax as Create Text Box',
         inputs: [
           { id: 'boxId', label: 'Box ID', type: 'text', default: 'box1' },
           { id: 'item',  label: 'Item text (LaTeX ok)', type: 'text',
@@ -791,7 +836,7 @@ export const CATEGORIES = [
       {
         id: 'cmt-free', label: 'Comment → Free (no link)', status: 'ready',
         useAll: true,
-        description: 'A comment box with no connector line or target — just floats on the given side',
+        description: 'A comment box with no connector line or target — just floats on the given side. Text supports the same $LaTeX$/{{ }}/[id]token syntax as Create Text Box (see its description), same as every other comment\'s text field.',
         inputs: [
           { id: 'cmtId', label: 'Comment ID (optional)', type: 'text', default: '', placeholder: 'e.g. cmt1' },
           { id: 'title', label: 'Title (optional)', type: 'text', default: '', placeholder: 'e.g. Coefficients' },
@@ -814,7 +859,7 @@ export const CATEGORIES = [
       {
         id: 'cmt-update', label: 'Update Comment', status: 'ready',
         useAll: true,
-        description: 'Change the text and/or color of an existing comment. Use [eq-result] in text to pull the current equation result (color auto-follows).',
+        description: 'Change the text and/or color of an existing comment. Use [eq-result] in text to pull the current equation result (color auto-follows), or any [id]token value reference (same as Create Text Box / eq-replace-variable).',
         inputs: [
           { id: 'cmtId', label: 'Comment ID', type: 'text', default: '', placeholder: 'ID set when created' },
           { id: 'text',  label: 'New Text (optional)',  type: 'text', default: '[eq-result]', placeholder: '[eq-result] or custom' },
@@ -824,9 +869,42 @@ export const CATEGORIES = [
       {
         id: 'narrate', label: 'Narrate', status: 'ready',
         useAll: true,
-        description: 'Set the narration text and speak it aloud — the only function that controls narration',
+        description: 'Set the narration text and speak it aloud — the only function that controls narration. Supports the same $LaTeX$/{{ }}/[id]token syntax as Create Text Box.',
         inputs: [
           { id: 'text', label: 'Text', type: 'text', default: 'Here we can see the two functions intersect at two points.', placeholder: 'What to say…' },
+        ],
+      },
+    ],
+  },
+
+  // ── Page flow ─────────────────────────────────────────────────────────────
+  {
+    id: 'flow',
+    label: 'Page Flow',
+    defaultOpen: false,
+    functions: [
+      {
+        id: 'set-layout', label: 'Change Layout', status: 'ready',
+        useAll: true,
+        description: 'Switch the page layout mid-script (e.g. Text + Equation → Equation only → Graph + Equation as a derivation progresses). Shared display slots (like the equation panel staying on screen across all three) smoothly resize and reposition instead of popping; slots that appear or disappear fade.',
+        inputs: [
+          { id: 'mode', label: 'Layout', type: 'select', default: 'single-equation',
+            options: [
+              { value: 'single-graph',    label: 'Graph only' },
+              { value: 'single-3d',       label: 'Geometry only' },
+              { value: 'single-grid',     label: 'Table only' },
+              { value: 'single-equation', label: 'Equation only' },
+              { value: 'single-calc',     label: 'Calculation steps' },
+              { value: 'grid-graph',      label: 'Table + Graph' },
+              { value: 'geo-equation',    label: 'Geometry + Equation' },
+              { value: 'graph-equation',  label: 'Graph + Equation' },
+              { value: 'text-graph',      label: 'Text + Graph' },
+              { value: 'text-geo',        label: 'Text + Geometry' },
+              { value: 'text-grid',       label: 'Text + Table' },
+              { value: 'text-equation',   label: 'Text + Equation' },
+              { value: 'equation-text',   label: 'Equation + Text' },
+            ],
+          },
         ],
       },
     ],
@@ -835,7 +913,7 @@ export const CATEGORIES = [
   // ── Calcul ────────────────────────────────────────────────────────────────
   {
     id: 'calcul',
-    label: 'Calcul',
+    label: 'Calculation',
     defaultOpen: false,
     functions: [
       {
@@ -858,37 +936,37 @@ export const CATEGORIES = [
   // ── Horloge (children) ───────────────────────────────────────────────────
   {
     id: 'horloge',
-    label: 'Horloge',
+    label: 'Clock',
     defaultOpen: false,
     functions: [
       {
-        id: 'clock-show', label: 'Afficher l\'heure', status: 'ready',
+        id: 'clock-show', label: 'Show the Time', status: 'ready',
         useClock: true,
         description: 'Show an analog clock and animate the hands to the given time',
         inputs: [
-          { id: 'hour',   label: 'Heure (1–12)',   type: 'number', default: 3, min: 0, max: 12 },
+          { id: 'hour',   label: 'Hour (1–12)',    type: 'number', default: 3, min: 0, max: 12 },
           { id: 'minute', label: 'Minutes (0–59)', type: 'number', default: 0, min: 0, max: 59 },
         ],
       },
       {
-        id: 'clock-set-time', label: 'Changer l\'heure', status: 'ready',
+        id: 'clock-set-time', label: 'Change the Time', status: 'ready',
         useClock: true,
         description: 'Animate clock hands to a new time',
         inputs: [
-          { id: 'hour',   label: 'Heure (1–12)',   type: 'number', default: 6, min: 0, max: 12 },
+          { id: 'hour',   label: 'Hour (1–12)',    type: 'number', default: 6, min: 0, max: 12 },
           { id: 'minute', label: 'Minutes (0–59)', type: 'number', default: 30, min: 0, max: 59 },
         ],
       },
       {
-        id: 'clock-highlight-hand', label: 'Pointer une aiguille', status: 'ready',
+        id: 'clock-highlight-hand', label: 'Point to a Hand', status: 'ready',
         useClock: true,
         description: 'Highlight the hour or minute hand with a glow and label',
         inputs: [
           {
-            id: 'hand', label: 'Aiguille', type: 'select', default: 'hour',
+            id: 'hand', label: 'Hand', type: 'select', default: 'hour',
             options: [
-              { value: 'hour',   label: 'Heures (courte)' },
-              { value: 'minute', label: 'Minutes (longue)' },
+              { value: 'hour',   label: 'Hours (short hand)' },
+              { value: 'minute', label: 'Minutes (long hand)' },
             ],
           },
         ],
@@ -899,11 +977,11 @@ export const CATEGORIES = [
   // ── MDAS (children) ──────────────────────────────────────────────────────
   {
     id: 'mdas',
-    label: 'Ordre des opérations',
+    label: 'Order of Operations',
     defaultOpen: false,
     functions: [
       {
-        id: 'mdas-example', label: 'Exemple MDAS', status: 'ready',
+        id: 'mdas-example', label: 'MDAS Example', status: 'ready',
         useMdas: true,
         description: 'Animates an order-of-operations example step by step (× ÷ before + −), with a rules text box on the left',
         inputs: [
@@ -919,22 +997,14 @@ export const CATEGORIES = [
   // ── Chiffres (children) ──────────────────────────────────────────────────
   {
     id: 'chiffres',
-    label: 'Chiffres',
+    label: 'Digits',
     defaultOpen: false,
     functions: [
       {
-        id: 'numbers-show', label: 'Afficher les chiffres', status: 'ready',
+        id: 'numbers-show', label: 'Show the Digits', status: 'ready',
         useNumbers: true,
         description: 'Show a colorful grid of all 10 digits (0–9), each paired with visual objects illustrating the quantity',
         inputs: [],
-      },
-      {
-        id: 'numbers-highlight', label: 'Surligner un chiffre', status: 'ready',
-        useNumbers: true,
-        description: 'Zoom in on a specific digit card and dim the others',
-        inputs: [
-          { id: 'digit', label: 'Chiffre (0–9)', type: 'number', default: 3, min: 0, max: 9 },
-        ],
       },
     ],
   },
@@ -942,34 +1012,34 @@ export const CATEGORIES = [
   // ── Arithmetic (children) ─────────────────────────────────────────────────
   {
     id: 'arithmetic',
-    label: 'Calcul simple',
+    label: 'Simple Arithmetic',
     defaultOpen: false,
     functions: [
       {
-        id: 'arith-solve', label: 'Résoudre', status: 'ready',
+        id: 'arith-solve', label: 'Solve', status: 'ready',
         useArith: true,
         description: 'Show a vertical +/−/×/÷ calculation step-by-step with borrowing and carries',
         inputs: [
           { id: 'a',  label: 'Top number',  type: 'number', default: 63 },
-          { id: 'op', label: 'Opérateur (+  −  ×  ÷)', type: 'text', default: '-' },
+          { id: 'op', label: 'Operator (+  −  ×  ÷)', type: 'text', default: '-' },
           { id: 'b',  label: 'Bottom number', type: 'number', default: 5 },
         ],
       },
       {
-        id: 'mult-table-show', label: 'Table de multiplication', status: 'ready',
+        id: 'mult-table-show', label: 'Multiplication Table', status: 'ready',
         useMult: true,
-        description: 'Affiche la table de multiplication complète (de 1×1 à N×N) avec animation',
+        description: 'Show the full multiplication table (from 1×1 to N×N) with animation',
         inputs: [
-          { id: 'maxN', label: 'De 1 à N', type: 'number', default: 12, min: 2, max: 15 },
+          { id: 'maxN', label: 'From 1 to N', type: 'number', default: 12, min: 2, max: 15 },
         ],
       },
       {
-        id: 'mult-table-highlight', label: 'Surligner une case', status: 'ready',
+        id: 'mult-table-highlight', label: 'Highlight a Cell', status: 'ready',
         useMult: true,
-        description: 'Met en évidence une case de la table (ligne × colonne)',
+        description: 'Highlight a cell in the table (row × column)',
         inputs: [
-          { id: 'row', label: 'Ligne (multiplicateur)',   type: 'number', default: 3 },
-          { id: 'col', label: 'Colonne (multiplicande)', type: 'number', default: 4 },
+          { id: 'row', label: 'Row (multiplier)',   type: 'number', default: 3 },
+          { id: 'col', label: 'Column (multiplicand)', type: 'number', default: 4 },
         ],
       },
     ],
@@ -1044,11 +1114,13 @@ export const CATEGORIES = [
       {
         id: 'geo3d-show-angles',
         label: 'Show Angles',
-        description: 'Draw interior angle arcs at each vertex of a flat shape',
+        description: 'Draw interior angle arcs at each vertex of a flat shape — turn on "Show values" to also label each arc with its actual measured degrees',
         status: 'ready', use3D: true,
         inputs: [
           { id: 'id',    label: 'ID',    type: 'text',       default: 'shape1' },
           { id: 'color', label: 'Color', type: 'color-name', default: 'blue' },
+          { id: 'showValues', label: 'Show values (°)', type: 'select', default: 'false',
+            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
         ],
       },
       {
@@ -1286,6 +1358,15 @@ export const CATEGORIES = [
         ],
       },
       {
+        id: 'geo-show-perimeter-measures', label: 'Show Perimeter Measures',
+        description: 'Every side needed for the perimeter, tailored per shape: any polygon → each side highlighted in turn and labeled with its length, circle → r (same radius line as Show Area Measures). Unlike Show Area Measures, this always labels EVERY side since perimeter needs the full sum, not a minimal subset. Works with shapes from either Create Shape (geo-create-polygon) or Create 2D Shape (geo3d-create-2d).',
+        status: 'ready', useGeo: true, use3D: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID (must match the shape\'s own ID)', type: 'text', default: 'shape1' },
+          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
+        ],
+      },
+      {
         id: 'geo-highlight-edge', label: 'Highlight Edge (legacy SVG)',
         description: 'Flash one edge by index, or several one after another — e.g. "0,1,2" instead of calling this 3 times',
         status: 'legacy', useGeo: true,
@@ -1354,7 +1435,7 @@ export const CATEGORIES = [
       {
         id: 'geo3d-create',
         label: 'Create 3D Shape',
-        description: 'Add a volumetric 3D shape to the scene (rotatable)',
+        description: 'Add a volumetric 3D shape to the scene (rotatable). Its dimensions are referenceable elsewhere via [id]token (a/r/h/l/d/R depending on shape — see eq-replace-variable\'s description) — use that instead of retyping the same number.',
         status: 'ready', use3D: true,
         inputs: [
           { id: 'id',   label: 'ID', type: 'text', default: 'shape1', placeholder: 'unique name' },
@@ -1412,7 +1493,7 @@ export const CATEGORIES = [
       {
         id: 'geo3d-highlight-edge',
         label: 'Highlight Edge',
-        description: 'Draw a colored line over one edge of a cube/rectangular-prism (edge = 0-11, one of the 12 box edges), or several one after another — e.g. "0,1,2"',
+        description: 'Draw a colored line over one edge (or several one after another — e.g. "0,1,2") — works on flat 2D shapes (edge = side index) AND cube/rectangular-prism 3D solids (edge = 0-11, one of the 12 box edges)',
         status: 'ready', use3D: true,
         inputs: [
           { id: 'id',        label: 'ID',     type: 'text',       default: 'shape1' },
@@ -1423,7 +1504,7 @@ export const CATEGORIES = [
       {
         id: 'geo3d-remove-edge-highlight',
         label: 'Remove Edge Highlight',
-        description: 'Remove one or more edges\' highlight — comma-sep for several, e.g. "0,1,2"',
+        description: 'Remove one or more edges\' highlight (flat shape or 3D solid) — comma-sep for several, e.g. "0,1,2"',
         status: 'ready', use3D: true,
         inputs: [
           { id: 'id',        label: 'ID',     type: 'text',   default: 'shape1' },

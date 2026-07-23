@@ -2,7 +2,6 @@ import { u } from '../i18n/uiText.js'
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇺🇸' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
   { code: 'es', label: 'Español',  flag: '🇪🇸', comingSoon: true },
   { code: 'de', label: 'Deutsch',  flag: '🇩🇪', comingSoon: true },
   { code: 'zh', label: '中文',      flag: '🇨🇳', comingSoon: true },
@@ -11,8 +10,8 @@ const LANGUAGES = [
 const TEXT_SIZES = ['small', 'normal', 'large']
 
 const PLANS = [
-  { id: 'free', label: { en: 'Free', fr: 'Gratuit' }, price: '$0', features: { en: ['4 included lessons', '4 basic tools', 'Custom lessons (3/mo)'], fr: ['4 leçons incluses', '4 outils de base', 'Leçons personnalisées (3/mois)'] } },
-  { id: 'pro',  label: { en: 'Pro ⭐', fr: 'Pro ⭐' }, price: '$4.99/mo', features: { en: ['All lessons', 'All tools', 'Unlimited custom lessons', 'Progress tracking', 'Ad-free'], fr: ['Toutes les leçons', 'Tous les outils', 'Leçons personnalisées illimitées', 'Suivi de progression', 'Sans publicité'] }, highlight: true },
+  { id: 'free', label: 'Free', price: '$0', features: ['4 included lessons', '4 basic tools', 'Custom lessons (3/mo)'] },
+  { id: 'pro',  label: 'Pro ⭐', price: '$4.99/mo', features: ['All lessons', 'All tools', 'Unlimited custom lessons', 'Progress tracking', 'Ad-free'], highlight: true },
 ]
 
 export default function SettingsView({ lang, onLang, theme, onTheme, textSize, onTextSize, muted, onMuted, plan, onPlan, adminMode, onAdminMode }) {
@@ -33,7 +32,7 @@ export default function SettingsView({ lang, onLang, theme, onTheme, textSize, o
             >
               <span className="lang-flag">{l.flag}</span>
               <span className="lang-name">{l.label}</span>
-              {l.comingSoon && <span className="soon-badge">{lang === 'fr' ? 'Bientôt' : 'Soon'}</span>}
+              {l.comingSoon && <span className="soon-badge">Soon</span>}
             </button>
           ))}
         </div>
@@ -80,13 +79,13 @@ export default function SettingsView({ lang, onLang, theme, onTheme, textSize, o
               onClick={() => onPlan(p.id)}
             >
               <div className="plan-header">
-                <span className="plan-name">{p.label[lang] ?? p.label.en}</span>
+                <span className="plan-name">{p.label}</span>
                 <span className="plan-price">{p.price}</span>
               </div>
               <ul className="plan-features">
-                {(p.features[lang] ?? p.features.en).map((f, i) => <li key={i}>✓ {f}</li>)}
+                {p.features.map((f, i) => <li key={i}>✓ {f}</li>)}
               </ul>
-              {plan === p.id && <span className="plan-current">{lang === 'fr' ? 'Plan actuel' : 'Current plan'}</span>}
+              {plan === p.id && <span className="plan-current">Current plan</span>}
             </button>
           ))}
         </div>

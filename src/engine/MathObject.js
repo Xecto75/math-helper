@@ -5,7 +5,7 @@ export class MathObject {
                 isFraction = false, numeratorTerms = null, denominatorTerms = null,
                 color = null, varParts = null,
                 isOperator = false, text = null,
-                isParenGroup = false, parenCoeff = 1, innerTerms = null,
+                isParenGroup = false, parenCoeff = 1, parenCoeffVariable = null, parenCoeffDegree = 1, innerTerms = null,
                 factors = null, negBase = false, expr = null } = {}) {
     this.id = id ?? crypto.randomUUID()
     this.sign = sign
@@ -26,7 +26,9 @@ export class MathObject {
     this.text             = text             // display string for operator tokens
     // Paren-group fields — only used when isParenGroup = true (degree = -1 as sentinel)
     this.isParenGroup     = isParenGroup     // e.g. 2(x+3) waiting for distribution
-    this.parenCoeff       = parenCoeff       // the multiplier outside the parens (always positive; sign captures ±)
+    this.parenCoeff       = parenCoeff       // the multiplier's numeric magnitude (always positive; sign captures ±)
+    this.parenCoeffVariable = parenCoeffVariable // e.g. "x" in 2x(x+4) — null for a plain numeric coefficient
+    this.parenCoeffDegree   = parenCoeffDegree   // degree of parenCoeffVariable (1 for "x", 2 for "x²", …)
     this.innerTerms       = innerTerms       // [{sign, coefficient, variable, degree}] — terms inside the parens
     // Product fields — a term that is a product of factors, e.g. |m||x| = m·x.
     // Each factor is replaceable on its own. value = coefficient × ∏ factor values.

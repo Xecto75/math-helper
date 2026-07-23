@@ -37,7 +37,7 @@ const SVG_H = 600
 const easeIO = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
 
 const TableDisplay = forwardRef(function TableDisplay(_, ref) {
-  const [state, setState] = useState({ lines: {}, cells: {}, grid: null })
+  const [state, setState] = useState({ lines: {}, cells: {}, grid: null, rowHighlights: {} })
   const stateRef = useRef(state)
   const svgRef   = useRef(null)
   stateRef.current = state
@@ -138,7 +138,65 @@ const TableDisplay = forwardRef(function TableDisplay(_, ref) {
       getGrid() { return stateRef.current.grid },
       getLines() { return stateRef.current.lines },
       getCells() { return stateRef.current.cells },
-      instantRestore(savedState) { setState(savedState) },
+      getRowHighlights() { return stateRef.current.rowHighlights },
+      instantRestore(savedState) { setState({ rowHighlights: {}, ...savedState }) },
+
+      setRowHighlight(id, data) {
+        setState(prev => ({ ...prev, rowHighlights: { ...prev.rowHighlights, [id]: data } }))
+      },
+      getRowHighlight(id) { return stateRef.current.rowHighlights[id] },
+
+      // Slides an existing highlight bar to a new row/rect (walking a
+      // calculation row by row); snaps color instantly, tweens position/size.
+      animateRowHighlight(id, to, ms = 260) {
+        const from = stateRef.current.rowHighlights[id] ?? to
+        return new Promise(resolve => {
+          const t0 = performance.now()
+          ;(function tick() {
+            const p = Math.min((performance.now() - t0) / ms, 1)
+            const e = easeIO(p)
+            setState(prev => {
+              const cur = prev.rowHighlights[id]
+              if (!cur) { resolve(); return prev }
+              const upd = {}
+              ;['x', 'y', 'width', 'height'].forEach(k => {
+                const a = from[k] ?? to[k]
+                upd[k] = a + (to[k] - a) * e
+              })
+              return { ...prev, rowHighlights: { ...prev.rowHighlights, [id]: { ...cur, ...upd, color: to.color } } }
+            })
+            if (p < 1) requestAnimationFrame(tick)
+            else resolve()
+          })()
+        })
+      },
+
+      fadeRowHighlight(id, toOpacity, ms = 260, removeIfZero = false) {
+        const startOp = stateRef.current.rowHighlights[id]?.opacity ?? 0
+        return new Promise(resolve => {
+          const t0 = performance.now()
+          ;(function tick() {
+            const p = Math.min((performance.now() - t0) / ms, 1)
+            const e = easeIO(p)
+            setState(prev => {
+              const cur = prev.rowHighlights[id]
+              if (!cur) { resolve(); return prev }
+              return { ...prev, rowHighlights: { ...prev.rowHighlights, [id]: { ...cur, opacity: startOp + (toOpacity - startOp) * e } } }
+            })
+            if (p < 1) requestAnimationFrame(tick)
+            else {
+              if (removeIfZero && toOpacity === 0) {
+                setState(prev => {
+                  const nr = { ...prev.rowHighlights }
+                  delete nr[id]
+                  return { ...prev, rowHighlights: nr }
+                })
+              }
+              resolve()
+            }
+          })()
+        })
+      },
 
       addLines(lineMap) {
         setState(prev => ({ ...prev, lines: { ...prev.lines, ...lineMap } }))
@@ -293,7 +351,7 @@ const TableDisplay = forwardRef(function TableDisplay(_, ref) {
       },
 
       clearAll() {
-        setState({ lines: {}, cells: {}, grid: null })
+        setState({ lines: {}, cells: {}, grid: null, rowHighlights: {} })
       },
 
       getPageCoords(target) {
@@ -311,7 +369,7 @@ const TableDisplay = forwardRef(function TableDisplay(_, ref) {
     }
   })
 
-  const { lines, cells, grid } = state
+  const { lines, cells, grid, rowHighlights = {} } = state
 
   return (
     <div className="math-display-wrap">
@@ -322,13 +380,23 @@ const TableDisplay = forwardRef(function TableDisplay(_, ref) {
         style={{ width: '100%', height: '100%' }}
       >
 
+        {Object.entries(rowHighlights).map(([id, h]) => (
+          <rect key={id}
+            x={h.x} y={h.y} width={h.width} height={h.height}
+            fill={h.color ?? '#eab308'}
+            fillOpacity={0.22}
+            opacity={h.opacity ?? 0}
+            rx={4}
+          />
+        ))}
+
         {Object.entries(lines).map(([id, l]) => {
           const len = Math.hypot(l.x2 - l.x1, l.y2 - l.y1) || 1
           const prog = l.progress ?? 0
           return (
             <line key={id}
               x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
-              stroke={l.color ?? 'rgba(255,255,255,0.38)'}
+              stroke={l.color ?? 'rgba(96,165,250,0.38)'}
               strokeWidth={l.strokeWidth ?? 1.5}
               strokeDasharray={`${len} ${len}`}
               strokeDashoffset={len * (1 - prog)}
@@ -349,7 +417,7 @@ const TableDisplay = forwardRef(function TableDisplay(_, ref) {
           return (
             <text key={id}
               x={cx} y={textY}
-              fill={cell.isHeader ? 'rgba(168,85,247,0.95)' : 'rgba(255,255,255,0.88)'}
+              fill={cell.isHeader ? 'rgba(96,165,250,0.95)' : 'rgba(255,255,255,0.88)'}
               fontSize={fontSize}
               fontWeight={cell.isHeader ? '600' : '400'}
               textAnchor="middle" dominantBaseline="middle"

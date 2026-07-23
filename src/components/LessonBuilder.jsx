@@ -60,6 +60,7 @@ const LAYOUT_OPTIONS = [
   { value: 'single-equation', label: 'Equation only' },
   { value: 'single-calc',     label: 'Calculation steps' },
   { value: 'grid-graph',      label: 'Table + Graph' },
+  { value: 'grid-equation',   label: 'Table + Equation' },
   { value: 'geo-equation',    label: 'Geometry + Equation' },
   { value: 'graph-equation',  label: 'Graph + Equation' },
   { value: 'text-graph',      label: 'Text + Graph' },
@@ -108,6 +109,7 @@ function isFuncCompatible(fn, layout) {
     case 'single-numbers':  return nb
     case 'text-mdas':       return txt || md
     case 'grid-graph':      return g || t
+    case 'grid-equation':   return t || eq
     case 'geo-equation':    return anyGeo || eq
     case 'graph-equation':  return g || eq
     case 'text-graph':      return g || txt
@@ -117,6 +119,21 @@ function isFuncCompatible(fn, layout) {
     case 'equation-text':   return eq || txt
     default: return true
   }
+}
+
+// The page's declared layout only holds until the first mid-page 'set-layout'
+// step — after that, whichever layout was most recently set is what's really
+// on screen. Insertion picks off the function list for the layout that's
+// actually active at that point, not the page's original one (see set-layout,
+// App.jsx's expandPageSegments).
+function effectiveLayoutAt(page, afterIdx) {
+  const upTo = afterIdx == null ? page.steps.length - 1 : afterIdx
+  let layout = page.layout
+  for (let i = 0; i <= upTo && i < page.steps.length; i++) {
+    const step = page.steps[i]
+    if (step.funcId === 'set-layout' && step.inputs?.mode) layout = step.inputs.mode
+  }
+  return layout
 }
 
 let _uid = 0
@@ -140,6 +157,14 @@ function pagesFromJson(jsonStr) {
     title:      p.title      ?? '',
     layout:     p.layout     ?? null,
     background: p.background ?? 'default',
+    ...(p.type === 'exercise' ? {
+      type: 'exercise',
+      question: p.question ?? '',
+      exerciseType: p.exerciseType ?? 'choices4',
+      choices: p.choices ?? ['', '', '', ''],
+      correctChoice: p.correctChoice ?? 0,
+      answer: p.answer ?? '',
+    } : {}),
     steps:      (p.steps ?? []).map(s => {
       const fn       = ALL_READY.find(f => f.id === s.func)
       const defaults = fn ? defaultInputs(fn) : {}
@@ -178,7 +203,6 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     return readDraft()?.editingExampleId ?? null
   })
   const [insertAfterIdx, setInsertAfterIdx] = useState(null)
-  const [pickingFunc,    setPickingFunc]   = useState(false)
   const [newFuncId,      setNewFuncId]     = useState(ALL_READY[0]?.id ?? '')
   const [copied,         setCopied]        = useState(false)
   const [animSpeed,      setAnimSpeed]     = useState(DEFAULT_ANIM_SPEED)
@@ -356,20 +380,19 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     setPages(prev => prev.map((p, i) => i === activePage ? { ...p, layout: null, steps: [] } : p))
   }
 
-  const addFnStep = (funcId) => {
+  const addFnStep = (funcId, afterIdx = null) => {
     const step = makeStep(funcId)
     setPages(prev => prev.map((p, i) => {
       if (i !== activePage) return p
       const steps = [...p.steps]
-      if (insertAfterIdx === null || insertAfterIdx >= steps.length - 1) {
+      if (afterIdx === null || afterIdx >= steps.length - 1) {
         steps.push(step)
       } else {
-        steps.splice(insertAfterIdx + 1, 0, step)
+        steps.splice(afterIdx + 1, 0, step)
       }
       return { ...p, steps }
     }))
-    setPickingFunc(false)
-    setInsertAfterIdx(null)
+    cancelPick()
   }
 
   const setPageTitle = (title) => {
@@ -380,16 +403,68 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     setPages(prev => prev.map((p, i) => i === activePage ? { ...p, notes } : p))
   }
 
-  // ── Steps ──────────────────────────────────────────────────────────────────
-  const openInsert = (afterIdx) => {
-    setInsertAfterIdx(afterIdx)
-    setPickingFunc(true)
+  // ── Exercise pages ───────────────────────────────────────────────────────
+  // An exercise page keeps everything a normal page has (layout/steps still
+  // build the optional visual — a graph, a shape, whatever) and adds a
+  // question + how it's answered. Toggling preserves layout/steps/title;
+  // only the exercise-only fields are added/stripped.
+  const setPageIsExercise = (isExercise) => {
+    setPages(prev => prev.map((p, i) => {
+      if (i !== activePage) return p
+      if (isExercise) {
+        return {
+          ...p,
+          type: 'exercise',
+          question: p.question ?? '',
+          exerciseType: p.exerciseType ?? 'choices4',
+          choices: p.choices ?? ['', '', '', ''],
+          correctChoice: p.correctChoice ?? 0,
+          answer: p.answer ?? '',
+        }
+      }
+      // eslint-disable-next-line no-unused-vars
+      const { type, question, exerciseType, choices, correctChoice, answer, ...rest } = p
+      return rest
+    }))
   }
 
-  const cancelPick = () => {
-    setPickingFunc(false)
-    setInsertAfterIdx(null)
+  const setPageQuestion = (question) => {
+    setPages(prev => prev.map((p, i) => i === activePage ? { ...p, question } : p))
   }
+
+  const setPageExerciseType = (exerciseType) => {
+    const n = exerciseType === 'choices2' ? 2 : exerciseType === 'choices4' ? 4 : 0
+    setPages(prev => prev.map((p, i) => {
+      if (i !== activePage) return p
+      if (n === 0) return { ...p, exerciseType }
+      const choices = Array.from({ length: n }, (_, idx) => p.choices?.[idx] ?? '')
+      const correctChoice = (p.correctChoice ?? 0) < n ? p.correctChoice ?? 0 : 0
+      return { ...p, exerciseType, choices, correctChoice }
+    }))
+  }
+
+  const setPageChoiceText = (idx, text) => {
+    setPages(prev => prev.map((p, i) => {
+      if (i !== activePage) return p
+      const choices = [...(p.choices ?? [])]
+      choices[idx] = text
+      return { ...p, choices }
+    }))
+  }
+
+  const setPageCorrectChoice = (idx) => {
+    setPages(prev => prev.map((p, i) => i === activePage ? { ...p, correctChoice: idx } : p))
+  }
+
+  const setPageAnswer = (answer) => {
+    setPages(prev => prev.map((p, i) => i === activePage ? { ...p, answer } : p))
+  }
+
+  // ── Steps ──────────────────────────────────────────────────────────────────
+  // insertAfterIdx doubles as "which divider is currently showing its inline
+  // function picker" (null = none expanded).
+  const openInsert = (afterIdx) => setInsertAfterIdx(afterIdx)
+  const cancelPick = () => setInsertAfterIdx(null)
 
   const addStep = () => {
     const step = makeStep(newFuncId)
@@ -576,16 +651,56 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     )
   }
 
-  // ── Insert divider between steps ───────────────────────────────────────────
-  const InsertDivider = ({ afterIdx }) => (
-    <div className="lb-insert-divider"
-      onClick={() => openInsert(afterIdx)}
-      title={afterIdx === -1 ? 'Insert at top' : `Insert after step ${afterIdx + 1}`}>
-      <span className="lb-insert-line" />
-      <span className="lb-insert-plus">+</span>
-      <span className="lb-insert-line" />
-    </div>
+  // Shared <option>/<optgroup> list for a function picker, filtered to
+  // whatever layout is actually active at that point in the page (see
+  // effectiveLayoutAt — accounts for an earlier set-layout step).
+  const fnPickerOptions = (afterIdx) => (
+    <>
+      <option value="">— select function —</option>
+      {CATEGORIES.map(cat => {
+        const fns = cat.functions.filter(f => f.status === 'ready' && isFuncCompatible(f, effectiveLayoutAt(page, afterIdx)))
+        if (!fns.length) return null
+        return (
+          <optgroup key={cat.id} label={cat.label}>
+            {fns.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+          </optgroup>
+        )
+      })}
+      <optgroup label="Narration">
+        <option value="narrate">Narrate</option>
+      </optgroup>
+    </>
   )
+
+  // ── Insert divider between steps ───────────────────────────────────────────
+  // Clicking "+" turns the divider itself into a function picker right there,
+  // instead of silently changing a distant "Add function" dropdown's target.
+  const InsertDivider = ({ afterIdx }) => {
+    if (insertAfterIdx === afterIdx) {
+      return (
+        <div className="lb-insert-divider lb-insert-divider--picking">
+          <select
+            className="lb-fn-select lb-insert-fn-select"
+            autoFocus
+            value=""
+            onChange={e => { if (e.target.value) addFnStep(e.target.value, afterIdx) }}
+            onBlur={cancelPick}
+          >
+            {fnPickerOptions(afterIdx)}
+          </select>
+        </div>
+      )
+    }
+    return (
+      <div className="lb-insert-divider"
+        onClick={() => openInsert(afterIdx)}
+        title={afterIdx === -1 ? 'Insert at top' : `Insert after step ${afterIdx + 1}`}>
+        <span className="lb-insert-line" />
+        <span className="lb-insert-plus">+</span>
+        <span className="lb-insert-line" />
+      </div>
+    )
+  }
 
   return (
     <div className="lb-drawer">
@@ -876,6 +991,91 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
               />
             </div>
 
+            {/* ── Page type: normal script page vs. a question to answer.
+                An exercise page still uses Layout/Steps below for its
+                optional visual (a graph, a shape, anything) — it just adds
+                a question and how it's answered on top. ──────────────── */}
+            <div className="lb-layout-row">
+              <span className="lb-layout-label">Page Type</span>
+              <div className="lb-exercise-toggle">
+                <button
+                  type="button"
+                  className={`lb-toggle-btn${page.type !== 'exercise' ? ' lb-toggle-btn--active' : ''}`}
+                  onClick={() => setPageIsExercise(false)}
+                >Script</button>
+                <button
+                  type="button"
+                  className={`lb-toggle-btn${page.type === 'exercise' ? ' lb-toggle-btn--active' : ''}`}
+                  onClick={() => setPageIsExercise(true)}
+                >Exercise</button>
+              </div>
+            </div>
+
+            {page.type === 'exercise' && (
+              <div className="lb-exercise-editor">
+                <div className="lb-notes-row">
+                  <span className="lb-notes-icon" title="Shown at the top of the exercise">❓</span>
+                  <textarea
+                    className="lb-notes-area"
+                    placeholder="Question — e.g. What is the slope of this line?"
+                    value={page.question ?? ''}
+                    onChange={e => setPageQuestion(e.target.value)}
+                    rows={2}
+                    spellCheck={false}
+                  />
+                </div>
+
+                <div className="lb-layout-row">
+                  <span className="lb-layout-label">Answer Type</span>
+                  <select
+                    className="lb-layout-sel"
+                    value={page.exerciseType ?? 'choices4'}
+                    onChange={e => setPageExerciseType(e.target.value)}
+                  >
+                    <option value="choices2">2 Choices</option>
+                    <option value="choices4">4 Choices</option>
+                    <option value="input">Text / Number Input</option>
+                  </select>
+                </div>
+
+                {(page.exerciseType === 'choices2' || page.exerciseType === 'choices4') && (
+                  <div className="lb-exercise-choices">
+                    {(page.choices ?? []).map((c, idx) => (
+                      <div className="lb-exercise-choice-row" key={idx}>
+                        <input
+                          type="radio"
+                          name={`correct-${page.id}`}
+                          checked={page.correctChoice === idx}
+                          onChange={() => setPageCorrectChoice(idx)}
+                          title="Mark as the correct answer"
+                        />
+                        <input
+                          className="lb-input"
+                          type="text"
+                          placeholder={`Choice ${idx + 1}`}
+                          value={c}
+                          onChange={e => setPageChoiceText(idx, e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {page.exerciseType === 'input' && (
+                  <div className="lb-layout-row">
+                    <span className="lb-layout-label">Correct Answer</span>
+                    <input
+                      className="lb-input"
+                      type="text"
+                      placeholder="e.g. 2  or  3.14"
+                      value={page.answer ?? ''}
+                      onChange={e => setPageAnswer(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Layout selector ──────────────────────────────────────────── */}
             <div className="lb-layout-row">
               <span className="lb-layout-label">Layout</span>
@@ -974,28 +1174,16 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
               </div>
             )}
 
-            {/* ── Function picker ───────────────────────────────────────────── */}
+            {/* ── Function picker (always appends at the end) ─────────────────── */}
             {page.layout && (
               <div className="lb-subaction-section">
                 <span className="lb-subaction-label">Add function</span>
                 <select
                   className="lb-fn-select"
                   value=""
-                  onChange={e => { if (e.target.value) addFnStep(e.target.value) }}
+                  onChange={e => { if (e.target.value) addFnStep(e.target.value, null) }}
                 >
-                  <option value="">— select function —</option>
-                  {CATEGORIES.map(cat => {
-                    const fns = cat.functions.filter(f => f.status === 'ready' && isFuncCompatible(f, page.layout))
-                    if (!fns.length) return null
-                    return (
-                      <optgroup key={cat.id} label={cat.label}>
-                        {fns.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-                      </optgroup>
-                    )
-                  })}
-                  <optgroup label="Narration">
-                    <option value="narrate">Narrate</option>
-                  </optgroup>
+                  {fnPickerOptions(null)}
                 </select>
               </div>
             )}

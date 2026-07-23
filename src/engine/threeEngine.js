@@ -784,6 +784,38 @@ export async function showAreaMeasures3D(threeRef, id, opts = {}) {
   }
 }
 
+// Perimeter needs EVERY side (unlike area's minimal per-shape-type subset) —
+// highlight each edge in turn, then label all of them with their computed
+// lengths via labelSides3D (auto-fills every slot when given no custom
+// text). A circle has no discrete edges — after the same radius line +
+// "r = value" showAreaMeasures3D draws, trace a highlight ring starting from
+// that same point all the way around back to it, since "the perimeter" for
+// a circle IS that trip around, not just r itself.
+export async function showPerimeterMeasures3D(threeRef, id, opts = {}) {
+  const display = threeRef?.current
+  if (!display) return
+  const entry = registry.get(id)
+  if (!entry) return
+
+  if (entry.isCircle) {
+    await showAreaMeasures3D(threeRef, id, opts)
+    const hex = opts.color ? resolveHex(opts.color) : 0x60a5fa
+    const angle = (opts.angle ?? 35) * Math.PI / 180
+    await animateCirclePerimeterTrace3D(display, id, entry.radius ?? 0, angle, hex)
+    return
+  }
+  const verts = entry.vertices
+  if (!verts?.length) return
+
+  const color = opts.color ?? '#60a5fa'
+  const n = verts.length
+  for (let i = 0; i < n; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    await highlightEdge3D(threeRef, id, i, color)
+  }
+  await labelSides3D(threeRef, id)
+}
+
 // ── Equal-side tick marks ──────────────────────────────────────────────────────
 // Classic congruent-side notation: one or more short perpendicular dashes
 // crossing the middle of an edge. Use a different "ticks" count (1, 2, 3…) to
@@ -846,7 +878,7 @@ export function removeEqualTick3D(threeRef, id, edgeIndexRaw) {
   removeChildFromGroup(display, id, `tick_${id}_${i}`)
 }
 
-export function showAngles3D(threeRef, id, colorRaw) {
+export function showAngles3D(threeRef, id, colorRaw, showValues = false) {
   const display = threeRef?.current
   if (!display?.isReady()) return Promise.resolve()
 
@@ -856,6 +888,12 @@ export function showAngles3D(threeRef, id, colorRaw) {
   const verts = entry.vertices
   const n     = verts.length
   const color = resolveHex(colorRaw ?? 'blue')
+  const colorCss = `#${color.toString(16).padStart(6, '0')}`
+
+  // Degree-value labels are removed/redrawn every call, same as the arcs
+  // themselves just above, so re-calling this with a different color/shape
+  // never leaves a stale label from a previous pass.
+  for (let i = 0; i < 20; i++) display.removeLabel3D?.(`angval_${id}_${i}`)
 
   // Average edge length → arc radius
   let avgEdge = 0
@@ -871,6 +909,8 @@ export function showAngles3D(threeRef, id, colorRaw) {
 
   const growDur = 300   // ms: arc sweeps open
   const stagger = 60    // ms: delay between each vertex arc
+  const group = display.getObject(id)
+  const gx = group?.position.x ?? 0, gy = group?.position.y ?? 0
 
   return new Promise(resolve => {
   let doneCount = 0
@@ -887,6 +927,19 @@ export function showAngles3D(threeRef, id, colorRaw) {
     while (diff <= -Math.PI) diff += 2 * Math.PI
 
     const is90 = Math.abs(Math.abs(diff) - Math.PI / 2) < 0.052
+
+    if (showValues) {
+      const degrees  = parseFloat((Math.abs(diff) * 180 / Math.PI).toFixed(2))
+      const midAngle = angle1 + diff / 2
+      // Inside the wedge itself (between the vertex and the arc), not
+      // floating outside it — same spot the arc's own bisector points to.
+      const lr = arcR * 0.6
+      display.addLabel3D(
+        `angval_${id}_${i}`,
+        gx + cx + lr * Math.cos(midAngle), gy + cy + lr * Math.sin(midAngle), 0.05,
+        `${degrees}°`, { color: colorCss, fontSize: 15, fadeIn: growDur + i * stagger },
+      )
+    }
 
     let arcGeo
     if (is90) {
@@ -1302,6 +1355,39 @@ function makeLineMesh3D(p1, p2, hex, radius = 0.035) {
   return mesh
 }
 
+// Perimeter trace for a flat circle — sweeps a solid highlight ring starting
+// from the SAME point the radius line touches (opts.angle, matching
+// showAreaMeasures3D/showPerimeterMeasures3D) all the way around back to
+// itself, so "here's r" is immediately followed by "and here's what going
+// all the way around looks like" — the actual perimeter, not just its formula
+// ingredient. Rebuilds the shown arc from scratch each frame (cheap — a
+// one-off reveal, not a persistent per-frame cost) the same way animateAngleArc
+// already does for its own growing sector.
+function animateCirclePerimeterTrace3D(display, parentId, r, startAngle, hex, duration = 1.2) {
+  return new Promise(resolve => {
+    const childId = `pTrace_${parentId}`
+    const segN = 72
+    const t0 = performance.now()
+
+    function tick() {
+      const t = Math.min((performance.now() - t0) / (duration * 1000), 1)
+      const shown = Math.max(1, Math.round(segN * t))
+      const group = new THREE.Group()
+      for (let i = 0; i < shown; i++) {
+        const a1 = startAngle + (i / segN) * Math.PI * 2
+        const a2 = startAngle + ((i + 1) / segN) * Math.PI * 2
+        const p1 = [r * Math.cos(a1), r * Math.sin(a1), 0.07]
+        const p2 = [r * Math.cos(a2), r * Math.sin(a2), 0.07]
+        group.add(makeLineMesh3D(p1, p2, hex, 0.03))
+      }
+      addChildToGroup(display, parentId, childId, group)
+      if (t < 1) requestAnimationFrame(tick)
+      else resolve()
+    }
+    requestAnimationFrame(tick)
+  })
+}
+
 function makeDashedLineGroup3D(p1, p2, hex, radius = 0.03, dashN = 6) {
   const [x1, y1, z1] = p1, [x2, y2, z2] = p2
   const dx = x2 - x1, dy = y2 - y1, dz = z2 - z1
@@ -1339,9 +1425,10 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
     (p1[0] + p2[0]) / 2 + off[0], (p1[1] + p2[1]) / 2 + off[1], (p1[2] + p2[2]) / 2 + off[2],
   ]
   // Every measure line is dashed — never a solid overlay, consistently across
-  // every dimension (edge, radius, height, depth).
-  const addSolid  = (p1, p2) => holder.add(makeDashedLineGroup3D(p1, p2, hex))
-  const addDashed = (p1, p2) => holder.add(makeDashedLineGroup3D(p1, p2, hex))
+  // every dimension (edge, radius, height, depth). Thicker than the default
+  // 0.03 radius (bumped after it read as barely visible against the shape).
+  const addSolid  = (p1, p2) => holder.add(makeDashedLineGroup3D(p1, p2, hex, 0.05))
+  const addDashed = (p1, p2) => holder.add(makeDashedLineGroup3D(p1, p2, hex, 0.05))
 
   switch (type) {
     case 'cube': {
@@ -1504,6 +1591,42 @@ export function getVertexAngle3D(id, i) {
   return parseFloat((Math.acos(c) * 180 / Math.PI).toFixed(4))
 }
 
+// Live value getter for a VOLUMETRIC 3D solid (geo3d-create, entry.isFlat
+// false) — token names match exactly the letters showVolumeMeasures3D labels
+// on screen for that shape type, so `[shapeId]token` always agrees with what
+// the student actually sees. Tetrahedron/octahedron derive the shown edge
+// length from the raw radius parameter the same way showVolumeMeasures3D
+// does (see the case there) — duplicated here rather than shared because
+// the derivation is a one-line formula, not worth threading through a
+// render-only helper.
+export function get3DShapeValue(id, token) {
+  const entry = registry.get(id)
+  if (!entry || entry.isFlat) return undefined
+  const { type, a, b, c } = entry
+  switch (type) {
+    case 'cube':
+      return token === 'a' ? (a ?? 2) : undefined
+    case 'sphere':
+      return token === 'r' ? (a ?? 1.5) : undefined
+    case 'cone':
+      return token === 'r' ? (a ?? 1.2) : token === 'h' ? (b ?? 2.5) : undefined
+    case 'cylinder':
+      return token === 'r' ? (a ?? 1) : token === 'h' ? (b ?? 2.5) : undefined
+    case 'prism': case 'box': case 'rectangular-prism':
+      return token === 'l' ? (a ?? 3) : token === 'h' ? (b ?? 2) : token === 'd' ? (c ?? 1.5) : undefined
+    case 'pyramid': case 'square-pyramid':
+      return token === 'a' ? (a ?? 2) : token === 'h' ? (b ?? 2.5) : undefined
+    case 'tetrahedron':
+      return token === 'a' ? (a ?? 1.8) * 2 * Math.sqrt(2 / 3) : undefined
+    case 'octahedron':
+      return token === 'a' ? (a ?? 1.6) * Math.SQRT2 : undefined
+    case 'torus':
+      return token === 'R' ? (a ?? 1.5) : token === 'r' ? (b ?? 0.4) : undefined
+    default:
+      return undefined
+  }
+}
+
 // ── Arrow helpers ─────────────────────────────────────────────────────────────
 
 export function getShapePoint3D(id, anchorType, index) {
@@ -1652,6 +1775,7 @@ export function clearHighlights3D(threeRef, id) {
     removeChildFromGroup(display, id, `eh_${id}_${i}`)
     removeChildFromGroup(display, id, `eh3_${id}_${i}`)
     display.resetLabelColor?.(`sl_${id}_${i}`)
+    display.removeLabel3D?.(`angval_${id}_${i}`)
   }
   for (let i = 0; i < 6; i++) removeChildFromGroup(display, id, `fh_${id}_${i}`)
 }

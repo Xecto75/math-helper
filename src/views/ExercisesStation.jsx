@@ -9,24 +9,24 @@ const CATEGORIES = [
   {
     id:    'geo',
     emoji: '📐',
-    label: { en: 'Geometry',    fr: 'Géométrie' },
-    desc:  { en: 'Shapes, angles, perimeter & area', fr: 'Formes, angles, périmètre & aire' },
+    label: 'Geometry',
+    desc:  'Shapes, angles, perimeter & area',
     color: '#38bdf8',
     bg:    'linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%)',
   },
   {
     id:    'math',
     emoji: '🔢',
-    label: { en: 'Arithmetic',  fr: 'Arithmétique' },
-    desc:  { en: 'Numbers, operations & fractions', fr: 'Nombres, opérations & fractions' },
+    label: 'Arithmetic',
+    desc:  'Numbers, operations & fractions',
     color: '#4ade80',
     bg:    'linear-gradient(135deg, #14532d 0%, #166534 100%)',
   },
   {
     id:    'extras',
     emoji: '✨',
-    label: { en: 'Extras',      fr: 'Extras' },
-    desc:  { en: 'Algebra, stats & advanced topics', fr: 'Algèbre, stats & sujets avancés' },
+    label: 'Extras',
+    desc:  'Algebra, stats & advanced topics',
     color: '#c084fc',
     bg:    'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
   },
@@ -34,7 +34,7 @@ const CATEGORIES = [
 
 const TYPE_ICONS = { choices2: '2⃣', choices4: '4⃣', reorder: '🔀', wires: '🔗' }
 
-export default function ExercisesStation({ onPlay, lang = 'en' }) {
+export default function ExercisesStation({ onPlay }) {
   const [sets, setSets]               = useState(readSets)
   const [selectedCat, setSelectedCat] = useState(null)
   const [building, setBuilding]       = useState(false)
@@ -88,8 +88,8 @@ export default function ExercisesStation({ onPlay, lang = 'en' }) {
               onClick={() => setSelectedCat(cat.id)}
             >
               <span className="exercises-cat-emoji">{cat.emoji}</span>
-              <span className="exercises-cat-label">{cat.label[lang] ?? cat.label.en}</span>
-              <span className="exercises-cat-desc">{cat.desc[lang] ?? cat.desc.en}</span>
+              <span className="exercises-cat-label">{cat.label}</span>
+              <span className="exercises-cat-desc">{cat.desc}</span>
             </button>
           ))}
         </div>
@@ -109,7 +109,7 @@ export default function ExercisesStation({ onPlay, lang = 'en' }) {
         {/* Tab bar */}
         <div className="exercises-tab-bar">
           <button className="exercises-back-tab" onClick={() => setSelectedCat(null)}>
-            ← {lang === 'fr' ? 'Retour' : 'Back'}
+            ← Back
           </button>
           {CATEGORIES.map(cat => (
             <button
@@ -121,11 +121,11 @@ export default function ExercisesStation({ onPlay, lang = 'en' }) {
               onClick={() => setSelectedCat(cat.id)}
             >
               <span>{cat.emoji}</span>
-              <span>{cat.label[lang] ?? cat.label.en}</span>
+              <span>{cat.label}</span>
             </button>
           ))}
           <button className="exsets-new-btn exsets-new-btn--tab" onClick={openNew}>
-            + {lang === 'fr' ? 'Nouveau' : 'New'}
+            + New
           </button>
         </div>
 
@@ -135,10 +135,10 @@ export default function ExercisesStation({ onPlay, lang = 'en' }) {
             <div className="exsets-empty">
               <div className="exsets-empty-icon">📝</div>
               <p className="exsets-empty-text">
-                {lang === 'fr' ? 'Aucun exercice pour l\'instant.' : 'No exercises yet.'}
+                No exercises yet.
               </p>
               <button className="exsets-empty-cta" onClick={openNew}>
-                {lang === 'fr' ? 'Créer un exercice' : 'Create your first exercise set'}
+                Create your first exercise set
               </button>
             </div>
           ) : (
@@ -156,7 +156,7 @@ export default function ExercisesStation({ onPlay, lang = 'en' }) {
                   </div>
                   <div className="exsets-card-btns">
                     <button className="exsets-play-btn" onClick={() => onPlay?.(s)}>
-                      ▶ {lang === 'fr' ? 'Jouer' : 'Play'}
+                      ▶ Play
                     </button>
                     <button className="exsets-edit-btn" onClick={() => openEdit(globalIdx)} title="Edit">✏️</button>
                     <button className="exsets-del-btn"  onClick={() => handleDelete(globalIdx)} title="Delete">✕</button>

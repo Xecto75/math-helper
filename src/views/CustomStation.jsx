@@ -13,14 +13,12 @@ export default function CustomStation({ onGenerate, onBuilder, lang = 'en' }) {
       <div className="station-content station-content--bottom">
         <div className="custom-station-prompt">
           <p className="custom-station-label">
-            {lang === 'fr' ? 'Décris la leçon que tu veux créer…' : 'Describe the lesson you want to build…'}
+            Describe the lesson you want to build…
           </p>
           <div className="custom-station-row">
             <textarea
               className="custom-station-input"
-              placeholder={lang === 'fr'
-                ? 'ex. Crée une leçon sur les fractions pour un élève de 3e année…'
-                : 'e.g. Build a lesson on fractions for a grade 3 student…'}
+              placeholder="e.g. Build a lesson on fractions for a grade 3 student…"
               value={prompt}
               onChange={e => setPrompt(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSend() }}
@@ -33,10 +31,10 @@ export default function CustomStation({ onGenerate, onBuilder, lang = 'en' }) {
                 onClick={handleSend}
                 disabled={!prompt.trim()}
               >
-                {lang === 'fr' ? 'Générer' : 'Generate'}
+                Generate
               </button>
               <button className="custom-station-builder" onClick={onBuilder}>
-                {lang === 'fr' ? '✏️ Builder' : '✏️ Builder'}
+                ✏️ Builder
               </button>
             </div>
           </div>

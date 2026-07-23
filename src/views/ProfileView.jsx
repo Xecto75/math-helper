@@ -11,10 +11,10 @@ export default function ProfileView({ profile, onProfile, lang = 'en' }) {
   const save = (patch) => onProfile({ ...profile, ...patch })
 
   const STATS = [
-    { label: lang === 'fr' ? 'Leçons terminées' : 'Lessons done', value: '—', icon: '📚' },
-    { label: lang === 'fr' ? 'Outils utilisés'  : 'Tools used',   value: '—', icon: '🛠️' },
-    { label: lang === 'fr' ? 'Jours de suite'   : 'Day streak',   value: '—', icon: '🔥' },
-    { label: lang === 'fr' ? 'Points gagnés'    : 'Points',       value: '—', icon: '⭐' },
+    { label: 'Lessons done', value: '—', icon: '📚' },
+    { label: 'Tools used',   value: '—', icon: '🛠️' },
+    { label: 'Day streak',   value: '—', icon: '🔥' },
+    { label: 'Points',       value: '—', icon: '⭐' },
   ]
 
   return (
@@ -44,7 +44,7 @@ export default function ProfileView({ profile, onProfile, lang = 'en' }) {
             </div>
           ) : (
             <div className="name-row">
-              <span className="profile-name">{profile.name || (lang === 'fr' ? 'Élève' : 'Student')}</span>
+              <span className="profile-name">{profile.name || 'Student'}</span>
               <button className="name-edit-btn" onClick={() => { setNameInput(profile.name); setEditingName(true) }}>✏️</button>
             </div>
           )}

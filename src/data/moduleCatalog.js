@@ -6,7 +6,9 @@
  * ARCHITECTURE:
  *   Request 1 — Router  (haiku, fast/cheap)
  *     Input : user prompt
- *     Output: { modules: ["geo2d", "equation", ...] }
+ *     Output: { status: "ok", modules: ["geo2d", "equation", ...] }
+ *           | { status: "off-topic" }
+ *           | { status: "clarify" | "trivial", message: "..." }
  *
  *   Request 2 — Generator (sonnet)
  *     System: BASE_RULES + per-module docs for selected modules only
@@ -35,15 +37,33 @@ tc max 3 lines — prefer cmt/labels over tc for brief annotations.
 tc clr: always "" unless user explicitly asks for a colored box.
 
 LAYOUT RULE: any layout with a text panel (tg/tG/tq/te/ge/Ge/Gc) MUST contain ≥1 tc — never leave the text panel empty. If no formula is needed, use a non-text layout instead.
+sL:[layout] — switch THIS page's layout mid-script (e.g. start te, later sL:"single-equation", later sL:"graph-equation" once a graph is needed). Panels shared by both layouts (e.g. the equation panel across te→se→ge) resize smoothly instead of popping; panels that appear/disappear fade. IMPORTANT: layout here is the FULL name string ("single-equation", "graph-equation", …), never the short LC code ("se", "ge") — LC codes are only for the page's own top-level layout slot, not this arg. Only use sL when the page genuinely benefits from evolving its layout as steps progress — most pages should just pick one layout and stay in it.
 COMPUTE not assert: derive every number via {{ expr }} (mathjs) or eq-*; never hand-type a computed result.
 COLOR LINKS: coloring a shape edge/angle REQUIRES coloring its matching eq term or comment. One color per concept.
 ORDERING: fp→before fV/fr/fn/fP/ft/fs/cf | gp→before gl/ga/gh/gE/gA/gr | S2c→before S2l/S2a/S2h/S2E/S2A | fp needs an explicit id arg.
 
-RICH TEXT (tc/tf content):
-  Geo refs  : [id]N=side N  [id]h=height  [id]r=radius  [id]aN=angle N°
-  Computed  : {{ mathjs expression }}
+RICH TEXT (tc/tf content) — NEVER hand-type a number that some other step already
+created; pull it live with [id]token instead, so it can never drift out of sync:
+  Flat 2D shape (gp or S2c) : [id]N=side N  [id]h=height  [id]r=radius  [id]aN=angle N°
+  Volumetric 3D solid (S3c) : [id]a/r/h/l/d/R — letter depends on shape type, matches
+                               exactly what S3m (Show Volume Measures) labels on screen:
+                               cube→a  sphere→r  cone/cylinder→r+h  rectangular-prism→l+h+d
+                               pyramid→a+h  tetrahedron/octahedron→a  torus→R+r
+  Graph point (fa)          : [id]x  [id]y
+  Graph segment (fsg)       : [id]x1 [id]y1 [id]x2 [id]y2 [id]len
+  Graph function (fp)       : [id]expr — its plotted expression as text (not a number)
+                               [id]N  — the Nth number written in it, left to right, whether
+                               a literal ("2x+4" → [id]0=2 [id]1=4) or a |slider| var's live
+                               value ("|a|x+|b|" → [id]0=a's value [id]1=b's value)
+  Slider (a |name| in fp)   : [name]v — that slider's current value, by its own name,
+                               regardless of which function(s) use it
+  Table cell (Tt or Tc)     : [id]r<row>c<col>, both 0-indexed, e.g. [grid1]r0c1
+  Computed  : {{ mathjs expression }} — runs AFTER [id]token substitution, so
+              {{ [trap]0 + [trap]1 }} works
   Color text: {color: text}  or inside $ $: \\clr{color}{x}
   [eq-result]: pull current equation's numeric answer (for tf/cu)
+This SAME [id]token syntax also works as an ev: replacement value (see ev: below) —
+e.g. ev:[a=[tri]0,b=[tri]1] instead of typing the side lengths again.
 `
 
 // ── MODULE DEFINITIONS ────────────────────────────────────────────────────────
@@ -54,8 +74,8 @@ export const MODULES = {
   equation: {
     label: 'Equation Solving',
     description: 'Algebraic equations — linear solving, distribute, combine, inverse trig, variable substitution, exponent steps',
-    layouts: ['se', 'te', 'ge', 'Ge'],
-    doc: `EQUATION LAYOUTS: se=single-equation  te=text-equation  ge=graph-equation  Ge=geo-equation
+    layouts: ['se', 'te', 'ge', 'Ge', 'qe'],
+    doc: `EQUATION LAYOUTS: se=single-equation  te=text-equation  ge=graph-equation  Ge=geo-equation  qe=grid-equation
 
 EQUATION RULE:
   · Call eq ONCE to create. NEVER call eq again mid-solve.
@@ -73,7 +93,13 @@ FUNCTIONS [positional args]:
   eo:[]                              — reorder so like terms are adjacent
   ed:[divisor]                       — divide both sides by number
   ef:[]                              — animated full solve (combine→send→divide) — use for any degree-1 eq
-  ev:[replacements]                  — substitute values e.g. "a=2,b=-3,c=1"
+  ev:[replacements]                  — substitute values e.g. "a=2,b=-3,c=1" — prefer
+                                        a live [id]token ref over a literal when the
+                                        value came from a shape/graph/table, e.g.
+                                        "a=[tri]0,r=[circ]r" (see RICH TEXT above)
+  eS:[name]                          — stash the equation's current solved numeric result
+                                        under a name (no visual change), so a LATER eq/ev/tc/cu
+                                        step can pull it back via [name]v — use to chain solves
   er:[equation]                      — show √ both sides (eq must be "x^2=N" form)
   ea:[trig]                          — apply inverse trig: sin|cos|tan
   ee:[equation,newDegree]            — change exponent (fade old, fade in new)
@@ -85,6 +111,9 @@ EXAMPLE — linear equation:
 
 EXAMPLE — quadratic manual steps:
 [["x² − 5x + 6 = 0","te",[["tc","b","Quadratic","$x^2 - 5x + 6 = 0$",0,""],["eq","x^2 - 5x + 6 = 0"],["ec"],["es",0],["ed",1]]]]
+
+EXAMPLE — chained solve, find y=mx+b from two points (save m, use it to find b, then show both):
+[["Line through (2,3) and (4,5)","ge",[["fa",2,3,"p1"],["fa",4,5,"p2"],["eq","m = (y2 - y1) / (x2 - x1)"],["ev","y2=[p2]y,y1=[p1]y,x2=[p2]x,x1=[p1]x"],["ef"],["eS","m"],["eq","b = y1 - m * x1"],["ev","y1=[p1]y,m=[m]v,x1=[p1]x"],["ef"],["eS","b"],["eq","y = m*x + b"],["ev","m=[m]v,b=[b]v"]]]]
 `,
   },
 
@@ -100,7 +129,7 @@ FUNCTIONS [positional args]:
   S2m:[id,dx,dy]                                        — move shape by offset
   S2h:[id]                                              — pulse highlight
   S2l:[id,customLabels]                                 — label sides (blank=auto-lengths)
-  S2a:[id,color]                                        — show all interior angle arcs
+  S2a:[id,color,showValues]                             — show all interior angle arcs; showValues=true also labels each arc with its measured degrees
   S2A:[id,angleIndex,color]                             — pop+recolor one angle arc
   S2E:[id,edgeIndex,color]                              — animated highlight on one edge
   S2tk:[id,edgeIndex,ticks,color]                       — congruent-side tick mark(s) at an edge's midpoint (ticks=1-3; use a different count for a different equal-side pair)
@@ -112,6 +141,7 @@ FUNCTIONS [positional args]:
   S2f:[id]                                              — flip horizontal
   S2r:[id]                                              — rotate 90° CCW
   gM:[id,clr]                                           — show ALL area-formula measures (dashed height + relevant side labels — square→s, rectangle→l+h, parallelogram→b+h, trapeze→B+b+h, triangle→b+h, circle→r). Same function as geo_canvas's gM — works on geo2d shapes too.
+  gP:[id,clr]                                           — show ALL perimeter-formula measures (every side highlighted in turn + labeled with its length; circle→r same as gM). Same function as geo_canvas's gP — works on geo2d shapes too.
 
 SHAPE TYPES & VALS:
   triangle         vals="a,b,c"          (3 side lengths)
@@ -227,6 +257,7 @@ FUNCTIONS [positional args]:
   gC:[]                                                — clear all
   gr:[id,clr,angle,label]                              — show measure (circle=radius, polygon=height)
   gM:[id,clr]                                           — show ALL area measures (dashed height + relevant side labels — different per shape type, see below)
+  gP:[id,clr]                                           — show ALL perimeter measures (every side highlighted in turn + labeled with its length; circle→r same as gM)
 
 TYPES: triangle  right-triangle  rectangle  square  circle  parallelogram  trapeze  pentagon  hexagon
 VALS: right-triangle="a,b"  rectangle="w,h"  square="s"  parallelogram="w,h,dx"  trapeze="aTop,bBot,h"  circle="r"  pentagon/hexagon/octagon="r"
@@ -238,10 +269,12 @@ INDICES (same as geo2d):
 gM shows exactly what's needed for the area formula, per type: square→s ; rectangle→l+h ;
 parallelogram→b+h(dashed) ; trapeze→B(bottom)+b(top)+h(dashed) ; triangle/right-triangle→b+h(dashed) ;
 circle→r ; other polygons→s (one side). Prefer gM over gr when teaching area — gr alone only gives height.
+gP always labels EVERY side (perimeter needs the full sum, not a subset) — use gP instead of manually
+chaining several gE+gl calls when teaching perimeter.
 
 RICH REFS in tc: [id]N=side  [id]h=height  [id]r=radius  [id]aN=angle°
 ANGLES: never guess — use {{ [id]aN }}°
-ga/gr/gM clr: ""=light blue
+ga/gr/gM/gP clr: ""=light blue
 
 EXAMPLE — circle area:
 [["Circle Area","tG",[["gp","circ","circle","3",0,0,4,0],["gr","circ","",35],["gh","circ"],["tc","b","Circle","A = πr² = {{ pi * [circ]r^2 }}|C = 2πr = {{ 2 * pi * [circ]r }}",0,""]]]]
@@ -259,9 +292,13 @@ FUNCTIONS [positional args]:
   fp:[expr,id,hideLabel]        — plot f(x); id is required (e.g. "f", "g"). Auto-shows a "f(x) = expr" label near the curve unless hideLabel=1 — don't also call fn for the same curve unless you want a different x position or custom text.
   fx:[id]                       — remove function
   fs:[id,a,b]                   — shade area under curve from a to b
-  fi:[f1,f2]                    — mark intersection points of two functions
+  fi:[f1,f2,clr,hideLabel]        — mark intersection points of two functions (works on a general
+                                    equation like "-6x+3y=12" too, not just one solved for y);
+                                    shows (x,y) coords by default, hideLabel=1 to hide them
   fa:[x,y,id,funcId,label,showCoords]  — add point (funcId/label/showCoords optional)
   fap:[id]                      — remove point
+  fbf:[pointIds,id,clr]         — least-squares line through already-placed points (comma-separated
+                                    IDs from fa), dashed by default — the "trend line through a scatter"
   fsc:[slope,intercept,coeff,count,xMin,xMax,clr,id]  — scatter plot: points scattered around y=slope·x+intercept; coeff=spread (0=all on the line). Use for correlation/regression lessons.
   fscx:[id]                     — remove scatter plot
   fsg:[x1,y1,x2,y2,clr,id]      — finite line SEGMENT between two points (NOT infinite like y=mx+b) — use for geometry constructions drawn on the graph
@@ -282,9 +319,12 @@ FUNCTIONS [positional args]:
   fD:[x1,y1,x2,y2]             — draw vector/arrow
   fT:[id,type,val]              — transform function (translateX|translateY|scaleY|scaleX|reflectX|reflectY)
   fg:[Ax,Ay,Bx,By,Cx,Cy,clr]   — mark angle ABC at vertex B (auto square if 90°)
-  fB:[points,showCoords]        — batch add points "id:x:y:label|..." (parallel)
+  fB:[points,showCoords,clr]    — batch add points "id:x:y:label|..." (parallel)
   fBP:[pointIds]                — batch show projections "id1|id2|..." (parallel)
   fTC:[]                        — draw complete unit circle (all 16 standard angles)
+
+NOTE: fp automatically shows a live-updating equation badge (bottom of the graph, curve's
+color) whenever its expr has |name| sliders — nothing to call for this, it just happens.
 
 ORDERING: fp must come before fV/fr/fn/fP/ft/fs/cf on the same function
 fP needs a non-root x value (not exactly on an axis intercept)
@@ -301,8 +341,8 @@ EXAMPLE — derivative:
   table: {
     label: 'Data Tables',
     description: 'Animated data grids for showing values, comparisons, frequency tables, or step-by-step table manipulations',
-    layouts: ['sq', 'tq'],
-    doc: `TABLE LAYOUTS: sq=single-grid  tq=text-grid
+    layouts: ['sq', 'tq', 'qe'],
+    doc: `TABLE LAYOUTS: sq=single-grid  tq=text-grid  qe=grid-equation (table + equation, no text — pair with Th to walk a per-row calculation next to its formula)
 
 FUNCTIONS [positional args]:
   Tt:[data,hdr,gId,clr]          — EASIEST way to create a table: data is a literal 2D array, e.g. "[[2,2,3],[5,5,6],[4,4,4]]" — size is auto-detected, don't also pass cols/rows. Prefer this over Tc.
@@ -314,6 +354,10 @@ FUNCTIONS [positional args]:
   TrR:[id,rowIndex]              — remove row (0=first, -1=last)
   Tv:[id,col,row,val]            — update single cell (col/row 0-based)
   TV:[id,changes]                — update multiple cells "col,row,val|col,row,val"
+  Th:[id,rowIndex,clr]           — highlight one row (0-based) — pair with an equation panel to
+                                    walk through a per-row calculation; calling again just slides
+                                    the same bar to the new row, no clear step needed between rows
+  Thx:[id]                       — fade out the row highlight
 
 EXAMPLE:
 [["3x3 Table","sq",[["Tt","[[2,2,3],[5,5,6],[4,4,4]]"]]]]
@@ -335,7 +379,7 @@ EXAMPLE:
   tf:[bId,content]                        — cross-fade content
 
 content syntax: lines sep by | · $latex$ inline · **bold**
-isList: 0=paragraph  1=bullet list
+isList: 0=paragraph  1=bullet list  "steps"=numbered list ("1. …", "2. …")
 color: "" always, unless user asks for a colored box
 
 IMPORTANT: layouts tg/tG/tq/te/ge/Ge/Gc have a text panel — include ≥1 tc or the panel is blank.
@@ -391,30 +435,47 @@ Prefer cmt over tc for brief labels on visual elements.
 // ── ROUTER ────────────────────────────────────────────────────────────────────
 
 export const ROUTER_SYSTEM_PROMPT = `You are a math lesson module router.
-Given a topic or lesson description, decide which display modules the lesson will need.
+Given a topic or lesson description, first classify the request, then — only if it needs a lesson — decide which display modules it will need.
 
 Available modules:
 ${Object.entries(MODULES).map(([id, m]) => `  ${id.padEnd(12)} — ${m.description}`).join('\n')}
 
-Rules:
+Step 1 — classify:
+  "ok"        — a math request specific enough to build a lesson for.
+  "off-topic" — clearly not math (languages, history, event planning, general knowledge, coding, non-math science, personal advice, etc).
+  "clarify"   — mentions math but names no actual topic (e.g. "help me with my math homework").
+  "trivial"   — a fully-specified arithmetic question with a one-line answer, not worth a full lesson (e.g. "2+2", "15% of 80").
+
+  Math includes: algebra, geometry, trigonometry, calculus, statistics, functions, arithmetic.
+  When in doubt, classify as "ok" — a false positive (treating a borderline request as math) is far less costly than a false negative (blocking a real math question). Only use "off-topic" when the request is clearly not math. Short ambiguous prompts (e.g. "9/11") should default to math.
+
+Step 2 (only when status is "ok") — pick the minimum module set:
   · Pick the minimum set needed — don't add modules speculatively.
   · Always include "text" when another display needs a formula panel alongside it.
   · Always include "comments" when point annotations or edge labels would help clarity.
   · geo2d and geo3d are mutually exclusive (you can't show a 2D flat shape AND a 3D shape on the same page).
   · geo2d vs geo_canvas: prefer geo2d for new lessons (animated, Three.js); use geo_canvas for SVG constructions or when the lesson specifically needs arrows between vertices.
 
-Reply with ONLY valid JSON — no prose, no fences:
-{"modules":["id1","id2",...]}
+Reply with ONLY valid JSON — no prose, no fences. One of:
+{"status":"ok","modules":["id1","id2",...]}
+{"status":"off-topic"}
+{"status":"clarify","message":"<one short English sentence asking which math topic>"}
+{"status":"trivial","message":"<the direct English answer, one short sentence>"}
 
 Examples:
-  "solve 2x + 5 = 11"                            → {"modules":["equation","text"]}
-  "right triangle and Pythagorean theorem"        → {"modules":["geo2d","equation","text","comments"]}
-  "plot x² and find its roots"                    → {"modules":["graph","text","comments"]}
-  "explain the area of a circle"                  → {"modules":["geo2d","text"]}
-  "volume of a cylinder"                          → {"modules":["geo3d","text"]}
-  "3 + 4 × 2 order of operations"                → {"modules":["calc"]}
-  "compare student scores in a table"             → {"modules":["table","text"]}
-  "derivative of f(x) = x³"                      → {"modules":["graph","text","calc"]}
+  "solve 2x + 5 = 11"                            → {"status":"ok","modules":["equation","text"]}
+  "right triangle and Pythagorean theorem"        → {"status":"ok","modules":["geo2d","equation","text","comments"]}
+  "plot x² and find its roots"                    → {"status":"ok","modules":["graph","text","comments"]}
+  "explain the area of a circle"                  → {"status":"ok","modules":["geo2d","text"]}
+  "volume of a cylinder"                          → {"status":"ok","modules":["geo3d","text"]}
+  "3 + 4 × 2 order of operations"                → {"status":"ok","modules":["calc"]}
+  "compare student scores in a table"             → {"status":"ok","modules":["table","text"]}
+  "derivative of f(x) = x³"                      → {"status":"ok","modules":["graph","text","calc"]}
+  "9/11"                                          → {"status":"ok","modules":["equation","text"]}
+  "how do I conjugate French verbs"               → {"status":"off-topic"}
+  "write me a python script to sort a list"       → {"status":"off-topic"}
+  "help me with my math problem"                  → {"status":"clarify","message":"Which math topic? (e.g. algebra, geometry, trigonometry…)"}
+  "2+2"                                           → {"status":"trivial","message":"2 + 2 = 4. Want to explore a deeper concept instead?"}
 `
 
 // ── GENERATOR PROMPT BUILDER ──────────────────────────────────────────────────

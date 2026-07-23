@@ -173,6 +173,7 @@ export async function eraseGrid(tableRef, gid) {
   await Promise.all([
     lineIds.length ? d.fadeOutLines(lineIds, 320) : Promise.resolve(),
     cellIds.length ? d.fadeOutCells(cellIds, 320) : Promise.resolve(),
+    clearRowHighlight(tableRef, gid),
   ])
   registry.delete(gid)
 }
@@ -493,8 +494,50 @@ export async function changeValues(tableRef, gid, changes) {
   }))
 }
 
+// ── highlightRow ────────────────────────────────────────────────────────────
+// One movable highlight bar per grid — calling this again just slides the
+// same bar to the new row (see animateRowHighlight), which is exactly what
+// "walk through a calculation row by row" wants: no separate clear step
+// needed between rows.
+export async function highlightRow(tableRef, gid, rowIndexRaw, colorRaw) {
+  const d = tableRef?.current
+  if (!d) return
+  const e = registry.get(gid)
+  if (!e) return
+  const { x0, y0, cellW, cellH, totalW } = e.layout
+  const rowIndex = Math.max(0, Math.min(Math.round(rowIndexRaw ?? 0), e.rows - 1))
+  const color = colorRaw ?? '#eab308'
+  const id = `${gid}_rowhl`
+  const rect = { x: x0, y: y0 + rowIndex * cellH, width: totalW, height: cellH, color }
+
+  if (d.getRowHighlight(id)) {
+    await d.animateRowHighlight(id, rect)
+  } else {
+    d.setRowHighlight(id, { ...rect, opacity: 0 })
+    await d.fadeRowHighlight(id, 1, 260)
+  }
+}
+
+// ── clearRowHighlight ────────────────────────────────────────────────────────
+export async function clearRowHighlight(tableRef, gid) {
+  const d = tableRef?.current
+  if (!d) return
+  const id = `${gid}_rowhl`
+  if (d.getRowHighlight(id)) await d.fadeRowHighlight(id, 0, 220, true)
+}
+
 export function getGridIds() {
   return [...registry.keys()]
+}
+
+// Live value getter for valueRefs.js's `[gridId]r<row>c<col>` token — both
+// 0-indexed to match the authored `data` matrix directly, including changes
+// made afterwards via table-change-value/table-change-values.
+export function getCellValue(gid, row, col) {
+  const v = registry.get(gid)?.values?.[row]?.[col]
+  if (v === undefined || v === null || v === '') return undefined
+  const n = Number(v)
+  return isFinite(n) ? n : v
 }
 
 export function clearAll(tableRef) {

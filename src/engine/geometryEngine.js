@@ -496,10 +496,46 @@ export async function showAreaMeasures(geoRef, id, opts = {}) {
   await Promise.all(anims)
 }
 
+// Show every measurement needed to compute a shape's PERIMETER — unlike
+// area (which only needs a minimal subset per shape type), perimeter always
+// needs every side, so this highlights each edge in turn (same look as
+// calling highlightEdge once per side) and labels ALL of them with their
+// computed lengths (labelSides already does this automatically when given
+// no custom text). A circle has no discrete edges — after the same radius
+// line + "r = value" showAreaMeasures/showMeasure draws, trace a highlight
+// ring starting from that same point all the way around back to it, since
+// "the perimeter" for a circle IS that trip around, not just r itself.
+export async function showPerimeterMeasures(geoRef, id, opts = {}) {
+  const entry = registry.get(id)
+  if (!entry) return
+
+  if (entry.type === 'circle') {
+    await showMeasure(geoRef, id, { color: opts.color })
+    const display = geoRef?.current
+    if (display) {
+      const color = opts.color ? resolveColor(opts.color) : '#60a5fa'
+      const angle = (opts.angle ?? 35) * Math.PI / 180
+      const traceId = `ptrace__${id}`
+      display.addArcTrace(traceId, 0, 0, entry.r, angle, { color })
+      await display.animateArcTrace(traceId)
+    }
+    return
+  }
+  if (!entry.vertices?.length) return
+
+  const color = opts.color ? resolveColor(opts.color) : '#60a5fa'
+  const n = entry.vertices.length
+  for (let i = 0; i < n; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    await highlightEdge(geoRef, id, i, color)
+  }
+  await labelSides(geoRef, id)
+}
+
 export function addText(geoRef, id, content, x, y, opts = {}) {
   const display = geoRef?.current
   if (!display) return
-  const color = opts.color ? rgbToHex(opts.color) : '#a855f7'
+  const color = opts.color ? rgbToHex(opts.color) : '#60a5fa'
   display.addLabel(`tx${id}`, x, y, content, { color })
 }
 
@@ -573,7 +609,7 @@ export function removeAngles(geoRef, id) {
   for (let i = 0; i < n; i++) display.removeShape(`arc__${id}_${i}`)
 }
 
-export async function highlightEdge(geoRef, shapeId, edgeIndex, color = '#fbbf24', opts = {}) {
+export async function highlightEdge(geoRef, shapeId, edgeIndex, color = '#60a5fa', opts = {}) {
   const entry = registry.get(shapeId)
   if (!entry?.vertices) return
   const display = geoRef?.current
@@ -629,7 +665,7 @@ export function showArrow(geoRef, shapeId, arrowId, from, to, opts = {}) {
 
   const [x1, y1] = parsePosition(from, entry)
   const [x2, y2] = parsePosition(to,   entry)
-  const color = opts.color ?? '#fbbf24'
+  const color = opts.color ?? '#60a5fa'
 
   const aid = arrowId ?? `arrow__${shapeId}`
   display.addArrow(aid, x1, y1, x2, y2, { color, ...opts })

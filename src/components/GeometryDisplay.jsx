@@ -307,7 +307,7 @@ const GeometryDisplay = forwardRef(function GeometryDisplay(_, ref) {
       if (!e.scene) return
       removeObj(id)
 
-      const color = mkColor(style?.color ?? '#6495ed')
+      const color = mkColor(style?.color ?? '#60a5fa')
       const geo   = new THREE.ShapeGeometry(buildSectorShape(cx, cy, 0.0001, startAngle, diff))
       const mat   = new THREE.MeshBasicMaterial({ color, opacity: 0.28, transparent: true, side: THREE.DoubleSide })
       const mesh  = new THREE.Mesh(geo, mat)
@@ -341,6 +341,55 @@ const GeometryDisplay = forwardRef(function GeometryDisplay(_, ref) {
       })
     },
 
+    // ── Circle perimeter trace ───────────────────────────────────────────────
+    // A growing arc outline (not a filled sector, unlike addAngleArc) — used
+    // to show "the perimeter" of a circle as an actual trip around it,
+    // starting from wherever the radius line touches (same angle) and
+    // sweeping the full 2π back to that point.
+
+    addArcTrace(id, cx, cy, r, startAngle, style) {
+      const e = engineRef.current
+      if (!e.scene) return
+      removeObj(id)
+
+      const color = mkColor(style?.color ?? '#60a5fa')
+      const pt    = new THREE.Vector3(cx + r * Math.cos(startAngle), cy + r * Math.sin(startAngle), 0.03)
+      const geo   = new THREE.BufferGeometry().setFromPoints([pt, pt])
+      const line  = new THREE.Line(geo, new THREE.LineBasicMaterial({ color }))
+
+      const group = new THREE.Group()
+      group.add(line)
+      group.userData = { kind: 'arc-trace', cx, cy, r, startAngle }
+      e.scene.add(group)
+      e.objects.set(id, group)
+    },
+
+    animateArcTrace(id, duration = 1.2) {
+      return new Promise(resolve => {
+        const e = engineRef.current
+        const g = e.objects.get(id)
+        if (!g) { resolve(); return }
+        const { cx, cy, r, startAngle } = g.userData
+        const line = g.children[0]
+        const t0   = performance.now()
+        const SEGS = 96
+
+        function tick() {
+          const t = Math.min((performance.now() - t0) / (duration * 1000), 1)
+          const n = Math.max(1, Math.round(SEGS * t))
+          const pts = []
+          for (let i = 0; i <= n; i++) {
+            const a = startAngle + (i / SEGS) * Math.PI * 2
+            pts.push(new THREE.Vector3(cx + r * Math.cos(a), cy + r * Math.sin(a), 0.03))
+          }
+          line.geometry.setFromPoints(pts)
+          if (t < 1) requestAnimationFrame(tick)
+          else resolve()
+        }
+        requestAnimationFrame(tick)
+      })
+    },
+
     // ── Edge highlight ───────────────────────────────────────────────────────
 
     addEdgeHighlight(id, x1, y1, x2, y2, style) {
@@ -348,7 +397,7 @@ const GeometryDisplay = forwardRef(function GeometryDisplay(_, ref) {
       if (!e.scene) return
       removeObj(id)
 
-      const color  = mkColor(style?.color ?? '#fbbf24')
+      const color  = mkColor(style?.color ?? '#60a5fa')
       const pts    = [new THREE.Vector3(x1, y1, 0.02), new THREE.Vector3(x1, y1, 0.02)]
       const geo    = new THREE.BufferGeometry().setFromPoints(pts)
       const dashed = !!style?.dashed
@@ -399,7 +448,7 @@ const GeometryDisplay = forwardRef(function GeometryDisplay(_, ref) {
       if (!e.scene) return
       removeObj(id)
 
-      const color = mkColor(style?.color ?? '#fbbf24')
+      const color = mkColor(style?.color ?? '#60a5fa')
       const geo   = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(x1, y1, 0.02), new THREE.Vector3(x1, y1, 0.02),
       ])
@@ -587,7 +636,7 @@ const GeometryDisplay = forwardRef(function GeometryDisplay(_, ref) {
               left:        pos.left,
               top:         pos.top,
               transform:   'translate(-50%, -50%)',
-              color:       lbl.style?.color ?? '#a855f7',
+              color:       lbl.style?.color ?? '#60a5fa',
               fontSize:    lbl.style?.fontSize ? `${lbl.style.fontSize}px` : '14px',
               fontFamily:  "'Fira Code','Cascadia Code',monospace",
               fontWeight:  '600',

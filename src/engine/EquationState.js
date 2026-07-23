@@ -84,6 +84,8 @@ function termToPlain(t) {
     text:             t.text             ?? null,
     isParenGroup:     t.isParenGroup     ?? false,
     parenCoeff:       t.parenCoeff       ?? 1,
+    parenCoeffVariable: t.parenCoeffVariable ?? null,
+    parenCoeffDegree:   t.parenCoeffDegree   ?? 1,
     innerTerms:       t.innerTerms       ?? null,
     factors:          t.factors          ?? null,
     negBase:          t.negBase          ?? false,

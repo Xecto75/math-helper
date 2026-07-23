@@ -2755,6 +2755,43 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         if (foldedInner) foldedInner.style.animation = 'none'
       }
 
+      // ── Phase 0b2: an expr-tree term stuck as "label / number" ────────────
+      // e.g. the Law of Sines' own b/sinB = a/sinA — after A and B get
+      // replaced but b is deliberately left alone, the fraction can never
+      // fully reduce (findReady never resolves past a bare label), so the
+      // main loop above leaves it exactly as "b / 0.707". That's still just
+      // as isolatable as any classic "coefficient·x" term: multiply both
+      // sides by the divisor. Scoped narrowly (exactly one term per side) —
+      // anything messier is left to whatever Phase 1 already does with it.
+      {
+        const exprTerms = [...state.left, ...state.right].filter(t => t.expr)
+        const stuck = exprTerms.find(t =>
+          t.expr.t === 'bin' && t.expr.op === '/' &&
+          t.expr.a.t === 'label' && isNum(t.expr.b)
+        )
+        const stuckArr  = stuck && (stuck.side === 'left' ? state.left : state.right)
+        const otherSide = stuck && (stuck.side === 'left' ? 'right' : 'left')
+        const otherArr  = otherSide && (otherSide === 'left' ? state.left : state.right)
+        const otherTerm = otherArr?.[0]
+        if (stuck && stuckArr.length === 1 && otherArr.length === 1 &&
+            otherTerm && !otherTerm.variable && !otherTerm.expr && !otherTerm.isFraction) {
+          const divisor = stuck.expr.b.v
+          // eslint-disable-next-line no-await-in-loop
+          await revealStep(
+            () => [getCellInner(getWrap(refs(), stuck.side, stuck.cellIndex)),
+                   getCellInner(getWrap(refs(), otherTerm.side, otherTerm.cellIndex))],
+            () => {
+              stuck.expr = { t: 'label', id: crypto.randomUUID(), name: stuck.expr.a.name }
+              const nv = otherTerm.value * divisor
+              otherTerm.sign = nv >= 0 ? '+' : '-'
+              otherTerm.coefficient = Math.abs(parseFloat(nv.toFixed(4)))
+            },
+            () => [getCellInner(getWrap(refs(), stuck.side, stuck.cellIndex)),
+                   getCellInner(getWrap(refs(), otherTerm.side, otherTerm.cellIndex))],
+          )
+        }
+      }
+
       // ── Phase 0c: evaluate numeric power terms (e.g. 3² → 9 after variable substitution) ──
       {
         const powTerms = [...state.left, ...state.right].filter(

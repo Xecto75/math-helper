@@ -599,7 +599,6 @@ export async function labelSides3D(threeRef, id, customLabels = []) {
     const [ox, oy] = verts[(i + 2) % n]
     const cross = edgeDx * (oy - ly) - edgeDy * (ox - lx)
     const sign   = cross > 0 ? -1 : 1
-    const offset = avgEdge * 0.14
 
     const custom = newCustoms[i]
     const len    = parseFloat(Math.sqrt((x2-x1)**2 + (y2-y1)**2).toFixed(2))
@@ -611,6 +610,12 @@ export async function labelSides3D(threeRef, id, customLabels = []) {
 
     const edgeColor = entry.edgeColors?.[i] ?? '#a5b4fc'
     const fontSize  = Math.round(Math.max(14, Math.min(36, avgEdge * ppu * 0.16)))
+    // addLabel3D centers the label ON this point (translate(-50%,-50%)), so
+    // the gap to the line is (offset − half the label's own height), not
+    // offset itself — solve for a true ~6px gap instead of a size-proportional
+    // offset that pushed long-side labels far from their line (and could push
+    // a bottom-edge label below the visible canvas entirely).
+    const offset = (fontSize / 2 + 6) / ppu
 
     display.addLabel3D(
       `sl_${id}_${i}`,

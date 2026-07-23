@@ -303,6 +303,14 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     setShowSlots(true)
   }
 
+  const handleResetExampleOverride = (id, e) => {
+    e.stopPropagation()
+    const next = { ...exOverrides }
+    delete next[id]
+    writeExOverrides(next)
+    setExOverrides(next)
+  }
+
   const handleLoad = (entry) => {
     const loaded = entry.pages.map(p => ({
       title: '', ...p, id: uid(),
@@ -814,21 +822,35 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
         {tab === 'examples' && (
           <div className="lb-ex">
             <div className="lb-ex-grid">
-              {EXAMPLE_LESSONS.map(ex => (
-                <button key={ex.id} className="lb-ex-card"
-                  style={{ '--ex-color': ex.color }}
-                  onClick={() => {
-                    const pages = exOverrides[ex.id] ?? ex.pages
-                    handleLoad({ pages, prompt: '' })
-                    setEditingExampleId(ex.id)
-                    setTab('builder')
-                  }}>
-                  <span className="lb-ex-emoji">{ex.emoji}</span>
-                  <span className="lb-ex-title">{ex.title}</span>
-                  <span className="lb-ex-desc">{ex.desc}</span>
-                  <span className="lb-ex-badge">{ex.pages.length} page{ex.pages.length !== 1 ? 's' : ''}</span>
-                </button>
-              ))}
+              {EXAMPLE_LESSONS.map(ex => {
+                const isOverridden = ex.id in exOverrides
+                return (
+                  <button key={ex.id} className="lb-ex-card"
+                    style={{ '--ex-color': ex.color }}
+                    onClick={() => {
+                      const pages = exOverrides[ex.id] ?? ex.pages
+                      handleLoad({ pages, prompt: '' })
+                      setEditingExampleId(ex.id)
+                      setTab('builder')
+                    }}>
+                    <span className="lb-ex-emoji">{ex.emoji}</span>
+                    <span className="lb-ex-title">{ex.title}</span>
+                    <span className="lb-ex-desc">{ex.desc}</span>
+                    <span className="lb-ex-badge">{ex.pages.length} page{ex.pages.length !== 1 ? 's' : ''}</span>
+                    {isOverridden && (
+                      <span className="lb-ex-override"
+                        title="This example has locally-saved edits that override the shipped version">
+                        Edited locally
+                        <button className="lb-ex-override-reset"
+                          title="Discard local edits and go back to the shipped version"
+                          onClick={(e) => handleResetExampleOverride(ex.id, e)}>
+                          Reset
+                        </button>
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}

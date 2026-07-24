@@ -2419,10 +2419,13 @@
 
 /* A point/comment label containing a literal "\n" (see desmosEngine.js's
    formatPointLabel, from a "Vertex|(2, -1)"-style |-separated input) needs
-   Desmos's own nowrap overridden to actually show it as two lines — a plain
-   single-line label is unaffected either way, since text-align only matters
-   once there's more than one line to align against the widest one. */
-.dcg-label-raw-text { white-space: pre-line !important; }
+   Desmos's own nowrap overridden to actually show it as two lines. Must be
+   `pre`, NOT `pre-line` — Desmos sets an explicit width on longer labels,
+   and `pre-line` (unlike `nowrap`) allows wrapping at that width, breaking
+   a plain space-separated label like "x = 1" onto three lines, one word
+   each. `pre` only ever breaks at a real "\n", never at a space, regardless
+   of any width constraint — exactly "only where there's a |", nothing else. */
+.dcg-label-raw-text { white-space: pre !important; }
 .dcg-label { text-align: center; }
 
 /* ── Loading / error state ───────────────────────────────────────────────── */

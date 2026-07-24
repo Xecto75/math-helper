@@ -9,7 +9,7 @@ import { parseEquation, parseSymbolicEquation, parseRichEquation } from './parse
 import { EquationState }  from './EquationState.js'
 import { MathObject }     from './MathObject.js'
 import { generateScript, generateDistributeScript } from './solveScript.js'
-import { nextFuncId, getFunctionIds } from './desmosEngine.js'
+import { nextFuncId, getFunctionIds, getViewport } from './desmosEngine.js'
 import { resolveValueRef, VALUE_TOKEN_PATTERN } from './valueRefs.js'
 import { resolveColor }   from './palette.js'
 import { t }              from '../i18n/translations.js'
@@ -641,7 +641,17 @@ export function demoGraphSetViewport(xMinR, xMaxR, yMinR, yMaxR) {
 export function demoGraphNameFunc(funcIdRaw, labelRaw, x0Raw, _y0Raw) {
   const funcId = (funcIdRaw || 'f').trim()
   const label  = (labelRaw  || 'f(x)').trim()
-  const x0     = Number(x0Raw) || 3
+  const hasX0  = x0Raw !== undefined && x0Raw !== null && String(x0Raw).trim() !== ''
+  // No x0 given → default to the CURRENT viewport's own horizontal center,
+  // not a fixed literal — a hardcoded "3" has no relationship to whatever
+  // the page actually set the view to, so it routinely landed outside the
+  // current viewport and dragged ensureVisible into an unwanted, jarring
+  // re-adjustment purely because of the placeholder default, not because
+  // the label genuinely needed to be anywhere else.
+  const vp = getViewport()
+  const x0 = hasX0
+    ? Number(x0Raw)
+    : (isFinite(vp.left) && isFinite(vp.right) ? (vp.left + vp.right) / 2 : 3)
 
   // Never trust AI-supplied y0 — always auto-compute from the expression at x0
   const action = { type: 'ggb-name-func', id: funcId, funcId, label, x: x0 }

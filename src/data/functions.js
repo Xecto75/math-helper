@@ -505,12 +505,12 @@ export const CATEGORIES = [
       {
         id: 'graph-name-func',
         label: 'nameFunc',
-        description: 'Show a floating label on an already-plotted curve — y is always recalculated from f(x0), never typed in',
+        description: 'Show a floating label on an already-plotted curve — y is always recalculated from f(x0), never typed in. Leave x₀ blank to place it at the current viewport\'s center (avoids an unwanted auto-adjust from a label landing off-screen).',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'funcId', label: 'Function',    type: 'func-id' , default: '' },
           { id: 'label',  label: 'Label',       type: 'text',    default: 'f(x)' },
-          { id: 'x0',     label: 'x₀',          type: 'number',  default: 3 },
+          { id: 'x0',     label: 'x₀ (blank = viewport center)', type: 'number', default: '' },
         ],
       },
       {

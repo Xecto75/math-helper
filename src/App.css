@@ -2417,6 +2417,14 @@
   filter: invert(1) hue-rotate(180deg);
 }
 
+/* A point/comment label containing a literal "\n" (see desmosEngine.js's
+   formatPointLabel, from a "Vertex|(2, -1)"-style |-separated input) needs
+   Desmos's own nowrap overridden to actually show it as two lines — a plain
+   single-line label is unaffected either way, since text-align only matters
+   once there's more than one line to align against the widest one. */
+.dcg-label-raw-text { white-space: pre-line !important; }
+.dcg-label { text-align: center; }
+
 /* ── Loading / error state ───────────────────────────────────────────────── */
 
 .math-status {

@@ -511,6 +511,13 @@ function evalMathExpr(expr) {
   } catch { return NaN }
 }
 
+// A label written as "Vertex|(2, -1)" reads as two lines, same |-separator
+// convention as a text box's content — Desmos itself renders a literal "\n"
+// inside a label as a real, centered line break.
+function formatPointLabel(label) {
+  return (label ?? '').split('|').join('\n')
+}
+
 export async function addPoint(calc, id, x, y, opts = {}) {
   // Color priority: a referenced function's color (darker on screen) → explicit color → default.
   let color
@@ -551,13 +558,13 @@ export async function addPoint(calc, id, x, y, opts = {}) {
       const inX  = +(numX * 0.65).toFixed(6)
       const inY  = +(numY * 0.65).toFixed(6)
       calc.setExpression({ id: inId, latex: `(${inX},${inY})`, color,
-        showLabel: true, label: opts.label, pointSize: 1, pointOpacity: 0 })
+        showLabel: true, label: formatPointLabel(opts.label), pointSize: 1, pointOpacity: 0 })
       calcIds.push(inId)
     }
   } else {
     calc.setExpression({
       id: cId, latex: `(${latX},${latY})`, color,
-      showLabel: !!opts.label, label: opts.label ?? '', pointOpacity: 0,
+      showLabel: !!opts.label, label: formatPointLabel(opts.label), pointOpacity: 0,
     })
   }
 

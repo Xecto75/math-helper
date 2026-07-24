@@ -371,7 +371,7 @@ export const CATEGORIES = [
           { id: 'y', label: 'y', type: 'text', default: '3', placeholder: '-sqrt(3)/2  or  pi  etc.' },
           { id: 'id',         label: 'Point ID (blank = auto)', type: 'text', default: '', placeholder: 'e.g. pA' },
           { id: 'funcId',     label: 'Color from func (optional)', type: 'text', default: '', placeholder: 'e.g. f → curve color, darker' },
-          { id: 'label',      label: 'Angle label (inside)', type: 'text', default: '', placeholder: 'e.g. 30°' },
+          { id: 'label',      label: 'Label (| = new line)', type: 'text', default: '', placeholder: 'e.g. Vertex|(2, -1)' },
           { id: 'showCoords', label: 'Show coords outside', type: 'text', default: 'false', placeholder: 'true / false' },
         ],
       },

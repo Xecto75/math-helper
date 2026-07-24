@@ -1,5 +1,19 @@
 # Résumé pour le prochain agent — math-engine
 
+## 🔴 RÈGLE #1 — LA PLUS IMPORTANTE, LIRE AVANT TOUT LE RESTE
+
+L'utilisateur a explicitement dit que c'est **la chose la plus importante** à corriger dans mon comportement, alors la voici en premier, pas noyée plus bas.
+
+**Le pattern qui le rend fou** : je casse une fonctionnalité qui marchait déjà en corrigeant/ajoutant autre chose. Exemple concret de cette session : en redessinant le positionnement de l'overlay "diviser/multiplier les deux côtés" (pour éviter que le label chevauche deux fonctions), j'ai réécrit `allWraps(refs())` en logique inline pour le nouveau positionnement par côté — et j'ai supprimé au passage le `.filter(Boolean)` qui protégeait contre les refs null. Résultat : `Cannot read properties of null (reading 'getBoundingClientRect')`, un crash sur n'importe quelle équation linéaire simple (`2x = 4` → diviser par 2), une fonctionnalité de base cassée pendant que je testais une fonctionnalité annexe (éviter le chevauchement de labels sur un graphe). Le bug est resté invisible jusqu'à ce qu'il retombe dessus par hasard en testant autre chose.
+
+**Pourquoi ça arrive (diagnostic honnête)** : quand je RÉÉCRIS de la logique existante qui fonctionne (pas juste j'AJOUTE du nouveau code à côté), je me concentre à 100% sur faire passer le nouveau scénario demandé, et je ne vérifie pas explicitement que les garanties de l'ANCIEN code survivent — genre "cette fonction filtrait les null, est-ce que ma nouvelle version le fait encore ?". Je teste le nouveau cas, ça marche, je déclare victoire, je passe à la suite. Sur une session avec des dizaines de fixes séquentiels, la probabilité qu'un de ces refactors casse silencieusement quelque chose testé 5 requêtes plus tôt est énorme — et personne ne le voit avant que l'utilisateur retombe dessus par hasard.
+
+**Changement de comportement concret (pas juste "faire attention")** :
+1. Avant de RÉÉCRIRE une fonction/logique partagée existante (pas juste en ajouter une nouvelle à côté), lister explicitement ce que l'ANCIEN code garantissait (null-checks, cas limites, filtres) et vérifier ligne par ligne que le nouveau code fait pareil — pas juste "est-ce que mon nouveau cas marche".
+2. Après avoir touché une fonction PARTAGÉE (ActionExecutor, les engines, les parsers — tout ce qui a plusieurs appelants), tester AU MOINS UN autre cas d'usage existant qui passe par le même chemin de code, pas seulement le nouveau scénario qu'on vient de construire. Exemple : après avoir touché `divideBothSides`, tester une équation simple ET le nouveau cas de collision de labels — pas juste le second.
+3. Grep les appelants d'une fonction AVANT de la réécrire, pour savoir tout ce qui compte dessus.
+4. Préférer une addition chirurgicale à une réécriture complète quand c'est possible — moins de surface de régression.
+
 *Remplace le HANDOFF précédent (traduction, `valueRefs.js`, exercices, pagination set-layout — toujours vrai, voir section dédiée en bas). Cette session a été une longue suite d'allers-retours en direct avec l'utilisateur sur le générateur IA, le Lesson Builder, et surtout le moteur graphique (Desmos) — beaucoup de bugs sournois trouvés en testant réellement, pas en devinant.*
 
 ## ⚠️ État git — RIEN n'est commité

@@ -1635,8 +1635,9 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       // labels under every term. A side with no terms (fully cancelled out)
       // just gets no overlay at all rather than guessing a position.
       const sideBox = wraps => {
-        if (!wraps.length) return null
-        const rects = wraps.map(w => w.getBoundingClientRect())
+        const live = wraps.filter(Boolean)
+        if (!live.length) return null
+        const rects = live.map(w => w.getBoundingClientRect())
         return {
           top:    Math.min(...rects.map(r => r.top)),
           bottom: Math.max(...rects.map(r => r.bottom)),
@@ -1662,15 +1663,19 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         `
         document.body.appendChild(line)
 
+        // Centered under the side's own content — NOT the outer edge. For
+        // the overwhelmingly common case (one term per side, e.g. "2x = 4")
+        // an edge-anchored label reads as misplaced, floating off to the
+        // side instead of under the thing it divides. Still one tag per
+        // SIDE (not one per individual term) so a multi-term side doesn't
+        // get the same divisor repeated under every term.
         const lbl = document.createElement('div')
         lbl.className = '_anim-overlay'
         lbl.textContent = String(divisor)
-        const lblX = edge === 'left' ? box.left : box.right
-        const lblAnchor = edge === 'left' ? 'translateX(-100%)' : 'translateX(0%)'
         lbl.style.cssText = `
           position:fixed;
-          left:${lblX}px;top:${box.bottom + 14}px;
-          transform:${lblAnchor} translateY(10px);
+          left:${(box.left + box.right) / 2}px;top:${box.bottom + 14}px;
+          transform:translateX(-50%) translateY(10px);
           font-family:'Fira Code','Cascadia Code',ui-monospace,monospace;
           font-size:${fs}px;font-weight:600;color:#60a5fa;
           opacity:0;white-space:nowrap;
@@ -1739,12 +1744,13 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       if (!state) break
       const { multiplier } = action
 
-      // Same per-SIDE placement as divideBothSides — one "×N" at the far
-      // outer edge of each side (left side → far left, right side → far
-      // right) instead of one repeated under every individual term.
+      // Same per-SIDE placement as divideBothSides — one "×N" centered
+      // under each side's own content instead of one repeated under every
+      // individual term.
       const sideBox = wraps => {
-        if (!wraps.length) return null
-        const rects = wraps.map(w => w.getBoundingClientRect())
+        const live = wraps.filter(Boolean)
+        if (!live.length) return null
+        const rects = live.map(w => w.getBoundingClientRect())
         return {
           top:    Math.min(...rects.map(r => r.top)),
           bottom: Math.max(...rects.map(r => r.bottom)),
@@ -1763,12 +1769,10 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         const lbl = document.createElement('div')
         lbl.className = '_anim-overlay'
         lbl.textContent = `×${multiplier}`
-        const lblX = edge === 'left' ? box.left : box.right
-        const lblAnchor = edge === 'left' ? 'translateX(-100%)' : 'translateX(0%)'
         lbl.style.cssText = `
           position:fixed;
-          left:${lblX}px;top:${box.bottom + 14}px;
-          transform:${lblAnchor} translateY(10px) scale(0.6);
+          left:${(box.left + box.right) / 2}px;top:${box.bottom + 14}px;
+          transform:translateX(-50%) translateY(10px) scale(0.6);
           font-family:'Fira Code','Cascadia Code',ui-monospace,monospace;
           font-size:${fs}px;font-weight:600;color:#60a5fa;
           opacity:0;white-space:nowrap;

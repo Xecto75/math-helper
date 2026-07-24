@@ -3102,6 +3102,16 @@
   background: rgba(255,255,255,0.07);
   border-color: var(--ex-color, #60a5fa);
 }
+/* Locked = "I'm done building this, it's final" (2s hold on the card to
+   toggle) — a full gold ring overrides the left accent border entirely so
+   the locked state reads unmistakably at a glance, not as a subtle tint. */
+.lb-ex-card--locked {
+  border: 1.5px solid #fbbf24;
+  box-shadow: 0 0 0 1px rgba(251,191,36,0.35);
+}
+.lb-ex-card--locked:hover {
+  border-color: #fbbf24;
+}
 .lb-ex-emoji {
   grid-row: 1 / 3;
   font-size: 1.25rem;
@@ -3290,6 +3300,37 @@
   display: flex;
   flex-direction: column;
   padding-bottom: 16px;
+}
+
+.lb-locked-banner {
+  margin: 10px 16px 0;
+  padding: 8px 12px;
+  background: rgba(251,191,36,0.12);
+  border: 1px solid rgba(251,191,36,0.4);
+  border-radius: 7px;
+  color: #fbbf24;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+/* Wraps everything else in the Builder tab — a disabled <fieldset> is a
+   real browser mechanism that inertly disables every input/select/button
+   nested inside it, so a locked example can't be edited through any control
+   here without hand-gating each one individually. Reset to a plain flex
+   column (fieldset's UA default adds a border + min-width:min-content that
+   would otherwise break .lb-builder's own flex layout) — NOT display:contents,
+   which would strip the box :disabled's opacity/filter need to paint onto. */
+.lb-builder-fieldset {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.lb-builder-fieldset:disabled {
+  opacity: 0.55;
+  filter: grayscale(0.3);
 }
 
 .lb-page-tabs {

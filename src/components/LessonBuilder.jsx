@@ -60,6 +60,25 @@ async function saveOverrideToServer(id, pages) {
     })
   } catch { /* server may be offline — local state already updated */ }
 }
+
+// ── Example locks — "I'm done building this, it's final" ─────────────────────
+// A 2s long-press on an Examples card toggles this instead of opening it —
+// a locked example gets a gold border and becomes read-only in the Builder.
+async function fetchServerLocks() {
+  try {
+    const res = await fetch('/api/example-locks')
+    if (!res.ok) return {}
+    return await res.json()
+  } catch { return {} }
+}
+async function setLockOnServer(id, locked) {
+  try {
+    await fetch(`/api/example-locks/${encodeURIComponent(id)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locked }),
+    })
+  } catch { /* server may be offline — local state already updated */ }
+}
 function readDraft() {
   try {
     const raw = localStorage.getItem(DRAFT_KEY)
@@ -302,6 +321,9 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
   const [saveName,        setSaveName]        = useState('')
   const [showSlots,       setShowSlots]       = useState(false)
   const saveInputRef                          = useRef(null)
+  // Per-example-id long-press bookkeeping for the Examples cards — a plain
+  // mutable map (not state) since it's pure gesture timing, never rendered.
+  const longPressRef                          = useRef({})
 
   // On mount: load the server-persisted overrides, then migrate over anything
   // still only sitting in this browser's own localStorage (leftover from
@@ -323,6 +345,20 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     })()
   }, [])
 
+  const [exLocks, setExLocks] = useState({})
+  useEffect(() => { fetchServerLocks().then(setExLocks) }, [])
+
+  const toggleExampleLock = (id) => {
+    setExLocks(prev => {
+      const next = { ...prev }
+      const willLock = !next[id]
+      if (willLock) next[id] = true
+      else delete next[id]
+      setLockOnServer(id, willLock)
+      return next
+    })
+  }
+
   const handleLoadDraft = () => {
     const draft = rehydrateDraft(readDraft())
     if (draft) { setPages(draft); setActivePage(0); setShowSlots(false); setEditingExampleId(null) }
@@ -330,6 +366,7 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
 
   const handleSave = () => {
     if (editingExampleId) {
+      if (exLocks[editingExampleId]) return  // locked — refuse to save over it
       const savedPages = JSON.parse(JSON.stringify(pages))
       const next = { ...exOverrides, [editingExampleId]: savedPages }
       writeExOverrides(next)       // local cache — instant, works offline
@@ -858,11 +895,37 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
           <div className="lb-ex">
             <div className="lb-ex-grid">
               {EXAMPLE_LESSONS.map(ex => {
-                const pages = exOverrides[ex.id] ?? ex.pages
+                const pages  = exOverrides[ex.id] ?? ex.pages
+                const locked = !!exLocks[ex.id]
+
+                const startLongPress = () => {
+                  longPressRef.current[ex.id] = { fired: false }
+                  longPressRef.current[ex.id].timer = setTimeout(() => {
+                    longPressRef.current[ex.id].fired = true
+                    toggleExampleLock(ex.id)
+                  }, 2000)
+                }
+                const cancelLongPress = () => {
+                  const entry = longPressRef.current[ex.id]
+                  if (entry?.timer) clearTimeout(entry.timer)
+                }
+
                 return (
-                  <button key={ex.id} className="lb-ex-card"
+                  <button key={ex.id} className={`lb-ex-card${locked ? ' lb-ex-card--locked' : ''}`}
                     style={{ '--ex-color': ex.color }}
+                    title={locked ? 'Locked — hold 2s to unlock' : 'Hold 2s to lock (mark as final, read-only)'}
+                    onMouseDown={startLongPress}
+                    onMouseUp={cancelLongPress}
+                    onMouseLeave={cancelLongPress}
+                    onTouchStart={startLongPress}
+                    onTouchEnd={cancelLongPress}
                     onClick={() => {
+                      // A long-press that just fired shouldn't ALSO open the
+                      // example — the click event fires right after mouseup.
+                      if (longPressRef.current[ex.id]?.fired) {
+                        longPressRef.current[ex.id].fired = false
+                        return
+                      }
                       handleLoad({ pages, prompt: '' })
                       setEditingExampleId(ex.id)
                       setTab('builder')
@@ -916,6 +979,13 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
         {/* ── Builder ───────────────────────────────────────────────────────── */}
         {tab === 'builder' && (
           <div className="lb-builder">
+
+            {editingExampleId && exLocks[editingExampleId] && (
+              <div className="lb-locked-banner">
+                🔒 Locked — final, read-only. Hold this example's card for 2s in Examples to unlock.
+              </div>
+            )}
+            <fieldset className="lb-builder-fieldset" disabled={!!(editingExampleId && exLocks[editingExampleId])}>
 
             {/* Save / Load bar */}
             <div className="lb-save-bar">
@@ -1233,6 +1303,7 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
               </div>
             )}
 
+            </fieldset>
           </div>
         )}
       </div>

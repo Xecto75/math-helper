@@ -48,6 +48,36 @@ app.delete('/api/example-overrides/:id', (req, res) => {
   res.json({ ok: true })
 })
 
+// ── Example locks — "I'm done building this, it's final" ────────────────────
+// A plain JSON map of exampleId -> true, tracked in the repo like the
+// overrides file above. A locked example is meant to be READ-ONLY from here
+// on: the Lesson Builder UI refuses to edit/save over it, and — just as
+// importantly — an AI agent editing this codebase directly (exampleLessons.js
+// or exampleOverrides.json) must treat a locked id as off-limits too, unless
+// the user explicitly asks to unlock/override it first. Toggled by a 2s
+// long-press on the example's card (see LessonBuilder.jsx).
+const LOCKS_PATH = path.join(process.cwd(), 'src/data/exampleLocks.json')
+
+function readLocksFile() {
+  try { return JSON.parse(fs.readFileSync(LOCKS_PATH, 'utf8')) } catch { return {} }
+}
+function writeLocksFile(obj) {
+  fs.writeFileSync(LOCKS_PATH, JSON.stringify(obj, null, 2) + '\n')
+}
+
+app.get('/api/example-locks', (req, res) => {
+  res.json(readLocksFile())
+})
+
+app.post('/api/example-locks/:id', (req, res) => {
+  const { locked } = req.body
+  const all = readLocksFile()
+  if (locked) all[req.params.id] = true
+  else delete all[req.params.id]
+  writeLocksFile(all)
+  res.json({ ok: true })
+})
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // ── Compact codec ─────────────────────────────────────────────────────────────

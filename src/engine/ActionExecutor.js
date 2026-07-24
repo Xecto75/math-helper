@@ -834,7 +834,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
 
     case 'ggb-name-func': {
       const calc = graphApi(); if (!calc) break
-      graphEngine.nameFunc(calc, action.id, action.funcId, action.label ?? action.funcId, action.x ?? 0, action.y, action.opts ?? {})
+      graphEngine.nameFunc(calc, action.id, action.funcId, action.label ?? action.funcId, action.x, action.y, action.opts ?? {})
       await wait(0.3)
       break
     }

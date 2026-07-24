@@ -1165,23 +1165,90 @@ function _fmtLabel(label) {
   return s
 }
 
+// x/y in on-screen pixels per math-unit, from Desmos's own rendered bounds —
+// lets "how far apart do two labels look" be judged in the same units the
+// student actually sees, not raw math coordinates (where "3 apart" can be
+// two pixels at one zoom level and half the screen at another).
+function pixelsPerUnit(calc) {
+  try {
+    const pc = calc.graphpaperBounds?.pixelCoordinates
+    const mc = calc.graphpaperBounds?.mathCoordinates
+    if (pc && mc) {
+      const px = Math.abs(pc.right - pc.left) / (Math.abs(mc.right - mc.left) || 1)
+      const py = Math.abs(pc.bottom - pc.top) / (Math.abs(mc.bottom - mc.top) || 1)
+      if (isFinite(px) && isFinite(py) && px > 0 && py > 0) return { px, py }
+    }
+  } catch {}
+  return { px: 40, py: 40 }
+}
+
 export function nameFunc(calc, id, funcId, label, x, y, opts = {}) {
   const fn = registry.get(`fn::${funcId}`)
   if (!fn) return
+  const f = makeEval(fn.expr)
+  if (!f) return
+
+  let x0 = isFinite(x) ? x : null
+  let orientation = 'above'
+
+  if (x0 === null) {
+    // No x given — start from the current viewport's own center (so the
+    // label lands in view without needing a re-adjust) and, only for this
+    // auto-picked case, nudge sideways if that spot would sit too close to
+    // another function's label already on screen — an explicit x from the
+    // caller is never overridden, even if it happens to collide.
+    const vp = getViewport()
+    const spanX = (vp.right - vp.left) || 8
+    const centerX = (vp.left + vp.right) / 2
+    const { px: ppx, py: ppy } = pixelsPerUnit(calc)
+    // A rendered label can be 1-3 lines tall (see the |-separator newline
+    // support) — plain anchor-to-anchor distance needs real headroom above
+    // a single line's height, or two labels whose anchors are "far enough"
+    // by this metric can still have their actual text boxes overlapping.
+    const minDistPx = 90
+    const others = [...registry.entries()]
+      .filter(([k]) => k.startsWith('lbl::'))
+      .map(([, e]) => e)
+
+    const offsets = [0, 0.12, -0.12, 0.22, -0.22, 0.32, -0.32, 0.42, -0.42]
+    let best = null
+    for (const frac of offsets) {
+      const candX = centerX + frac * spanX
+      let candY
+      try { candY = f(candX) } catch { continue }
+      if (!isFinite(candY)) continue
+      const dist = others.length
+        ? Math.min(...others.map(o => Math.hypot((candX - o.x) * ppx, (candY - o.y) * ppy)))
+        : Infinity
+      if (!best || dist > best.dist) best = { x: candX, y: candY, dist }
+      if (dist >= minDistPx) break
+    }
+    x0 = best ? best.x : centerX
+
+    // Sliding along x still couldn't clear the threshold — two near-parallel
+    // curves keep the same gap everywhere no matter which x is picked — so
+    // flip which side of the curve the text renders on, away from whichever
+    // existing label ended up closest, as a second, independent lever.
+    if (best && best.dist < minDistPx && others.length) {
+      const nearest = others.reduce((a, b) =>
+        Math.hypot((x0 - a.x) * ppx, (best.y - a.y) * ppy) <
+        Math.hypot((x0 - b.x) * ppx, (best.y - b.y) * ppy) ? a : b)
+      orientation = nearest.y > best.y ? 'below' : 'above'
+    }
+  }
+
   let yVal = y
   if (yVal === undefined || yVal === null || !isFinite(yVal)) {
-    const f = makeEval(fn.expr)
-    if (!f) return
-    try { yVal = f(x) } catch { return }
+    try { yVal = f(x0) } catch { return }
     if (!isFinite(yVal)) return
   }
   const color = opts.color ? rgbToHex(opts.color) : darken(fn.color, 0.7)
   const cId   = `lbl_${id}`
   calc.setExpression({
-    id: cId, latex: `(${x},${+yVal.toFixed(6)})`,
-    color, showLabel: true, label: _fmtLabel(label), hidden: true,
+    id: cId, latex: `(${x0},${+yVal.toFixed(6)})`,
+    color, showLabel: true, label: _fmtLabel(label), labelOrientation: orientation, hidden: true,
   })
-  registry.set(`lbl::${id}`, { calcId: cId, funcId, x, y: yVal })
+  registry.set(`lbl::${id}`, { calcId: cId, funcId, x: x0, y: yVal })
 }
 
 export function removeNameFunc(calc, id) {

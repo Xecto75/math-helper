@@ -85,8 +85,13 @@ function FactorProduct({ factors, subIndex }) {
 // Same recursive renderer for a trapezoid's (B+b)×h/2, a circle's π×r², a
 // quadratic's (-b+√Δ)/2a — no per-equation-shape branch.
 function ExprLeaf({ node, color }) {
+  // A leaf's OWN color (see exprTree.js's parseTermExpr consumeOwnColor)
+  // wins over whatever uniform color the enclosing term/group was passed —
+  // otherwise "|Opposite|{orange}/|Hypotenuse|{purple}" could never show
+  // two different colors, only whichever one the whole term inherited.
+  const c = node.color ?? color
   return (
-    <div className="term-cell" data-expr-id={node.id} style={color ? { color } : undefined}>
+    <div className="term-cell" data-expr-id={node.id} style={c ? { color: c } : undefined}>
       {node.t === 'label' ? node.name : fmtNum(node.v)}
     </div>
   )

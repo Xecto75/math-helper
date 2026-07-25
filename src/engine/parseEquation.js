@@ -227,7 +227,11 @@ function parseRichSide(str) {
       // ONE generic tree, resolved later one operation at a time by the
       // order-of-operations walker in exprTree.js. Every number is its own
       // leaf; *, /, ( ) are pure structure — never folded into "one term".
-      terms.push({ sign, expr: parseTermExpr(outerStripped, labels), coefficient: 1, variable: null, degree: 0, color: termColor })
+      // Pass `content` (colors still inline as __Cn__), not `outerStripped`
+      // (which stripped them) — so "|Opposite|{orange}/|Hypotenuse|{purple}"
+      // can give its numerator and denominator their OWN colors instead of
+      // both silently taking whichever one termColor happened to pick first.
+      terms.push({ sign, expr: parseTermExpr(content, labels, colors), coefficient: 1, variable: null, degree: 0, color: termColor })
     } else {
       const atom = parseRichAtom(outerStripped, labels, colors)
       if (atom) terms.push({ ...atom, sign, color: termColor })

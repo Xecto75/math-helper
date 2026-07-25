@@ -197,11 +197,24 @@ export function needsExprTree(content) {
 // descent: addSub > mulDiv > pow > atom — precedence climbs through the
 // grammar itself, so "(...)" nesting and */  before +- both fall out for
 // free, matching findReady's traversal above exactly.
-export function parseTermExpr(content, labels) {
+export function parseTermExpr(content, labels, colors) {
   const s = content.trim()
   let i = 0
 
   function skipWs() { while (s[i] === ' ') i++ }
+
+  // A leaf immediately followed by its own "__Cn__" color marker (e.g.
+  // "|Opposite|{orange}") gets that as its OWN color, not just whatever
+  // uniform color the whole term happens to carry — lets a fraction's
+  // numerator and denominator (see TermCell.jsx's ExprLeaf: node.color
+  // takes priority over the inherited one) show two different colors,
+  // the way |a|{green} and |b|{orange} already can as separate terms.
+  function consumeOwnColor(node) {
+    if (!colors) return node
+    const m = s.slice(i).match(/^__C(\d+)__/)
+    if (m) { i += m[0].length; node.color = colors[+m[1]] }
+    return node
+  }
 
   function parseAtom() {
     skipWs()
@@ -215,7 +228,7 @@ export function parseTermExpr(content, labels) {
     if (s[i] === '-') { i++; return negN(parseAtom()) }
     const rest = s.slice(i)
     const labelM = rest.match(/^__S(\d+)__/)
-    if (labelM) { i += labelM[0].length; return label(labels[+labelM[1]]) }
+    if (labelM) { i += labelM[0].length; return consumeOwnColor(label(labels[+labelM[1]])) }
     // sin/cos/tan — must be checked before the single-letter variable match
     // below, or "sin(45)" would parse as just the label "s" and silently
     // drop everything from "in(45)" onward.
@@ -228,9 +241,9 @@ export function parseTermExpr(content, labels) {
       return trigFn(fnM[1], arg)
     }
     const numM = rest.match(/^\d+\.?\d*/)
-    if (numM) { i += numM[0].length; return num(parseFloat(numM[0])) }
+    if (numM) { i += numM[0].length; return consumeOwnColor(num(parseFloat(numM[0]))) }
     const varM = rest.match(/^[a-zA-Zα-ω]/)
-    if (varM) { i += 1; return label(varM[0]) }
+    if (varM) { i += 1; return consumeOwnColor(label(varM[0])) }
     throw new Error(`parseTermExpr: unexpected character at ${i} in "${s}"`)
   }
 

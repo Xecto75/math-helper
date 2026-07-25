@@ -2848,6 +2848,45 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         }
       }
 
+      // ── Phase 0b3: one side is fn(sin/cos/tan, label) — the trig arg is a
+      // bare unknown deliberately left unresolved (e.g. sin(θ) after only
+      // the ratio side got replaced), the other side is a plain number —
+      // apply the inverse trig function to both sides, same as a student
+      // clearing sin(θ)=0.8 by taking arcsin of both sides. Scoped exactly
+      // like 0b2 (one term per side); anything messier is left alone.
+      {
+        const exprTerms = [...state.left, ...state.right].filter(t => t.expr)
+        const trigStuck = exprTerms.find(t =>
+          t.expr.t === 'fn' && ['sin', 'cos', 'tan'].includes(t.expr.name) && t.expr.arg.t === 'label'
+        )
+        const trigArr   = trigStuck && (trigStuck.side === 'left' ? state.left : state.right)
+        const otherSide2 = trigStuck && (trigStuck.side === 'left' ? 'right' : 'left')
+        const otherArr2  = otherSide2 && (otherSide2 === 'left' ? state.left : state.right)
+        const otherTerm2 = otherArr2?.[0]
+        if (trigStuck && trigArr.length === 1 && otherArr2.length === 1 &&
+            otherTerm2 && !otherTerm2.variable && !otherTerm2.expr && !otherTerm2.isFraction) {
+          const trigName  = trigStuck.expr.name
+          const angleRad  = Math[`a${trigName}`](otherTerm2.value)
+          const angleDeg  = parseFloat((angleRad * 180 / Math.PI).toFixed(2))
+          if (isFinite(angleDeg)) {
+            const argLabel = trigStuck.expr.arg.name
+            const argColor = trigStuck.expr.arg.color
+            // eslint-disable-next-line no-await-in-loop
+            await revealStep(
+              () => [getCellInner(getWrap(refs(), trigStuck.side, trigStuck.cellIndex)),
+                     getCellInner(getWrap(refs(), otherTerm2.side, otherTerm2.cellIndex))],
+              () => {
+                trigStuck.expr = { t: 'label', id: crypto.randomUUID(), name: argLabel, color: argColor }
+                otherTerm2.sign = angleDeg >= 0 ? '+' : '-'
+                otherTerm2.coefficient = Math.abs(angleDeg)
+              },
+              () => [getCellInner(getWrap(refs(), trigStuck.side, trigStuck.cellIndex)),
+                     getCellInner(getWrap(refs(), otherTerm2.side, otherTerm2.cellIndex))],
+            )
+          }
+        }
+      }
+
       // ── Phase 0c: evaluate numeric power terms (e.g. 3² → 9 after variable substitution) ──
       {
         const powTerms = [...state.left, ...state.right].filter(

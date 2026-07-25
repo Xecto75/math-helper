@@ -208,8 +208,8 @@ export default function App() {
   })
   const [editingLesson, setEditingLesson] = useState(null)
   const [profile,  setProfile]    = useState(() => {
-    try { return JSON.parse(localStorage.getItem('math-profile') ?? 'null') ?? { name: '', avatar: '🦁', grade: '' } }
-    catch { return { name: '', avatar: '🦁', grade: '' } }
+    try { return JSON.parse(localStorage.getItem('math-profile') ?? 'null') ?? { name: '', avatarColor: '#818cf8', grade: '' } }
+    catch { return { name: '', avatarColor: '#818cf8', grade: '' } }
   })
 
   const handleTheme = (t) => {

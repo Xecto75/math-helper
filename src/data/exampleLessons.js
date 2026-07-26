@@ -558,45 +558,7 @@ export const EXAMPLE_LESSONS = [
     ],
   },
 
-  /* ─── 14. Sine Function ────────────────────────────────────────── */
-  {
-    id: 'sine-function',
-    emoji: '〰️',
-    title: 'Sine Function',
-    desc: 'f(x) = A·sin(B(x−C))+D — amplitude, period, and the midline',
-    color: '#a78bfa',
-    pages: [
-      {
-        id: u(), title: 'f(x) = A·sin(B(x−C))+D — drag to explore', layout: 'text-graph',
-        steps: [
-          { id: u(), funcId: 'text-create', inputs: {
-            boxId: 'intro', title: 'The parameters A, B, C, and D',
-            content: '$A$ is the amplitude — how far the curve goes above/below its midline.|$B$ changes the period: period $= 2\\pi / B$ — the larger $B$ is, the shorter the period.|$C$ shifts the curve left or right (phase shift).|$D$ shifts the curve up or down — it moves the midline to $y=D$.',
-            isList: 'true',
-          }},
-          { id: u(), funcId: 'graph-set-viewport',  inputs: { xMin: '-7', xMax: '7', yMin: '-4', yMax: '4' } },
-          { id: u(), funcId: 'graph-plot-function', inputs: { expr: '|A|*sin(|B|*(x-|C|))+|D|', id: 'explore', hideLabel: '1' } },
-        ],
-      },
-      {
-        id: u(), title: 'Key Features — Amplitude, Period, Midline', layout: 'single-graph',
-        steps: [
-          { id: u(), funcId: 'graph-set-viewport',  inputs: { xMin: '-7', xMax: '7', yMin: '-2', yMax: '5' } },
-          { id: u(), funcId: 'graph-plot-function', inputs: { expr: '2*sin(x) + 1', id: 'sinf' } },
-          { id: u(), funcId: 'graph-name-func',     inputs: { funcId: 'sinf', label: '2·sin(x) + 1', x0: '-1.8', y0: '2.6' } },
-          { id: u(), funcId: 'graph-horizontal-line', inputs: { y: '1' } },
-          { id: u(), funcId: 'cmt-graph', inputs: { text: 'Midline', x: '-6', y: '1.4', color: 'gray' } },
-          { id: u(), funcId: 'graph-add-point',     inputs: { x: 'pi/2', y: '3', id: 'pmax', label: 'Max (π/2, 3)', showCoords: 'true' } },
-          { id: u(), funcId: 'graph-add-segment',   inputs: { x1: '1.5708', y1: '1', x2: '1.5708', y2: '3', id: 'amp', color: 'green' } },
-          { id: u(), funcId: 'cmt-graph', inputs: { text: 'Amplitude = 2', x: '2.6', y: '2', color: 'green' } },
-          { id: u(), funcId: 'graph-add-segment',   inputs: { x1: '-1.5708', y1: '-1.5', x2: '4.7124', y2: '-1.5', id: 'period', color: 'purple' } },
-          { id: u(), funcId: 'cmt-graph', inputs: { text: 'Period = 2π', x: '1.5708', y: '-1.85', color: 'purple' } },
-        ],
-      },
-    ],
-  },
-
-  /* ─── 15. Types of Two Lines ────────────────────────────────────── */
+  /* ─── 14. Types of Two Lines ────────────────────────────────────── */
   {
     id: 'line-types',
     emoji: '✏️',
@@ -634,7 +596,7 @@ export const EXAMPLE_LESSONS = [
     ],
   },
 
-  /* ─── 16. Correlation ───────────────────────────────────────────── */
+  /* ─── 15. Correlation ───────────────────────────────────────────── */
   {
     id: 'correlation',
     emoji: '📊',
@@ -724,7 +686,7 @@ export const EXAMPLE_LESSONS = [
     ],
   },
 
-  /* ─── 17. Mean Deviation ───────────────────────────────────────────── */
+  /* ─── 16. Mean Deviation ───────────────────────────────────────────── */
   {
     id: 'mean-deviation',
     emoji: '📶',
@@ -770,7 +732,7 @@ export const EXAMPLE_LESSONS = [
     ],
   },
 
-  /* ─── 18. Measures of Central Tendency ──────────────────────────── */
+  /* ─── 17. Measures of Central Tendency ──────────────────────────── */
   {
     id: 'central-tendency',
     emoji: '🎯',
@@ -816,7 +778,7 @@ export const EXAMPLE_LESSONS = [
     ],
   },
 
-  /* ─── 19. Unit Conversion ─────────────────────────── */
+  /* ─── 18. Unit Conversion ─────────────────────────── */
   {
     id: 'unit-conversion',
     emoji: '🧮',
@@ -867,7 +829,7 @@ export const EXAMPLE_LESSONS = [
     ],
   },
 
-  /* ─── 20. Quick Quiz — exercise pages demo ────────────── */
+  /* ─── 19. Quick Quiz — exercise pages demo ────────────── */
   {
     id: 'quick-quiz',
     emoji: '📝',

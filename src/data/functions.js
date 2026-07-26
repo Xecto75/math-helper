@@ -1122,7 +1122,7 @@ export const CATEGORIES = [
         status: 'ready', use3D: true,
         inputs: [
           { id: 'id',     label: 'ID',                                      type: 'text', default: 'shape1' },
-          { id: 'labels', label: 'Custom labels (comma-sep, blank = auto)', type: 'text', default: '', placeholder: 'a, b, c  or  3, 4, 5' },
+          { id: 'labels', label: 'Custom labels (comma-sep, blank = auto)', type: 'text', default: '', placeholder: 'a=, b=, c=  (blank after "=" auto-fills the real value)' },
         ],
       },
       {

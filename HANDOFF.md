@@ -14,10 +14,12 @@ L'utilisateur a explicitement dit que c'est **la chose la plus importante** à c
 3. Grep les appelants d'une fonction AVANT de la réécrire, pour savoir tout ce qui compte dessus.
 4. Préférer une addition chirurgicale à une réécriture complète quand c'est possible — moins de surface de régression.
 
+**Ça a re-arrivé dans la MÊME session, sous une forme différente** : en redessinant le placement du label diviseur/multiplicateur (le fix ci-dessus), j'ai aussi changé son ANCRAGE (bord extérieur au lieu de centré) sans re-tester le cas le plus courant (un seul terme par côté, ex. "2x = 4") — ça donnait un résultat visuellement faux ("le 2 est absolument pas à la bonne place"). Pas un crash cette fois, un jugement de design pas vérifié contre le cas le plus fréquent. Même leçon, angle différent : après avoir changé le COMPORTEMENT VISUEL de quelque chose d'existant (pas juste sa robustesse), retester explicitement le cas le plus commun/simple, pas seulement le nouveau cas qui a motivé le changement.
+
 *Remplace le HANDOFF précédent (traduction, `valueRefs.js`, exercices, pagination set-layout — toujours vrai, voir section dédiée en bas). Cette session a été une longue suite d'allers-retours en direct avec l'utilisateur sur le générateur IA, le Lesson Builder, et surtout le moteur graphique (Desmos) — beaucoup de bugs sournois trouvés en testant réellement, pas en devinant.*
 
-## ⚠️ État git — RIEN n'est commité
-`git status --short` avant de commencer. ~37 fichiers modifiés + 3 nouveaux (`ExercisePanel.jsx`, `SliderPanel.jsx`, `valueRefs.js`). L'utilisateur n'a jamais demandé de commit — ne pas commiter sans demande explicite.
+## ⚠️ État git — tout est commité ET poussé, à jour
+Contrairement à ce que disait cette phrase avant : depuis la session qui a suivi ce HANDOFF, l'utilisateur a explicitement demandé de commiter + pousser à chaque fix (voir `git log --oneline`, tout est sur `main`). Refaire quand même `git status --short` avant de commencer — `src/data/exampleOverrides.json` en particulier change souvent (contenu réel de l'utilisateur sauvegardé via le Lesson Builder, voir section "Persistance des exemples" plus bas — NE JAMAIS le reset/revert sans qu'on le demande explicitement).
 
 ## Tempérament de l'utilisateur (Xecto75) — À LIRE AVANT DE TOUCHER QUOI QUE CE SOIT
 - Très direct, régulièrement vulgaire/hostile quand frustré ("bro just give me the json", "you fucking idiot", "how can you be so shit") — jamais personnel, c'est la frustration face à un bug qui persiste après un "fix" précédent. Répondre par des actions concrètes (tester en direct, tracer le vrai code) plutôt que des justifications.
@@ -93,6 +95,51 @@ Le design initial (session précédente) rejouait TOUJOURS depuis le step 0 à c
 
 ---
 
+## Session continuée (même session, après compaction) — ce qui a été fait ensuite
+
+Tout est commité (voir `git log`) et vérifié en direct à chaque fois, pas juste lu dans le code.
+
+### 15. `sin`/`cos`/`tan` implémentés dans le moteur d'expression générique (`exprTree.js`)
+`b = 7 * sin(45) / sin(60)` donnait avant un résultat corrompu ("b = 7xs") — `parseTermExpr` n'avait aucune notion de fonction trig, donc "sin(45)" se parsait comme le label "s" puis tronquait silencieusement le reste. Ajout d'un vrai node `fn` (type, evalOne, findReady, substituteLabel, collectLabels — partout où `sqrt`/`neg` étaient déjà gérés). Rendu : parenthèses `sin(...)` maintenant de la MÊME taille que les parenthèses de groupe normales (`.pg-open`/`.pg-close`, pas un `.term-op` en plus petit/plus pâle) et le mot "sin" lui-même en `.fn-name` (même échelle que `.term-cell`, pas fondu comme un connecteur +/-). Uniformité explicitement demandée par l'utilisateur ("UNIFORMITY IS KEY").
+
+### 16. Auto-solve peut maintenant isoler un label bloqué comme "label / nombre" ou "nombre = fn(trig, label)"
+Deux nouvelles phases dans `full-solve-current` (`ActionExecutor.js`) :
+- **"label / nombre"** (ex. Loi des sinus : `b/sinB = a/sinA`, remplacer tout sauf `b`) — le côté ne peut jamais se réduire complètement (`findReady` ne passe jamais un label nu), donc avant ça restait bloqué à `b/0.707 = 8.083` pour toujours. Maintenant : multiplie les deux côtés par le diviseur résolu, exactement comme ferait un élève.
+- **`sin(θ) = 0.8`** → applique arcsin/arccos/arctan automatiquement aux deux côtés. La fonction MANUELLE `eq-apply-inverse-trig` existait déjà mais cherchait l'ANCIENNE représentation `varParts` — qu'un `sin(...)` ne peut plus jamais produire depuis le point 15 (`needsExprTree` route tout ce qui a des parenthèses vers l'arbre générique) — donc elle aussi était devenue silencieusement injoignable. Pas re-réparée (scope), juste contournée par la nouvelle phase auto.
+Les deux scopés strictement à "exactement un terme par côté" — tout cas plus complexe est laissé tel quel plutôt que de risquer un faux positif.
+
+### 17. Couleurs par-label dans une fraction (`|Opposite|{orange}/|Hypotenuse|{purple}`)
+Ne gardait avant QUE la première couleur trouvée (`pickColorDepth0`), appliquée à TOUT le terme — la deuxième était strippée et perdue avant même d'atteindre `parseTermExpr`. Fix : `parseTermExpr` reçoit maintenant `content` (couleurs encore inline en `__Cn__`) au lieu de `outerStripped`, et consomme un `__Cn__` juste après un label/nombre comme couleur PROPRE à cette feuille (`node.color`) — `ExprLeaf` fait `node.color ?? color` (la couleur du noeud gagne sur celle héritée du terme). Vérifié : cas à 2 couleurs, cas Pythagore existant (a²+b²=c², chaque terme sa couleur via `+`), et fraction sans couleur du tout — les trois corrects.
+
+### 18. Labels de côté (`geo3d-label-sides`) — trop loin de la ligne, puis un vrai "hitbox"
+Défaut initial `avgEdge*0.14` (proportionnel à la taille du côté) → un long côté poussait son label très loin, ET un côté au bord du canevas pouvait pousser son label carrément hors champ (invisible). Premier fix : gap fixe (`fontSize/2 + 6` px). Deuxième fix (l'utilisateur a insisté, "cant you detect the hitbox") : formule géométrique réelle — projette la demi-largeur/demi-hauteur APPROXIMATIVE du label sur la normale du côté (`halfW*|nx| + halfH*|ny| + 6px`), pas juste un gap perpendiculaire plat — un label large près d'un côté raide en avait sinon toujours besoin de plus que la moitié de sa hauteur.
+
+### 19. Loi des sinus page 2 — l'équation vient maintenant du triangle, pas tapée à la main
+`eq-create: 'b = 7 * sin(45) / sin(60)'` → `'b = [tri2]0 * sin([tri2]a0) / sin([tri2]a2)'`. Le système de refs `[id]N`/`[id]aN` existait déjà en entier (`valueRefs.js` + `substituteValueRefs`), il suffisait de l'utiliser. Piège trouvé au passage : arrondir les sommets à 4 décimales (`r4`, `threeEngine.js`) suffisait à faire dériver un angle "propre" de 45°/60° vers 45.0005°/59.9995° une fois relu via la ref — passé à 6 décimales (renommé `r6`).
+
+### 20. `eq-multiply` (manquant), overlay diviser/multiplier redessiné PUIS re-centré
+`eq-divide` existait, pas l'équivalent multiplier — ajouté partout (catalogue, `demoScripts.js`, `App.jsx`, `server.js` codec `em`, `moduleCatalog.js`). Overlay : demande explicite de mettre UN SEUL tag par CÔTÉ (pas un par terme) — fait, mais voir RÈGLE #1 plus haut : le premier essai (bord extérieur) rendait mal pour le cas à un seul terme, re-centré ensuite. Le crash null-ref de la RÈGLE #1 vient de cette même réécriture.
+
+### 21. Persistance des exemples — plus jamais QUE dans `localStorage`
+Gros changement d'architecture : sauver un exemple édité dans le Lesson Builder n'écrivait AVANT que dans `localStorage` de ce navigateur précis — invisible pour moi (aucun accès au navigateur de l'utilisateur, uniquement au filesystem), perdu si le profil est nettoyé, jamais dans git. Ajouté : `server.js` expose `GET/POST /api/example-overrides[/:id]` qui lit/écrit `src/data/exampleOverrides.json` (un vrai fichier, suivi par git). `LessonBuilder.jsx` charge ce fichier au montage et MIGRE automatiquement (une fois, silencieusement) tout ce qui traînait encore dans le `localStorage` de l'ancien système. **`src/data/exampleOverrides.json` change souvent — c'est le contenu RÉEL de l'utilisateur, ne jamais le reset/revert sans demande explicite.**
+Ajouté puis RETIRÉ dans la foulée : un badge "Edited locally" + bouton Reset sur les cartes Examples — l'utilisateur l'a détesté ("why did you change the interface"), en partie parce que le CSS avait été oublié (rendu brut non stylé, cassait la mise en page). Retiré entièrement plutôt que re-stylé, une fois la vraie persistance en place ça ne servait plus à rien.
+Un système de verrouillage SÉPARÉ (voir point 24) a été ajouté ensuite pour le vrai besoin "je suis content de cette leçon, ne plus la modifier".
+
+### 22. Nettoyage du sélecteur de layout + petits fixes ciblés
+- Retiré "Calculation steps" (`single-calc`) du dropdown de layout (demandé) — le moteur `CalcDisplay` lui-même n'a pas été touché, juste plus proposé comme layout de page.
+- Ajouté "Text only" (`single-text`) — texte seul, aucun panneau jumelé (CSS gutter, `isFuncCompatible`, codec compact `sT`, docs IA).
+- Badge "X pages" sur les cartes Examples lisait `ex.pages.length` (le défaut du fichier source) même quand un override avec un nombre de pages différent était ce qui se chargeait vraiment — lit maintenant `(exOverrides[id] ?? ex.pages).length`.
+- `nameFunc` (graph-name-func) : défaut x0 était un litéral `3` fixe, sans rapport avec le viewport réel de la page → plaçait souvent le label hors champ et déclenchait un `ensureVisible` intempestif. Défaut = centre du viewport ACTUEL, plus une recherche de décalage + bascule d'orientation (above/below) pour éviter que deux fonctions se chevauchent (`pixelsPerUnit`, mesure en pixels écran réels, pas en unités mathématiques brutes).
+- `addPoint` : champ label mal nommé "Angle label (inside)" (copier-coller d'une autre fonction) → renommé. `|` dans un label fait maintenant un VRAI saut de ligne (`white-space: pre` sur `.dcg-label-raw-text` — piège : `pre-line` au lieu de `pre` cassait TOUS les labels multi-mots en les repliant à chaque espace, pas juste au `|`).
+
+### 23. Refonte Profile/Settings — plus un seul emoji
+Nouveau set d'icônes SVG partagé (`src/components/Icon.jsx`, trait 1.75px, style Claude/ChatGPT) remplaçant CHAQUE emoji des deux vues : avatars (grille d'animaux → palette de couleurs style Slack/Linear + avatar à initiale), icônes de stats, titres de section, coches de plan, drapeaux de langue, boutons thème/son. Piège : les emoji étaient aussi codés EN DUR dans les chaînes de traduction (`uiText.js`, ex. `statsTitle: '📊 Stats'`) — remplacer le JSX seul n'aurait rien changé à l'affichage, il fallait aussi nettoyer `uiText.js` (en ET fr). Bug réel trouvé au passage : `ProfileView` lisait un prop `onProfile` jamais passé (`App.jsx` passe `onSave`) — TOUTE édition de profil (nom/avatar/niveau) était un no-op silencieux depuis toujours. Renommé pour matcher l'appelant réel.
+
+### 24. Verrouillage par exemple — "j'ai fini de construire ça, c'est final"
+Appui long (2s) sur une carte Examples (pas un clic — ne doit jamais entrer en collision avec l'ouverture normale) bascule un état verrouillé, persisté dans `src/data/exampleLocks.json` (même pattern serveur que le point 21). Anneau doré sur la carte quand verrouillé. Dans le Builder, tout le contenu de l'onglet (sauf la barre Save/Load elle-même visuellement, mais `handleSave` refuse aussi d'écrire par sécurité) est enveloppé dans un `<fieldset disabled>` — mécanisme natif du navigateur qui désactive VRAIMENT tous les contrôles imbriqués d'un coup, plutôt que de gater champ par champ. **Un exemple verrouillé doit aussi être considéré hors-limites pour un agent IA qui édite ce dépôt directement (`exampleLessons.js`/`exampleOverrides.json`), pas seulement pour l'UI** — sauf demande explicite de l'utilisateur de déverrouiller/passer outre.
+
+---
+
 ## Bugs connus, PAS corrigés (mentionnés à l'utilisateur, hors scope ou pas assez d'info)
 - Persistance des sliders : voir section 6 — correctifs appliqués mais pas de reproduction en direct obtenue pour confirmer 100%. Redemander une séquence de clics exacte si ça revient.
 - Parseur : toujours pas de support pour `baseˣ` (exposant variable) — pré-existant, non touché.
@@ -102,3 +149,7 @@ Le design initial (session précédente) rejouait TOUJOURS depuis le step 0 à c
 - Système de références `[id]token` (`valueRefs.js`), `eq-save-result`/`[name]v` pour faire persister une valeur numérique au-delà d'un `eq-create` suivant.
 - Pages d'exercice, traduction complète anglais, cohérence des animations d'algèbre classique.
 - Bugs non corrigés de longue date : `-3x=5` gelé, `x²/4=9` isole mal, `(x+3)(2x+1)=0` pas supporté.
+
+## En attente de décision — PAS commencé, ne pas implémenter sans confirmation
+- **Compte utilisateur (Google sign-in) + abonnement payant** : l'utilisateur a demandé "not sure what im gonna use yet, give me options" — recommandation donnée (Supabase Auth pour le Google OAuth + une vraie base de données gratuite, Stripe pour la facturation d'abonnement) mais AUCUNE implémentation commencée. Zéro infra de compte/auth existe actuellement dans le projet (tout est `localStorage`/fichiers). Ne pas commencer à câbler OAuth/Stripe sans que l'utilisateur ait choisi une direction — c'est une décision d'architecture majeure (comptes utilisateurs, paiement réel), pas un simple fix.
+- **Auto-solve pas-à-pas navigable** : demande explicite plus tôt dans la session, toujours pas commencée — "auto solve right now is just one step segmented in a bunch of smaller steps, i need those smaller steps to be the one in the anim list... pausing page and navigating the anim should work for all mini steps in equation." Nécessite de transformer chaque mini-étape interne de `full-solve-current` (combine, send-to-side, divide, la nouvelle isolation trig/fraction du point 16, etc.) en une entrée navigable de la liste d'animation, au même niveau que la pause/navigation par page qui existe déjà. Gros chantier, pas encore attaqué.

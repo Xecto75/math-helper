@@ -25,6 +25,7 @@ const DRAFT_KEY          = 'math-engine-draft'
 const ACTIVE_PAGE_KEY    = 'math-engine-active-page'
 const PROMPT_KEY         = 'math-engine-last-prompt'
 const EX_OVERRIDES_KEY   = 'math-engine-ex-overrides'
+const EX_LOCKS_KEY       = 'math-engine-ex-locks'
 const DEFAULT_ANIM_SPEED = 1  // normal playback speed multiplier
 
 function readSlots() {
@@ -64,20 +65,69 @@ async function saveOverrideToServer(id, pages) {
 // ── Example locks — "I'm done building this, it's final" ─────────────────────
 // A 2s long-press on an Examples card toggles this instead of opening it —
 // a locked example gets a gold border and becomes read-only in the Builder.
-async function fetchServerLocks() {
+//
+// Persisted in TWO places, because either one alone loses the lock:
+//   - localStorage, written synchronously, so the gold border survives a
+//     reload even when the API server isn't reachable. `npm run dev` runs
+//     vite and server.js under one `concurrently`; if server.js dies (a
+//     stale process still holding port 3001 is enough, and concurrently
+//     never restarts it) the app keeps running with a dead /api. Every POST
+//     below then failed into an empty catch, so the lock existed only in
+//     React state and vanished on the next reload — a purely illusory lock.
+//   - the server file (src/data/exampleLocks.json), the durable git-tracked
+//     copy that survives a cleared browser profile and is visible to anyone
+//     reading the source.
+// On mount the two are merged rather than one overwriting the other, so a
+// lock made while the API was down is not thrown away when it comes back.
+function readLocalLocks() {
+  try { return JSON.parse(localStorage.getItem(EX_LOCKS_KEY) ?? '{}') } catch { return {} }
+}
+function writeLocalLocks(obj) {
+  try { localStorage.setItem(EX_LOCKS_KEY, JSON.stringify(obj)) } catch { /* quota/private mode */ }
+}
+
+// Switching which saved lesson is being edited remounts this whole component
+// (App.jsx keys it on editingLesson?.id), which re-reads locks from scratch.
+// If that remount happens right after a toggle, the fresh GET can reach the
+// server and resolve BEFORE the still-in-flight POST from the toggle lands —
+// the read wins the race and the new mount shows the stale (unlocked) state.
+// Tracked at module scope (survives the remount) so any read waits for prior
+// in-flight writes to actually land first.
+let pendingLockWrite = Promise.resolve()
+
+async function fetchLocks() {
+  await pendingLockWrite
+  const local = readLocalLocks()
+  let server = null
   try {
     const res = await fetch('/api/example-locks')
-    if (!res.ok) return {}
-    return await res.json()
-  } catch { return {} }
+    if (res.ok) server = await res.json()
+  } catch { /* API down — local copy is the only truth we have */ }
+  if (!server) return local
+
+  // local wins: it records the most recent toggle this browser made, including
+  // an explicit `false` for "deliberately unlocked". Without that false the
+  // server copy would resurrect a lock the user had just removed offline.
+  const merged = { ...server, ...local }
+  // Push anything this browser changed while the API was unreachable, so the
+  // durable copy catches up instead of silently staying behind.
+  for (const [id, locked] of Object.entries(local)) {
+    if (!!locked !== !!server[id]) setLockOnServer(id, !!locked)
+  }
+  return merged
 }
+
 async function setLockOnServer(id, locked) {
-  try {
-    await fetch(`/api/example-locks/${encodeURIComponent(id)}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ locked }),
-    })
-  } catch { /* server may be offline — local state already updated */ }
+  const done = (async () => {
+    try {
+      await fetch(`/api/example-locks/${encodeURIComponent(id)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locked }),
+      })
+    } catch { /* API down — localStorage already holds the lock */ }
+  })()
+  pendingLockWrite = done
+  await done
 }
 function readDraft() {
   try {
@@ -345,16 +395,20 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     })()
   }, [])
 
-  const [exLocks, setExLocks] = useState({})
-  useEffect(() => { fetchServerLocks().then(setExLocks) }, [])
+  // Seeded from localStorage synchronously so the gold border is correct on
+  // the very first paint, then reconciled with the server copy once it answers.
+  const [exLocks, setExLocks] = useState(readLocalLocks)
+  useEffect(() => { fetchLocks().then(setExLocks) }, [])
 
   const toggleExampleLock = (id) => {
     setExLocks(prev => {
       const next = { ...prev }
       const willLock = !next[id]
-      if (willLock) next[id] = true
-      else delete next[id]
-      setLockOnServer(id, willLock)
+      // Explicit false, never a delete — an absent key is indistinguishable
+      // from "never touched", and would let the server copy re-lock it.
+      next[id] = willLock
+      writeLocalLocks(next)        // synchronous — survives reload even with /api down
+      setLockOnServer(id, willLock)  // durable, git-tracked copy
       return next
     })
   }
@@ -691,6 +745,18 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     return fn ? fn.label : step.funcId
   }
 
+  // Floats an overflowing text input into a wide fixed-position overlay so
+  // typed content is never clipped — re-checked on every keystroke (not just
+  // focus) so it also kicks in once existing short text grows past the box.
+  const syncOverflowExpand = (el) => {
+    if (el.scrollWidth <= el.clientWidth) return
+    const r = el.getBoundingClientRect()
+    Object.assign(el.style, {
+      position: 'fixed', top: r.top + 'px', left: r.left + 'px',
+      width: '840px', zIndex: '9999', boxSizing: 'border-box',
+    })
+  }
+
   // ── Input renderer for steps ───────────────────────────────────────────────
   const renderStepInput = (step, inp) => {
     const val = step.inputs[inp.id] ?? ''
@@ -713,15 +779,11 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
         type={inp.type === 'number' ? 'number' : 'text'}
         value={val}
         placeholder={String(inp.placeholder ?? inp.default ?? '')}
-        onChange={e => updateInput(step.id, inp.id, e.target.value)}
-        onFocus={e => {
-          if (e.target.scrollWidth <= e.target.clientWidth) return
-          const r = e.target.getBoundingClientRect()
-          Object.assign(e.target.style, {
-            position: 'fixed', top: r.top + 'px', left: r.left + 'px',
-            width: '840px', zIndex: '9999', boxSizing: 'border-box',
-          })
+        onChange={e => {
+          updateInput(step.id, inp.id, e.target.value)
+          syncOverflowExpand(e.target)
         }}
+        onFocus={e => syncOverflowExpand(e.target)}
         onBlur={e => {
           Object.assign(e.target.style, {
             position: '', top: '', left: '', width: '', zIndex: '', boxSizing: '',

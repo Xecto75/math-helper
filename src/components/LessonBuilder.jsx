@@ -413,6 +413,11 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     })
   }
 
+  // A locked example is READ-ONLY, not closed: every page must stay browsable
+  // and playable, only editing is blocked. So this gates the edit controls and
+  // the fieldsets around the editable fields — never the page tabs themselves.
+  const isLocked = !!(editingExampleId && exLocks[editingExampleId])
+
   const handleLoadDraft = () => {
     const draft = rehydrateDraft(readDraft())
     if (draft) { setPages(draft); setActivePage(0); setShowSlots(false); setEditingExampleId(null) }
@@ -1042,12 +1047,17 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
         {tab === 'builder' && (
           <div className="lb-builder">
 
-            {editingExampleId && exLocks[editingExampleId] && (
+            {isLocked && (
               <div className="lb-locked-banner">
-                🔒 Locked — final, read-only. Hold this example's card for 2s in Examples to unlock.
+                🔒 Locked — final, read-only. Browse the pages freely; hold this example's card for 2s in Examples to unlock.
               </div>
             )}
-            <fieldset className="lb-builder-fieldset" disabled={!!(editingExampleId && exLocks[editingExampleId])}>
+            {/* Two fieldsets, split around the page tabs: the tabs sit BETWEEN
+                them so switching page still works while locked (a <fieldset
+                disabled> kills every nested control, which had made a locked
+                example impossible to even look through). Visual order is
+                unchanged. */}
+            <fieldset className="lb-builder-fieldset" disabled={isLocked}>
 
             {/* Save / Load bar */}
             <div className="lb-save-bar">
@@ -1116,21 +1126,28 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
               </div>
             )}
 
-            {/* Page tabs */}
+            </fieldset>
+
+            {/* Page tabs — deliberately OUTSIDE both fieldsets so a locked
+                example can still be browsed page by page. Only the controls
+                that MUTATE the page list (delete ×, add +) drop out when
+                locked; selecting a page is not an edit. */}
             <div className="lb-page-tabs">
               {pages.map((p, i) => (
                 <button key={p.id}
                   className={`lb-page-tab${i === activePage ? ' lb-page-tab--active' : ''}`}
                   onClick={() => setActivePage(i)}>
                   {p.title ? `${i + 1} · ${p.title.length > 12 ? p.title.slice(0, 12) + '…' : p.title}` : `P${i + 1}`}
-                  {pages.length > 1 && (
+                  {pages.length > 1 && !isLocked && (
                     <span className="lb-page-tab-x"
                       onClick={e => { e.stopPropagation(); removePage(i) }}>×</span>
                   )}
                 </button>
               ))}
-              <button className="lb-page-add" onClick={addPage} title="Add page">+</button>
+              {!isLocked && <button className="lb-page-add" onClick={addPage} title="Add page">+</button>}
             </div>
+
+            <fieldset className="lb-builder-fieldset" disabled={isLocked}>
 
             {/* Page action bar — reorder + duplicate current page */}
             <div className="lb-page-actions">

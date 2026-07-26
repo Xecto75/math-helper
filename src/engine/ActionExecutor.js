@@ -219,6 +219,21 @@ export function cancelAllAnimations() {
   })
 }
 
+// ── Sub-step gate ─────────────────────────────────────────────────────────────
+// full-solve-current is ONE page step that internally plays a dozen mini-steps
+// (resolve an expression node, combine like terms, send across, divide…). The
+// page runner only knows about page steps, so pause/‹/› could never stop inside
+// it — the whole solve replayed as one uninterruptible blob.
+//
+// Each mini-step now awaits this gate. When nothing is registered it is a plain
+// no-op, so ordinary playback is byte-for-byte unchanged; the page runner
+// registers one only while a page is building, and can block on it to suspend
+// the solve exactly where it stands (the coroutine stays alive, holding its own
+// state — no replay, no re-derivation) until the user releases it.
+let _subStepGate = null
+export function setSubStepGate(fn) { _subStepGate = fn }
+export async function subStep() { if (_subStepGate) await _subStepGate() }
+
 export async function executeScript(actions, snapshot, equationRef, setState, setUI, geoRef = null, graphRef = null, tableRef = null, setComments = null, textRef = null, speed = 1, opts = {}, calcRef = null, arithRef = null, signal = null, multRef = null, clockRef = null, numbersRef = null, mdasRef = null, kidRefs = {}) {
   const state = snapshot ? EquationState.fromSnapshot(snapshot) : null
   for (const action of actions) {
@@ -2705,6 +2720,8 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
 
         let ready = findReady(term.expr)
         while (ready) {
+          // eslint-disable-next-line no-await-in-loop
+          await subStep()
           const id = ready.id
           // A standalone fraction (the WHOLE term is "2/3", not part of a
           // bigger expression) renders as a stacked num/bar/den block with
@@ -2832,6 +2849,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         if (stuck && stuckArr.length === 1 && otherArr.length === 1 &&
             otherTerm && !otherTerm.variable && !otherTerm.expr && !otherTerm.isFraction) {
           const divisor = stuck.expr.b.v
+          await subStep()
           // eslint-disable-next-line no-await-in-loop
           await revealStep(
             () => [getCellInner(getWrap(refs(), stuck.side, stuck.cellIndex)),
@@ -2871,6 +2889,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
           if (isFinite(angleDeg)) {
             const argLabel = trigStuck.expr.arg.name
             const argColor = trigStuck.expr.arg.color
+            await subStep()
             // eslint-disable-next-line no-await-in-loop
             await revealStep(
               () => [getCellInner(getWrap(refs(), trigStuck.side, trigStuck.cellIndex)),
@@ -2898,6 +2917,8 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
           const pos   = (term.side === 'left' ? state.left : state.right).indexOf(term)
           const newId = crypto.randomUUID()
 
+          // eslint-disable-next-line no-await-in-loop
+          await subStep()
           // eslint-disable-next-line no-await-in-loop
           await revealStep(
             () => getCellInner(getWrap(refs(), term.side, term.cellIndex)),
@@ -2943,6 +2964,8 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         // original-equation-text argument) every time eq-full-solve ran.
         if (sub.type === 'renderEquation' || sub.type === 'showTitle') continue
         // eslint-disable-next-line no-await-in-loop
+        await subStep()
+        // eslint-disable-next-line no-await-in-loop
         await runAction(sub, state, equationRef, setState, setUI, geoRef, graphRef, tableRef, setComments, textRef, speed, calcRef, arithRef, multRef, clockRef, numbersRef, mdasRef, kidRefs)
       }
 
@@ -2968,6 +2991,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
           .map(t => getCellInner(getWrap(refs(), t.side, t.cellIndex)))
           .filter(Boolean)
         if (resultTerm && allInners.length && rect) {
+          await subStep()
           document.querySelectorAll('.final-result-highlight').forEach(el => el.remove())
           const box = document.createElement('div')
           box.className = 'final-result-highlight _anim-overlay'

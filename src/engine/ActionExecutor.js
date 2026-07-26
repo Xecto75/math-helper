@@ -2962,7 +2962,11 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         // runAction call, so it was clobbering the PAGE's real title with
         // "Solving: undefined" (generateScript is called here with no
         // original-equation-text argument) every time eq-full-solve ran.
-        if (sub.type === 'renderEquation' || sub.type === 'showTitle') continue
+        // 'showNarration' is generateScript's running commentary ("Divide both
+        // sides by 3."). Auto-solve must NEVER narrate — the animation itself
+        // is the explanation, and the narration bar is not used in this app.
+        if (sub.type === 'renderEquation' || sub.type === 'showTitle' ||
+            sub.type === 'showNarration') continue
         // eslint-disable-next-line no-await-in-loop
         await subStep()
         // eslint-disable-next-line no-await-in-loop

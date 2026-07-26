@@ -410,32 +410,83 @@ export const EXAMPLE_LESSONS = [
           { id: u(), funcId: 'graph-plot-function', inputs: { expr: '|m|*x+|b|', id: 'explore', hideLabel: '1' } },
         ],
       },
+      /* Page 2 — what the slope actually MEANS: rise over run, read straight
+         off the graph. This is the concept page 3's formula comes from, so
+         the formula there is recognised instead of appearing from nowhere. */
       {
-        id: u(), title: 'f(x) = 2x + 1 — slope and intercept', layout: 'graph-equation',
+        id: u(), title: 'What the slope means — rise over run', layout: 'text-graph',
         steps: [
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'riserun', title: 'Slope = rise ÷ run',
+            content: 'Pick any two points on the line.|**Run** — how far you move across in $x$.|**Rise** — how far you move up in $y$.|The slope is $m = \\dfrac{\\text{rise}}{\\text{run}}$ — and it is the same wherever you measure it.',
+            isList: 'true',
+          }},
+          { id: u(), funcId: 'graph-set-viewport',  inputs: { xMin: '-1', xMax: '6', yMin: '-1', yMax: '11' } },
           { id: u(), funcId: 'graph-plot-function', inputs: { expr: '2*x + 1', id: 'f1' } },
-          { id: u(), funcId: 'graph-name-func',     inputs: { funcId: 'f1', label: 'f(x) = 2x + 1', x0: '0.5', y0: '3' } },
-          { id: u(), funcId: 'graph-add-point',     inputs: { x: '0', y: '1', id: 'yint', label: 'b = 1' } },
-          { id: u(), funcId: 'eq-create',           inputs: { eq: 'f(x) = 2x + 1' } },
+          { id: u(), funcId: 'graph-name-func',     inputs: { funcId: 'f1', label: 'y = 2x + 1' } },
+          { id: u(), funcId: 'graph-add-point',     inputs: { x: '1', y: '3', id: 'pA', label: 'A(1, 3)' } },
+          { id: u(), funcId: 'graph-add-point',     inputs: { x: '4', y: '9', id: 'pB', label: 'B(4, 9)' } },
+          { id: u(), funcId: 'graph-add-segment',   inputs: { x1: '1', y1: '3', x2: '4', y2: '3', id: 'run',  color: 'orange' } },
+          { id: u(), funcId: 'cmt-graph',           inputs: { text: 'run = 3', x: '2.5', y: '2.2', color: 'orange' } },
+          { id: u(), funcId: 'graph-add-segment',   inputs: { x1: '4', y1: '3', x2: '4', y2: '9', id: 'rise', color: 'green' } },
+          { id: u(), funcId: 'cmt-graph',           inputs: { text: 'rise = 6', x: '4.7', y: '6', color: 'green' } },
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'riseruncalc', title: 'Here',
+            content: '$m = \\dfrac{6}{3} = 2$ — the line climbs $2$ for every $1$ across.',
+            isList: 'false',
+          }},
         ],
       },
+      /* Page 3 — the full derivation, every step shown rather than computed
+         inline: slope formula → substitute → solve → y = mx + b → substitute
+         m → substitute a known point → solve for b → plot the result. */
       {
-        id: u(), title: 'Find the equation from two points', layout: 'graph-equation',
+        id: u(), title: 'Find the equation from two points', layout: 'text-equation',
         steps: [
-          { id: u(), funcId: 'graph-add-point', inputs: { x: '0', y: '2', id: 'pA', label: 'A(0,2)' } },
-          { id: u(), funcId: 'graph-add-point', inputs: { x: '3', y: '8', id: 'pB', label: 'B(3,8)' } },
-          { id: u(), funcId: 'cmt-free', inputs: {
-            cmtId: 'formula', title: 'Slope',
-            text: '$m = \\dfrac{y_2 - y_1}{x_2 - x_1}$', side: 'right', color: '',
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'given', title: 'Given two points',
+            content: '$A(1,\\ 3)$ and $B(4,\\ 9)$|Goal: find $y = mx + b$ passing through both.',
+            isList: 'false',
           }},
-          { id: u(), funcId: 'eq-create',      inputs: { eq: 'm = {{ ([pB]y - [pA]y) / ([pB]x - [pA]x) }}' } },
-          { id: u(), funcId: 'eq-save-result', inputs: { name: 'm' } },
-          { id: u(), funcId: 'cmt-update', inputs: { cmtId: 'formula', text: '$b = y_1 - m \\cdot x_1$' } },
-          { id: u(), funcId: 'eq-create',      inputs: { eq: 'b = {{ [pA]y - [m]v * [pA]x }}' } },
-          { id: u(), funcId: 'eq-save-result', inputs: { name: 'b' } },
-          { id: u(), funcId: 'cmt-update', inputs: { cmtId: 'formula', text: '$y = mx + b$' } },
-          { id: u(), funcId: 'eq-create',      inputs: { eq: 'y = [m]v*x + [b]v' } },
-          { id: u(), funcId: 'graph-plot-function', inputs: { expr: '2*x + 2', id: 'line' } },
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'method', title: 'The method',
+            content: 'Find the slope $m = \\dfrac{y_2 - y_1}{x_2 - x_1}$|Write $y = mx + b$ and put $m$ in|Substitute one known point for $x$ and $y$|Solve — the only unknown left is $b$',
+            isList: 'steps',
+          }},
+
+          /* Step 1 — the slope, from the formula out */
+          { id: u(), funcId: 'eq-create',           inputs: { eq: '|m| = (|y2| - |y1|) / (|x2| - |x1|)' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { var_y2: '9', var_y1: '3', var_x2: '4', var_x1: '1' } },
+          { id: u(), funcId: 'eq-full-solve',       inputs: {} },
+          { id: u(), funcId: 'eq-save-result',      inputs: { name: 'm' } },
+
+          /* Step 2 — y = mx + b, slope in, then a known point in */
+          { id: u(), funcId: 'eq-create',           inputs: { eq: '|y| = |m| * |x| + |b|' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { var_m: '[m]v' } },
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'why', title: 'Why a known point?',
+            content: '$A$ is ON the line, so $x=1,\\ y=3$ must satisfy $y = 2x + b$ — leaving $b$ as the only unknown.',
+            isList: 'false',
+          }},
+          { id: u(), funcId: 'eq-replace-variable', inputs: { var_y: '3', var_x: '1' } },
+          { id: u(), funcId: 'eq-full-solve',       inputs: {} },
+          { id: u(), funcId: 'eq-save-result',      inputs: { name: 'b' } },
+
+          /* Step 3 — the answer, then see it. The working notes come down so
+             the graph gets the room; the givens stay as the reference. */
+          { id: u(), funcId: 'text-remove',         inputs: { boxId: 'method' } },
+          { id: u(), funcId: 'text-remove',         inputs: { boxId: 'why' } },
+          { id: u(), funcId: 'set-layout',          inputs: { mode: 'text-graph' } },
+          { id: u(), funcId: 'text-create', inputs: {
+            boxId: 'result', title: 'The equation',
+            content: '$m = 2$ and $b = 1$, so $y = 2x + 1$.',
+            isList: 'false',
+          }},
+          { id: u(), funcId: 'graph-set-viewport',  inputs: { xMin: '-1', xMax: '6', yMin: '-1', yMax: '11' } },
+          { id: u(), funcId: 'graph-add-point',     inputs: { x: '1', y: '3', id: 'pA', label: 'A(1, 3)' } },
+          { id: u(), funcId: 'graph-add-point',     inputs: { x: '4', y: '9', id: 'pB', label: 'B(4, 9)' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: '2*x + 1', id: 'line' } },
+          { id: u(), funcId: 'graph-name-func',     inputs: { funcId: 'line', label: 'y = 2x + 1' } },
         ],
       },
     ],

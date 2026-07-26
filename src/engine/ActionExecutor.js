@@ -2198,6 +2198,12 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     }
 
     case 'set-layout': {
+      // The final-result box is a fixed-position overlay measured against the
+      // equation panel. Changing layout can move or remove that panel, leaving
+      // the ring floating over empty space (e.g. solve for b, then switch to
+      // text+graph to plot the answer) — it belongs to the equation, so it
+      // goes when the equation's slot may no longer be there.
+      document.querySelectorAll('.final-result-highlight').forEach(el => el.remove())
       setUI(u => ({ ...u, _layout: action.mode }))
       await wait(0.1)
       break

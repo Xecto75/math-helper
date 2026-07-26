@@ -322,12 +322,17 @@ export async function plotFunction(calc, id, expr, opts = {}) {
   sliderVars.forEach(name => registerSlider(calc, name))
   const color     = opts.color ? rgbToHex(opts.color) : FUNC_COLORS[getFunctionIds().length % FUNC_COLORS.length]
   const lineWidth = opts.thickness ?? 3
-  calc.setExpression({ id: `fn_${id}`, latex: cleanExpr, color, lineWidth, lineOpacity: 0 })
+  // Desmos wants LaTeX (\sqrt{...}), makeEval wants the plain source
+  // (sqrt(...)) — the two are kept side by side rather than one overwriting
+  // the other, so plotting a root no longer silently draws nothing while
+  // intersections/roots/tangents keep evaluating it correctly.
+  const latexExpr = toDesmos(cleanExpr)
+  calc.setExpression({ id: `fn_${id}`, latex: latexExpr, color, lineWidth, lineOpacity: 0 })
   // hasSliders marks this as a "drag to explore" curve — its shape is meant to
   // keep changing, so any label on it (getVisibilityAnchors) must never lock
   // the camera onto whatever position happened to be true when it was first
   // drawn (see ensureVisible).
-  registry.set(`fn::${id}`, { calcId: `fn_${id}`, expr: cleanExpr, template: expr, color, lineWidth, hasSliders: sliderVars.length > 0, fadeProps: { lineOpacity: 1 } })
+  registry.set(`fn::${id}`, { calcId: `fn_${id}`, expr: cleanExpr, latex: latexExpr, template: expr, color, lineWidth, hasSliders: sliderVars.length > 0, fadeProps: { lineOpacity: 1 } })
   // Resync now that this function's template is in the registry — a slider
   // no longer referenced by anything currently plotted (e.g. this call just
   // replaced an old "explore" curve with a slider-free one) is removed here,
@@ -420,7 +425,7 @@ export async function shadeUnderCurve(calc, id, funcId, a, b, opts = {}) {
   const areaId  = `area_${id}`
   const vaId    = `area_va_${id}`
   const vbId    = `area_vb_${id}`
-  const latex   = `y\\le\\left(${fn.expr}\\right)\\left\\{${a}\\le x\\le${b}\\right\\}\\left\\{y\\ge0\\right\\}`
+  const latex   = `y\\le\\left(${fn.latex ?? fn.expr}\\right)\\left\\{${a}\\le x\\le${b}\\right\\}\\left\\{y\\ge0\\right\\}`
   calc.setExpression({ id: areaId, latex, color, fillOpacity: 0, lineOpacity: 0 })
   calc.setExpression({ id: vaId, latex: `x=${a}`, color, lineWidth: 1.5, lineOpacity: 0 })
   calc.setExpression({ id: vbId, latex: `x=${b}`, color, lineWidth: 1.5, lineOpacity: 0 })
@@ -431,7 +436,7 @@ export async function shadeUnderCurve(calc, id, funcId, a, b, opts = {}) {
   })
   // Re-add the function curve on top (Desmos draws in list order)
   calc.removeExpression({ id: fn.calcId })
-  calc.setExpression({ id: fn.calcId, latex: fn.expr, color: fn.color, lineWidth: fn.lineWidth, lineOpacity: 1 })
+  calc.setExpression({ id: fn.calcId, latex: fn.latex ?? fn.expr, color: fn.color, lineWidth: fn.lineWidth, lineOpacity: 1 })
   await fadeIn(calc, [areaId, vaId, vbId], { fillOpacity: fillOp, lineOpacity: 1 })
 }
 
@@ -474,10 +479,29 @@ export async function findAndMarkIntersections(calc, id, f1Id, f2Id, opts = {}) 
 
 // Convert common math notation to Desmos LaTeX
 // sqrt(x) → \sqrt{x}, a/b → \frac{a}{b}, pi → \pi
+// sqrt(...) → \sqrt{...}, matching the CLOSING paren by counting depth rather
+// than stopping at the first one — "sqrt(1-(x-2)^2)" (any shifted circle) would
+// otherwise cut at the inner ")" and emit garbage.
+function sqrtToLatex(s) {
+  let out = ''
+  for (let i = 0; i < s.length; i++) {
+    if (!s.startsWith('sqrt(', i)) { out += s[i]; continue }
+    let depth = 0, j = i + 4          // j sits on the '('
+    for (; j < s.length; j++) {
+      if (s[j] === '(') depth++
+      else if (s[j] === ')' && --depth === 0) break
+    }
+    if (j >= s.length) { out += s[i]; continue }   // unbalanced — leave as-is
+    out += `\\sqrt{${sqrtToLatex(s.slice(i + 5, j))}}`
+    i = j
+  }
+  return out
+}
+
 function toDesmos(expr) {
   if (expr == null) return ''
   let s = String(expr).trim()
-  s = s.replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}')
+  s = sqrtToLatex(s)
   s = s.replace(/\bpi\b/gi, '\\pi')
   // a/b → \frac{a}{b}  (handles -\sqrt{x}/n, \sqrt{x}/n, -n/m, n/m)
   s = s.replace(
@@ -562,9 +586,15 @@ export async function addPoint(calc, id, x, y, opts = {}) {
       calcIds.push(inId)
     }
   } else {
+    // Same fixed screen-space orientation as the coordinate label above.
+    // Without it Desmos falls back to its own anti-collision placement, which
+    // picks a DIFFERENT side per point — three points labelled 30°/45°/60°
+    // ended up with their labels on three different sides. A label must always
+    // sit in the same spot relative to its own dot.
     calc.setExpression({
       id: cId, latex: `(${latX},${latY})`, color,
-      showLabel: !!opts.label, label: formatPointLabel(opts.label), pointOpacity: 0,
+      showLabel: !!opts.label, label: formatPointLabel(opts.label),
+      labelOrientation: 'right', pointOpacity: 0,
     })
   }
 
@@ -761,7 +791,7 @@ export async function plotDerivative(calc, id, funcId, opts = {}) {
   if (!fn) return
   const color     = opts.color ? rgbToHex(opts.color) : darken(fn.color, 0.7)
   const lineWidth = opts.thickness ?? 2
-  const latex     = `\\frac{d}{dx}\\left(${fn.expr}\\right)`
+  const latex     = `\\frac{d}{dx}\\left(${fn.latex ?? fn.expr}\\right)`
   calc.setExpression({ id: `deriv_${id}`, latex, color, lineWidth, lineOpacity: 0 })
   registry.set(`deriv::${id}`, { calcId: `deriv_${id}`, funcId, fadeProps: { lineOpacity: 1 } })
   await fadeIn(calc, [`deriv_${id}`], { lineOpacity: 1 })
@@ -804,7 +834,7 @@ export async function riemannSum(calc, id, funcId, a, b, n, method = 'midpoint',
   registry.set(`riemann::${id}`, { calcIds, funcId, fadeProps: { fillOpacity: fillOp, lineOpacity: 1 } })
   // Re-add the function curve on top
   calc.removeExpression({ id: fn.calcId })
-  calc.setExpression({ id: fn.calcId, latex: fn.expr, color: fn.color, lineWidth: fn.lineWidth, lineOpacity: 1 })
+  calc.setExpression({ id: fn.calcId, latex: fn.latex ?? fn.expr, color: fn.color, lineWidth: fn.lineWidth, lineOpacity: 1 })
   await fadeIn(calc, calcIds, { fillOpacity: fillOp, lineOpacity: 1 })
 }
 
@@ -928,14 +958,16 @@ export async function transformFunction(calc, id, funcId, type, value, opts = {}
     const t0 = performance.now()
     ;(function tick() {
       const p = Math.min((performance.now() - t0) / ms, 1)
-      calc.setExpression({ id: cId, latex: exprAt(easeIO(p)) })
+      calc.setExpression({ id: cId, latex: toDesmos(exprAt(easeIO(p))) })
       if (p < 1) requestAnimationFrame(tick)
       else resolve()
     })()
   })
 
-  // Commit the transformed expression as the curve's new definition
-  fn.expr = exprAt(1)
+  // Commit the transformed expression as the curve's new definition — both
+  // forms, or fn.latex would keep describing the pre-transform curve.
+  fn.expr  = exprAt(1)
+  fn.latex = toDesmos(fn.expr)
   registry.set(`fn::${funcId}`, fn)
 }
 

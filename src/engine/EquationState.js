@@ -64,6 +64,19 @@ export class EquationState {
   }
 }
 
+// exprTree nodes are plain data ({t,id,op,a,b,v,name,color}), and full-solve
+// resolves them by MUTATING them in place. Handing the same object out with
+// every snapshot therefore made all snapshots alias one live tree: any stored
+// snapshot silently showed the CURRENT state, so rewinding to one changed
+// nothing on screen. A snapshot has to own its tree.
+function cloneExpr(n) {
+  if (n === null || typeof n !== 'object') return n
+  if (Array.isArray(n)) return n.map(cloneExpr)
+  const out = {}
+  for (const k in n) out[k] = cloneExpr(n[k])
+  return out
+}
+
 function termToPlain(t) {
   return {
     id:               t.id,
@@ -89,6 +102,6 @@ function termToPlain(t) {
     innerTerms:       t.innerTerms       ?? null,
     factors:          t.factors          ?? null,
     negBase:          t.negBase          ?? false,
-    expr:             t.expr             ?? null,
+    expr:             t.expr ? cloneExpr(t.expr) : null,
   }
 }

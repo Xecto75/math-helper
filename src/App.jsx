@@ -342,6 +342,17 @@ export default function App() {
   const subGateReleaseRef = useRef(null)
   const subBudgetRef      = useRef(Infinity)
   const subDoneRef        = useRef(0)
+  // One canvas snapshot per mini-step boundary, plus which page step the solve
+  // lives in. ‹ restores a snapshot and re-enters the solve at that state —
+  // full-solve is driven by the equation state, not by a fixed script, so
+  // handing it that state makes it continue from exactly there.
+  const subSnapsRef       = useRef([])
+  const subPageStepRef    = useRef(0)
+  // True while a full-solve is actually running (the gate raises it, the page
+  // loop lowers it once that step returns). This — not "is the coroutine
+  // parked at this instant" — is what decides whether ‹/› address mini-steps
+  // or page steps.
+  const inSolveRef        = useRef(false)
   const latestCommentsRef = useRef([])
   const latestUIRef       = useRef({ title: null, narration: null, answer: null })
 
@@ -760,6 +771,8 @@ export default function App() {
       pausedRef.current = false
       setPaused(false)
       subDoneRef.current = 0
+      subSnapsRef.current = []
+      inSolveRef.current = false
     }
     setRunning(true)
     subBudgetRef.current = runSubSteps
@@ -796,22 +809,32 @@ export default function App() {
       // unwinds the whole coroutine; buildPage's catch ignores errors from an
       // already-cancelled signal, so this stays silent.
       if (signal.cancelled) throw CANCELLED
-      if (subBudgetRef.current > 0 && !signal.pausePending) {
-        subBudgetRef.current -= 1
-        subDoneRef.current   += 1
-        return
+      inSolveRef.current = true
+      // The state this mini-step is about to change — what ‹ rewinds to.
+      subSnapsRef.current[subDoneRef.current] = captureSnapshot()
+
+      // The BUDGET is the single source of truth for whether the solve may
+      // proceed. Previously the gate also consulted signal.pausePending, so
+      // whether a click did anything depended on catching the coroutine while
+      // it happened to be parked — pausing mid-animation left the budget
+      // untouched, the gate un-parked, and ‹/› silently fell through to the
+      // page-step path, which re-ran the WHOLE solve. Pause now just sets the
+      // budget to 0 and every decision here follows from it.
+      while (subBudgetRef.current <= 0) {
+        // Park. The coroutine keeps its own local state alive, so resuming is
+        // exact — no replay, nothing re-derived. A `while` (not `if`) so a
+        // spurious wake-up re-checks instead of running a step it wasn't given.
+        signal.pausePending = false   // the page loop must not also break
+        pausedRef.current   = true
+        setPaused(true)
+        setInSubStep(true)
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise(res => { subGateReleaseRef.current = res })
+        subGateReleaseRef.current = null
+        if (signal.cancelled) throw CANCELLED
       }
-      // Out of budget, or the user hit pause mid-solve: park the coroutine
-      // here (it keeps its own local state alive, so resuming is exact — no
-      // replay, nothing re-derived) until a toolbar button releases it.
-      signal.pausePending = false
-      pausedRef.current   = true
-      setPaused(true)
-      setInSubStep(true)
-      await new Promise(res => { subGateReleaseRef.current = res })
-      subGateReleaseRef.current = null
-      if (signal.cancelled) throw CANCELLED
-      subDoneRef.current += 1
+      subBudgetRef.current -= 1
+      subDoneRef.current   += 1
       setInSubStep(false)
     })
 
@@ -841,6 +864,7 @@ export default function App() {
         if (stopAtStep !== null && si >= stopAtStep) break
 
         stepSnapshotsRef.current[si] = captureSnapshot()
+        subPageStepRef.current = si   // where a sub-step rewind re-enters
 
         const step   = pg.steps[si]
         const result = runDemoFunc(step.funcId, step.inputs)
@@ -854,6 +878,7 @@ export default function App() {
         }
         if (signal.cancelled) break
         await executeScript(script, snapshot ?? latestEquationSnapRef.current, equationRef, setEquationSnapTracked, setUITracked, geoRef, graphRef, tableRef, setCommentsTracked, textRef, speed, { skipTitle: true }, calcRef, arithRef, signal, multRef, clockRef, numbersRef, mdasRef, { pizzaRef, counterRef, numberlineRef, threeRef })
+        inSolveRef.current = false   // this step's solve (if any) is finished
 
         if (!signal.cancelled) {
           pageStepIdxRef.current = si + 1
@@ -973,19 +998,31 @@ export default function App() {
   }, [lessonPages, lessonPageIdx, lastBuiltPage, buildPage])
 
   const handlePause = useCallback(() => {
+    // Two granularities, both needed: pausePending stops the page loop at the
+    // next STEP boundary, and a zero budget stops a running full-solve at its
+    // next MINI-step. Setting only the former let a solve keep animating to
+    // completion after the user pressed pause.
     if (cancelRef.current) cancelRef.current.pausePending = true
+    subBudgetRef.current = 0
     pausedRef.current = true
     setPaused(true)
   }, [])
 
-  // Let the suspended solve run on. `budget` mini-steps then it parks again
-  // (0 = advance exactly one, Infinity = play through to the end of the solve).
-  const releaseSubStep = useCallback((budget) => {
-    if (!subGateReleaseRef.current) return false
+  // Grant the solve `budget` more mini-steps (0 = it parks at the very next
+  // boundary, Infinity = play the rest of the solve). Returns false only when
+  // no solve is running at all, so the caller can fall back to page steps.
+  // Deliberately NOT conditional on the coroutine being parked right now: a
+  // solve that is mid-animation simply picks the new budget up at its next
+  // gate, which is what made clicks land reliably instead of depending on
+  // catching it at rest.
+  const grantSubSteps = useCallback((budget) => {
+    if (!inSolveRef.current) return false
     subBudgetRef.current = budget
-    const release = subGateReleaseRef.current
-    subGateReleaseRef.current = null
-    release()
+    if (subGateReleaseRef.current) {
+      const release = subGateReleaseRef.current
+      subGateReleaseRef.current = null
+      release()
+    }
     return true
   }, [])
 
@@ -994,16 +1031,16 @@ export default function App() {
     setPaused(false)
     // Parked inside a full-solve: just un-park it. Rebuilding the page here
     // would restart the whole solve from its first mini-step.
-    if (releaseSubStep(Infinity)) return
+    if (grantSubSteps(Infinity)) return
     const pg = currentPageRef.current
     if (!pg) return
     buildPage(pg, animSpeedRef.current, { startFromStep: pageStepIdxRef.current, clearCanvas: false })
-  }, [buildPage, releaseSubStep])
+  }, [buildPage, grantSubSteps])
 
   const handleStepForward = useCallback(() => {
     // One mini-step, then park again — budget 0 means the very next gate call
     // (i.e. after exactly one mini-step has played) suspends.
-    if (releaseSubStep(0)) return
+    if (grantSubSteps(1)) return
     const pg = currentPageRef.current
     if (!pg || pageStepIdxRef.current >= pg.steps.length) return
     buildPage(pg, animSpeedRef.current, {
@@ -1011,18 +1048,30 @@ export default function App() {
       stopAtStep: pageStepIdxRef.current + 1,
       clearCanvas: false,
     })
-  }, [buildPage, releaseSubStep])
+  }, [buildPage, grantSubSteps])
 
   const handleStepBackward = useCallback(() => {
-    // Inside a full-solve there is no snapshot to rewind to — the solve's own
-    // coroutine state can't be un-run. Replay the page deterministically and
-    // stop one mini-step earlier instead (fast, same approach as jumping
-    // backwards between pagination segments).
-    if (inSubStep && subDoneRef.current > 0) {
-      const pg = currentPageRef.current
-      if (!pg) return
-      const target = subDoneRef.current - 1
-      buildPage(pg, animSpeedRef.current * 5, { runSubSteps: target })
+    // Inside a full-solve: restore the snapshot taken at the previous mini-step
+    // boundary and re-enter the solve THERE. full-solve is driven by the
+    // equation state rather than a fixed script, so handing it that state makes
+    // it continue from exactly that point — instant, nothing visibly restarts.
+    if (inSolveRef.current && subDoneRef.current > 0) {
+      const pg   = currentPageRef.current
+      const back = subDoneRef.current - 1
+      const snap = subSnapsRef.current[back]
+      if (!pg || !snap) return
+      restoreSnapshot(snap)
+      subDoneRef.current = back
+      // stopAtStep bounds the re-entry to the solve's OWN page step: rewinding
+      // to a boundary where the solve has nothing left to do hits no gate, and
+      // unbounded buildPage would then sail on through the rest of the page
+      // (layout switches, plots) instead of staying put.
+      buildPage(pg, animSpeedRef.current, {
+        startFromStep: subPageStepRef.current,
+        stopAtStep:    subPageStepRef.current + 1,
+        clearCanvas: false,
+        runSubSteps: 0,
+      })
       return
     }
     const N    = pageStepIdxRef.current
@@ -1031,7 +1080,7 @@ export default function App() {
     if (!snap) return
     restoreSnapshot(snap)
     pageStepIdxRef.current = N - 1
-  }, [restoreSnapshot, buildPage, inSubStep])
+  }, [restoreSnapshot, buildPage])
 
   // ── Exercise pages ───────────────────────────────────────────────────────
   const handleExerciseSelectChoice = useCallback((idx) => {

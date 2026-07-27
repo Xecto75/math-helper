@@ -31,9 +31,13 @@ tc/tf only for a key formula or label — never prose. Every step must be a visu
 COLORS: 0=red 1=purple 2=orange 3=green 4=yellow 5=pink 6=teal 7=white
   Never use blue. Never repeat a color on the same page.
 
-LIMITS: max 6 pages · max 8 steps/page · no padding steps
+LENGTH: 5–6 pages — NEVER fewer than 5. A one- or two-page answer is a failure.
+  Build a full lesson arc: concept → worked example → a second, different case → recap.
+  Each page must earn its place (its own idea, its own visual) — do not pad a thin
+  idea across pages, split the topic into genuinely distinct stages instead.
+  max 8 steps/page · no padding steps
 TEXT(tc/tf): lines sep by | · $latex$ inline · **bold** · JSON: double backslashes (\\\\frac not \\frac)
-tc max 3 lines — prefer cmt/labels over tc for brief annotations.
+tc max 3 lines — prefer the c* comment codes (cf/cG/cE/…) or labels over tc for brief annotations.
 tc clr: always "" unless user explicitly asks for a colored box.
 
 LAYOUT RULE: any layout with a text panel (tg/tG/tq/te/ge/Ge/Gc) MUST contain ≥1 tc — never leave the text panel empty. If no formula is needed, use a non-text layout instead.
@@ -385,7 +389,7 @@ isList: 0=paragraph  1=bullet list  "steps"=numbered list ("1. …", "2. …")
 color: "" always, unless user asks for a colored box
 
 IMPORTANT: layouts tg/tG/tq/te/ge/Ge/Gc have a text panel — include ≥1 tc or the panel is blank.
-Prefer tc for key formulas. Prefer cmt-* for brief point annotations.
+Prefer tc for key formulas. Prefer the c* comment codes for brief point annotations.
 `,
   },
 
@@ -429,7 +433,7 @@ EXAMPLE — integral:
 
 Leave id="" when you don't need to update it later.
 Comments work on any layout — pair with any module.
-Prefer cmt over tc for brief labels on visual elements.
+Prefer the c* comment codes over tc for brief labels on visual elements.
 `,
   },
 }

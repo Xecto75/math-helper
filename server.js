@@ -270,6 +270,7 @@ async function routeModules(prompt) {
     result = { status: 'ok', modules: ['equation', 'text'] }
   }
   console.log('  status:', result.status, result.status === 'ok' ? `modules:${result.modules}` : result.message ?? '')
+  result.cost = cost
   return result
 }
 
@@ -284,7 +285,10 @@ async function generateCompact(prompt, moduleIds) {
 
   const message = await client.messages.create({
     model:      'claude-sonnet-4-6',
-    max_tokens: 8192,
+    // A 5-6 page lesson in compact codes runs well under this; the headroom is
+    // so a long one is never truncated mid-lesson. Even if it were all used the
+    // request still lands around $0.20, inside the $0.30 per-prompt ceiling.
+    max_tokens: 12000,
     system:     [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
     messages:   [{ role: 'user', content: prompt }],
   })
@@ -304,7 +308,7 @@ async function generateCompact(prompt, moduleIds) {
   console.log(rawText)
   console.log('─────────────────────────────────────────────\n')
 
-  return rawText
+  return { rawText, cost }
 }
 
 // ── API endpoint ──────────────────────────────────────────────────────────────
@@ -324,11 +328,21 @@ app.post('/api/generate-lesson', async (req, res) => {
     const moduleIds = route.modules
 
     // ── Step 2: Generate ─────────────────────────────────────────────────────
-    rawApiText = await generateCompact(prompt, moduleIds)
+    const gen = await generateCompact(prompt, moduleIds)
+    rawApiText = gen.rawText
 
     const compact  = parseCompact(rawApiText)
     const expanded = expandCompact(compact)
     const lesson   = JSON.stringify(expanded)
+
+    // One line to check both things that matter per prompt: did it pick the
+    // right modules, and did the whole thing stay inside the cost ceiling.
+    const total = (route.cost ?? 0) + (gen.cost ?? 0)
+    const pages = Array.isArray(expanded) ? expanded.length : 0
+    console.log(`═══ TOTAL  modules:[${moduleIds.join(',')}]  pages:${pages}` +
+      `  $${total.toFixed(4)}${total > 0.30 ? '  ⚠ OVER $0.30' : ''}` +
+      `${pages < 5 ? `  ⚠ only ${pages} pages (want 5-6)` : ''}
+`)
 
     res.json({ lesson, modules: moduleIds })
 

@@ -1,11 +1,13 @@
-export default function CustomView({ promptVal, onChange, onSend, aiLoading, aiError, onBuilder }) {
+import { MISC, tr } from '../i18n/catalog.js'
+
+export default function CustomView({ promptVal, onChange, onSend, aiLoading, aiError, onBuilder, lang = 'en' }) {
   return (
     <div className="section-view custom-view">
-      <p className="section-sub">Describe a lesson and let the magic happen!</p>
+      <p className="section-sub">{tr(lang, MISC, 'customPrompt')}</p>
       <div className="custom-prompt-box">
         <textarea
           className="custom-textarea"
-          placeholder="E.g.: A lesson on the 7-times table for an 8-year-old…"
+          placeholder={tr(lang, MISC, 'customPlaceholder')}
           value={promptVal}
           onChange={e => onChange(e.target.value)}
           disabled={aiLoading}
@@ -16,13 +18,13 @@ export default function CustomView({ promptVal, onChange, onSend, aiLoading, aiE
           onClick={onSend}
           disabled={aiLoading || !promptVal.trim()}
         >
-          {aiLoading ? '⏳ Generating…' : '✨ Generate lesson'}
+          {aiLoading ? `⏳ ${tr(lang, MISC, 'generating')}` : `✨ ${tr(lang, MISC, 'generateLesson')}`}
         </button>
         {aiError && <p className="custom-error">{aiError}</p>}
       </div>
-      <div className="custom-or">— or —</div>
+      <div className="custom-or">— {tr(lang, MISC, 'or')} —</div>
       <button className="builder-open-btn" onClick={onBuilder}>
-        📖 Create manually (Lesson Builder)
+        📖 {tr(lang, MISC, 'createManually')}
       </button>
     </div>
   )

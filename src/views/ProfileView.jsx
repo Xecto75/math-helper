@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { u } from '../i18n/uiText.js'
+import { GRADES, STATS, tr } from '../i18n/catalog.js'
 import { PencilIcon, CheckIcon, BookIcon, WrenchIcon, FlameIcon, StarIcon, UserIcon, GoogleIcon } from '../components/Icon.jsx'
 
 // A small set of solid accent colors to pick the avatar background from —
 // same idea as Slack/Linear/GitHub's "pick a color" avatar, instead of a
 // grid of animal emoji standing in for a profile picture.
 const AVATAR_COLORS = ['#818cf8', '#f472b6', '#fb923c', '#34d399', '#38bdf8', '#facc15', '#a78bfa', '#f87171']
-const GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Sec 1', 'Sec 2', 'Sec 3', 'Sec 4', 'Sec 5', 'Other']
+// Stored value is the stable key (g1…s5/other); the label is translated at render.
+const GRADE_KEYS = ['g1','g2','g3','g4','g5','g6','s1','s2','s3','s4','s5','other']
 
 export default function ProfileView({ profile, onSave, lang = 'en' }) {
   const [editingName, setEditingName] = useState(false)
@@ -16,11 +18,11 @@ export default function ProfileView({ profile, onSave, lang = 'en' }) {
   const avatarColor = profile.avatarColor || AVATAR_COLORS[0]
   const initial = (profile.name || '').trim().charAt(0).toUpperCase()
 
-  const STATS = [
-    { label: 'Lessons done', value: '—', Icon: BookIcon },
-    { label: 'Tools used',   value: '—', Icon: WrenchIcon },
-    { label: 'Day streak',   value: '—', Icon: FlameIcon },
-    { label: 'Points',       value: '—', Icon: StarIcon },
+  const STAT_ROWS = [
+    { key: 'lessonsDone', value: '—', Icon: BookIcon },
+    { key: 'toolsUsed',   value: '—', Icon: WrenchIcon },
+    { key: 'dayStreak',   value: '—', Icon: FlameIcon },
+    { key: 'points',      value: '—', Icon: StarIcon },
   ]
 
   return (
@@ -68,8 +70,8 @@ export default function ProfileView({ profile, onSave, lang = 'en' }) {
           )}
           <p className="profile-grade-label">{u(lang, 'level')}</p>
           <div className="grade-picker">
-            {GRADES.map(g => (
-              <button key={g} className={`grade-chip${profile.grade === g ? ' grade-chip--active' : ''}`} onClick={() => save({ grade: g })}>{g}</button>
+            {GRADE_KEYS.map(g => (
+              <button key={g} className={`grade-chip${profile.grade === g ? ' grade-chip--active' : ''}`} onClick={() => save({ grade: g })}>{tr(lang, GRADES, g)}</button>
             ))}
           </div>
         </div>
@@ -79,11 +81,11 @@ export default function ProfileView({ profile, onSave, lang = 'en' }) {
       <div className="settings-block">
         <h3 className="settings-block-title">{u(lang, 'statsTitle')}</h3>
         <div className="stats-grid">
-          {STATS.map(s => (
-            <div key={s.label} className="stat-card">
+          {STAT_ROWS.map(s => (
+            <div key={s.key} className="stat-card">
               <s.Icon className="stat-icon" width={19} height={19} />
               <span className="stat-value">{s.value}</span>
-              <span className="stat-label">{s.label}</span>
+              <span className="stat-label">{tr(lang, STATS, s.key)}</span>
             </div>
           ))}
         </div>

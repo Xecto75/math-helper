@@ -1,4 +1,5 @@
 import { u, SUPPORTED_LANGS } from '../i18n/uiText.js'
+import { PLANS as PLAN_NAMES, PLAN_FEATURES, tr } from '../i18n/catalog.js'
 import {
   GlobeIcon, SunIcon, MoonIcon, TypeIcon, VolumeIcon, VolumeMuteIcon,
   CreditCardIcon, TerminalIcon, CheckIcon,
@@ -12,14 +13,18 @@ const LANGUAGES = [
   { code: 'fr', label: 'Français' },
   { code: 'de', label: 'Deutsch'  },
   { code: 'es', label: 'Español'  },
+  { code: 'it', label: 'Italiano' },
+  { code: 'pt', label: 'Português' },
   { code: 'zh', label: '中文'     },
 ].map(l => ({ ...l, comingSoon: !SUPPORTED_LANGS.includes(l.code) }))
 
 const TEXT_SIZES = ['small', 'normal', 'large']
 
+// Price digits stay literal (they are not language-dependent); only the plan
+// name, the /mo suffix, and the feature wording come from the catalog.
 const PLANS = [
-  { id: 'free', label: 'Free', price: '$0', features: ['4 included lessons', '4 basic tools', 'Custom lessons (3/mo)'] },
-  { id: 'pro',  label: 'Pro',  price: '$4.99/mo', features: ['All lessons', 'All tools', 'Unlimited custom lessons', 'Progress tracking', 'Ad-free'], highlight: true },
+  { id: 'free', amount: '$0',    features: ['lessons4', 'tools4', 'custom3'] },
+  { id: 'pro',  amount: '$4.99', perMonth: true, features: ['allLessons', 'allTools', 'customUnlim', 'progress', 'adFree'], highlight: true },
 ]
 
 export default function SettingsView({ lang, onLang, theme, onTheme, textSize, onTextSize, muted, onMuted, plan, onPlan, adminMode, onAdminMode }) {
@@ -86,13 +91,13 @@ export default function SettingsView({ lang, onLang, theme, onTheme, textSize, o
               onClick={() => onPlan(p.id)}
             >
               <div className="plan-header">
-                <span className="plan-name">{p.label}</span>
-                <span className="plan-price">{p.price}</span>
+                <span className="plan-name">{tr(lang, PLAN_NAMES, p.id)}</span>
+                <span className="plan-price">{p.amount}{p.perMonth ? tr(lang, PLAN_NAMES, 'perMonth') : ''}</span>
               </div>
               <ul className="plan-features">
-                {p.features.map((f, i) => <li key={i}><CheckIcon width={13} height={13} />{f}</li>)}
+                {p.features.map(f => <li key={f}><CheckIcon width={13} height={13} />{tr(lang, PLAN_FEATURES, f)}</li>)}
               </ul>
-              {plan === p.id && <span className="plan-current">Current plan</span>}
+              {plan === p.id && <span className="plan-current">{tr(lang, PLAN_NAMES, 'currentPlan')}</span>}
             </button>
           ))}
         </div>

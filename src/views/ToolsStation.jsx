@@ -1,20 +1,21 @@
 import { useState } from 'react'
+import { TOOL_NAMES, tr } from '../i18n/catalog.js'
 
 const ALL_TOOLS = [
-  { id: 'numbers',       emoji: '🎲', label: 'Number Dots', color: '#4ade80', bg: 'linear-gradient(135deg,#14532d,#166534)' },
-  { id: 'clock',         emoji: '🕐', label: 'Clock',       color: '#22d3ee', bg: 'linear-gradient(135deg,#164e63,#0e7490)' },
-  { id: 'mult',          emoji: '✖️', label: 'Times Table', color: '#c084fc', bg: 'linear-gradient(135deg,#4c1d95,#6d28d9)' },
-  { id: 'mdas',          emoji: '🧮', label: 'Order of Ops', color: '#fb923c', bg: 'linear-gradient(135deg,#7c2d12,#c2410c)' },
-  { id: 'perimeter-tool',emoji: '📐', label: 'Perimeter',  color: '#60a5fa', bg: 'linear-gradient(135deg,#1e3a5f,#1d4ed8)',  comingSoon: true },
-  { id: 'area-tool',     emoji: '🔷', label: 'Area',       color: '#38bdf8', bg: 'linear-gradient(135deg,#0c4a6e,#0369a1)',  comingSoon: true },
-  { id: 'angles-tool',   emoji: '📏', label: 'Angles',     color: '#67e8f9', bg: 'linear-gradient(135deg,#083344,#155e75)',  comingSoon: true },
-  { id: 'pythagore-tool',emoji: '📐', label: 'Pythagoras', color: '#fbbf24', bg: 'linear-gradient(135deg,#451a03,#92400e)',  comingSoon: true },
-  { id: 'equation-tool', emoji: '⚖️', label: 'Equations',  color: '#f472b6', bg: 'linear-gradient(135deg,#831843,#9d174d)',  comingSoon: true },
-  { id: 'fractions-tool',emoji: '½',  label: 'Fractions',  color: '#34d399', bg: 'linear-gradient(135deg,#064e3b,#065f46)',  comingSoon: true },
-  { id: 'graph-tool',    emoji: '📈', label: 'Functions',  color: '#34d399', bg: 'linear-gradient(135deg,#022c22,#14532d)',  comingSoon: true },
-  { id: 'unit-convert',  emoji: '📏', label: 'Conversions', color: '#fbbf24', bg: 'linear-gradient(135deg,#451a03,#92400e)',  comingSoon: true },
-  { id: 'stats-tool',    emoji: '📊', label: 'Statistics',  color: '#fbbf24', bg: 'linear-gradient(135deg,#431407,#7c2d12)',  comingSoon: true },
-  { id: 'calendar',      emoji: '📅', label: 'Calendar',    color: '#a78bfa', bg: 'linear-gradient(135deg,#3b0764,#6d28d9)',  comingSoon: true },
+  { id: 'numbers',       emoji: '🎲', color: '#4ade80', bg: 'linear-gradient(135deg,#14532d,#166534)' },
+  { id: 'clock',         emoji: '🕐',       color: '#22d3ee', bg: 'linear-gradient(135deg,#164e63,#0e7490)' },
+  { id: 'mult',          emoji: '✖️', color: '#c084fc', bg: 'linear-gradient(135deg,#4c1d95,#6d28d9)' },
+  { id: 'mdas',          emoji: '🧮', color: '#fb923c', bg: 'linear-gradient(135deg,#7c2d12,#c2410c)' },
+  { id: 'perimeter-tool',emoji: '📐',  color: '#60a5fa', bg: 'linear-gradient(135deg,#1e3a5f,#1d4ed8)',  comingSoon: true },
+  { id: 'area-tool',     emoji: '🔷',       color: '#38bdf8', bg: 'linear-gradient(135deg,#0c4a6e,#0369a1)',  comingSoon: true },
+  { id: 'angles-tool',   emoji: '📏',     color: '#67e8f9', bg: 'linear-gradient(135deg,#083344,#155e75)',  comingSoon: true },
+  { id: 'pythagore-tool',emoji: '📐', color: '#fbbf24', bg: 'linear-gradient(135deg,#451a03,#92400e)',  comingSoon: true },
+  { id: 'equation-tool', emoji: '⚖️',  color: '#f472b6', bg: 'linear-gradient(135deg,#831843,#9d174d)',  comingSoon: true },
+  { id: 'fractions-tool',emoji: '½',  color: '#34d399', bg: 'linear-gradient(135deg,#064e3b,#065f46)',  comingSoon: true },
+  { id: 'graph-tool',    emoji: '📈',  color: '#34d399', bg: 'linear-gradient(135deg,#022c22,#14532d)',  comingSoon: true },
+  { id: 'unit-convert',  emoji: '📏', color: '#fbbf24', bg: 'linear-gradient(135deg,#451a03,#92400e)',  comingSoon: true },
+  { id: 'stats-tool',    emoji: '📊',  color: '#fbbf24', bg: 'linear-gradient(135deg,#431407,#7c2d12)',  comingSoon: true },
+  { id: 'calendar',      emoji: '📅',    color: '#a78bfa', bg: 'linear-gradient(135deg,#3b0764,#6d28d9)',  comingSoon: true },
 ]
 
 const COLS = 3
@@ -76,7 +77,7 @@ function ToolCard({ tool, onOpen, lang }) {
       disabled={tool.comingSoon}
     >
       <span className="tool-card-emoji">{tool.emoji}</span>
-      <span className="tool-card-label">{tool.label}</span>
+      <span className="tool-card-label">{tr(lang, TOOL_NAMES, tool.id)}</span>
       {tool.comingSoon && <span className="tool-card-soon-badge">🔒</span>}
     </button>
   )

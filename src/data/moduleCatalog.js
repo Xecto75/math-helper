@@ -447,10 +447,26 @@ Given a topic or lesson description, first classify the request, then — only i
 Available modules:
 ${Object.entries(MODULES).map(([id, m]) => `  ${id.padEnd(12)} — ${m.description}`).join('\n')}
 
+Prompts arrive in ANY language (English, French, German, Spanish, Italian,
+Portuguese…), often informal, unpunctuated, and misspelled. Language, spelling
+and phrasing are NEVER grounds for "off-topic" — classify on SUBJECT MATTER only.
+Expect and accept misspelled math terms ("pytagore", "pythagore", "equation du
+2eme degre", "trigo").
+
 Step 1 — classify:
-  "ok"        — a math request specific enough to build a lesson for.
-  "off-topic" — clearly not math (languages, history, event planning, general knowledge, coding, non-math science, personal advice, etc).
-  "clarify"   — mentions math but names no actual topic (e.g. "help me with my math homework").
+  "ok"        — the subject is mathematics. ANY phrasing counts, not just
+                "make me a lesson": a direct question ("how do I find c?"),
+                a how-to, a concept comparison ("when do I use the law of sines
+                vs cosines?"), a request for exercises or practice, or a bare
+                topic name. If a math teacher would answer it, it is "ok".
+  "off-topic" — the SUBJECT is not mathematics (languages, history, event
+                planning, general knowledge, coding, non-math science,
+                personal advice). Not for odd phrasing or a foreign language.
+  "clarify"   — mentions math but names NO topic at all (e.g. "help me with my
+                math homework", "j'ai besoin d'aide en maths"). If any topic is
+                named — fractions, equations, triangles… — it is "ok", however
+                vague or discouraged the wording ("I don't get fractions at all,
+                help" names fractions, so it is "ok", NOT clarify).
   "trivial"   — a fully-specified arithmetic question with a one-line answer, not worth a full lesson (e.g. "2+2", "15% of 80").
 
   Math includes: algebra, geometry, trigonometry, calculus, statistics, functions, arithmetic.
@@ -479,6 +495,16 @@ Examples:
   "compare student scores in a table"             → {"status":"ok","modules":["table","text"]}
   "derivative of f(x) = x³"                      → {"status":"ok","modules":["graph","text","calc"]}
   "9/11"                                          → {"status":"ok","modules":["equation","text"]}
+
+  Non-English, informal, misspelled — all "ok". These are REAL failures the
+  router previously rejected as off-topic; treat them as the reference bar:
+  "comment on fait pour trouver c dans pytagore"  → {"status":"ok","modules":["geo2d","equation","text","comments"]}
+  "donne moi des exercices sur les equation du 2eme degre" → {"status":"ok","modules":["equation","text"]}
+  "la loi des sinus vs cosinus cest quand on utilise laquelle" → {"status":"ok","modules":["geo2d","equation","text","comments"]}
+  "2x-6+3x=8 ca fait quoi"                        → {"status":"ok","modules":["equation","text"]}
+  "wie berechne ich den Umfang eines Kreises"     → {"status":"ok","modules":["geo2d","equation","text"]}
+  "¿cómo se resuelve una ecuación de segundo grado?" → {"status":"ok","modules":["equation","text"]}
+
   "how do I conjugate French verbs"               → {"status":"off-topic"}
   "write me a python script to sort a list"       → {"status":"off-topic"}
   "help me with my math problem"                  → {"status":"clarify","message":"Which math topic? (e.g. algebra, geometry, trigonometry…)"}

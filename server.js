@@ -6,6 +6,9 @@ import cors       from 'cors'
 import Anthropic  from '@anthropic-ai/sdk'
 import { CATEGORIES } from './src/data/functions.js'
 import { ROUTER_SYSTEM_PROMPT, buildGeneratorPrompt } from './src/data/moduleCatalog.js'
+import {
+  authConfigured, getUser, getProfile, consumeCredit, refundCredit, FREE_LESSON_LIMIT,
+} from './src/server/auth.js'
 
 const app  = express()
 const port = 3001
@@ -320,11 +323,57 @@ async function generateCompact(prompt, moduleIds, lang = 'en') {
   return { rawText, cost }
 }
 
+// ── Who am I / what's left ────────────────────────────────────────────────────
+// The client renders from this, but never decides from it — the generate
+// endpoint re-checks everything server-side on each call.
+app.get('/api/me', async (req, res) => {
+  if (!authConfigured) return res.json({ authConfigured: false })
+  const { user, error, status } = await getUser(req)
+  if (error) return res.status(status).json({ error })
+
+  const { profile, error: pErr, status: pStatus } = await getProfile(user)
+  if (pErr) return res.status(pStatus).json({ error: pErr })
+
+  const used = profile.plan === 'pro' ? 0 : profile.lessons_used
+  res.json({
+    authConfigured: true,
+    email: profile.email,
+    displayName: profile.display_name,
+    plan: profile.plan,
+    lessonsUsed: used,
+    freeLimit: FREE_LESSON_LIMIT,
+    lessonsLeft: profile.plan === 'pro' ? null : Math.max(0, FREE_LESSON_LIMIT - used),
+  })
+})
+
 // ── API endpoint ──────────────────────────────────────────────────────────────
 
 app.post('/api/generate-lesson', async (req, res) => {
   const { prompt, lang = 'en' } = req.body
   if (!prompt?.trim()) return res.status(400).json({ error: 'prompt is required' })
+
+  // Gate BEFORE any paid API call. Identity and quota are checked here,
+  // server-side, because this is the only place that cannot be bypassed. The
+  // client also hides the button when a user is out of credits, but that is
+  // cosmetic: anyone can POST straight to this endpoint, and each call spends
+  // real money on the Anthropic API.
+  let auth = null
+  if (authConfigured) {
+    const { user, error, status } = await getUser(req)
+    if (error) return res.status(status).json({ error })
+
+    const { result, error: qErr, status: qStatus } = await consumeCredit(user.id)
+    if (qErr) return res.status(qStatus).json({ error: qErr })
+    if (!result?.allowed) {
+      return res.status(402).json({
+        error: 'quota_exceeded',
+        plan:  result?.plan ?? 'free',
+        used:  result?.lessons_used ?? 0,
+        limit: result?.free_limit ?? FREE_LESSON_LIMIT,
+      })
+    }
+    auth = { user, quota: result }
+  }
 
   let rawApiText = null
   try {
@@ -332,6 +381,8 @@ app.post('/api/generate-lesson', async (req, res) => {
     const route = await routeModules(prompt)
 
     if (route.status !== 'ok') {
+      // No lesson was produced, so the credit should not be spent.
+      if (auth) await refundCredit(auth.user.id)
       return res.json({ status: route.status, message: route.message })
     }
     const moduleIds = route.modules
@@ -356,6 +407,9 @@ app.post('/api/generate-lesson', async (req, res) => {
     res.json({ lesson, modules: moduleIds })
 
   } catch (err) {
+    // The user asked for a lesson and did not get one — that is on us, not on
+    // their monthly allowance.
+    if (auth) await refundCredit(auth.user.id)
     console.error('generate-lesson error:', err)
     console.error('raw API output:\n', rawApiText)
     res.status(500).json({ error: err.message ?? 'Generation failed', rawOutput: rawApiText })

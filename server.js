@@ -78,6 +78,15 @@ app.post('/api/example-locks/:id', (req, res) => {
   res.json({ ok: true })
 })
 
+// Rate card, $ per million tokens. Kept in one place because these numbers are
+// what any usage-based billing is derived from — a stale constant here silently
+// under- or over-charges every request. Haiku 4.5 is $1/$5; the router was
+// costed at $0.8/$4, understating every routing call by ~20%.
+const HAIKU_IN  = 1.00
+const HAIKU_OUT = 5.00
+const SONNET_IN = 3.00   // cache write 1.25x, cache read 0.1x
+const SONNET_OUT = 15.00
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // ── Compact codec ─────────────────────────────────────────────────────────────
@@ -257,7 +266,7 @@ async function routeModules(prompt) {
   })
   const raw  = message.content[0]?.text?.trim() ?? '{}'
   const u    = message.usage ?? {}
-  const cost = (u.input_tokens * 0.8 + u.output_tokens * 4) / 1_000_000
+  const cost = (u.input_tokens * HAIKU_IN + u.output_tokens * HAIKU_OUT) / 1_000_000
   console.log(`\n─── Router (haiku) ${Date.now() - t0}ms  in:${u.input_tokens} out:${u.output_tokens}  $${cost.toFixed(5)}`)
   console.log('  raw:', raw)
 
@@ -276,8 +285,8 @@ async function routeModules(prompt) {
 
 // ── Request 2: Generator ──────────────────────────────────────────────────────
 
-async function generateCompact(prompt, moduleIds) {
-  const systemPrompt = buildGeneratorPrompt(moduleIds)
+async function generateCompact(prompt, moduleIds, lang = 'en') {
+  const systemPrompt = buildGeneratorPrompt(moduleIds, lang)
   const t0 = Date.now()
 
   console.log(`\n─── Generator (sonnet) modules=[${moduleIds.join(',')}]`)
@@ -301,7 +310,7 @@ async function generateCompact(prompt, moduleIds) {
     cWrite: u.cache_creation_input_tokens ?? 0,
     out:    u.output_tokens               ?? 0,
   }
-  const cost = (tok.in * 3 + tok.cWrite * 3.75 + tok.cRead * 0.30 + tok.out * 15) / 1_000_000
+  const cost = (tok.in * SONNET_IN + tok.cWrite * SONNET_IN * 1.25 + tok.cRead * SONNET_IN * 0.1 + tok.out * SONNET_OUT) / 1_000_000
   console.log(`  ${Date.now() - t0}ms  in:${tok.in} cRead:${tok.cRead} cWrite:${tok.cWrite} out:${tok.out}  $${cost.toFixed(5)}`)
   console.log('  stop reason:', message.stop_reason)
   console.log('─── raw output ──────────────────────────────')
@@ -314,7 +323,7 @@ async function generateCompact(prompt, moduleIds) {
 // ── API endpoint ──────────────────────────────────────────────────────────────
 
 app.post('/api/generate-lesson', async (req, res) => {
-  const { prompt } = req.body
+  const { prompt, lang = 'en' } = req.body
   if (!prompt?.trim()) return res.status(400).json({ error: 'prompt is required' })
 
   let rawApiText = null
@@ -328,7 +337,7 @@ app.post('/api/generate-lesson', async (req, res) => {
     const moduleIds = route.modules
 
     // ── Step 2: Generate ─────────────────────────────────────────────────────
-    const gen = await generateCompact(prompt, moduleIds)
+    const gen = await generateCompact(prompt, moduleIds, lang)
     rawApiText = gen.rawText
 
     const compact  = parseCompact(rawApiText)

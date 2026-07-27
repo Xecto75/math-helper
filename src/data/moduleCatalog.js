@@ -31,10 +31,11 @@ tc/tf only for a key formula or label — never prose. Every step must be a visu
 COLORS: 0=red 1=purple 2=orange 3=green 4=yellow 5=pink 6=teal 7=white
   Never use blue. Never repeat a color on the same page.
 
-LENGTH: 5–6 pages — NEVER fewer than 5. A one- or two-page answer is a failure.
+LENGTH: scale to the topic — typically 4–6 pages, 3 minimum and 8 maximum.
+  A one- or two-page answer does not teach enough; beyond 8 it stops being one lesson.
   Build a full lesson arc: concept → worked example → a second, different case → recap.
   Each page must earn its place (its own idea, its own visual) — do not pad a thin
-  idea across pages, split the topic into genuinely distinct stages instead.
+  idea across pages, and do not cram distinct stages onto one page.
   max 8 steps/page · no padding steps
 TEXT(tc/tf): lines sep by | · $latex$ inline · **bold** · JSON: double backslashes (\\\\frac not \\frac)
 tc max 3 lines — prefer the c* comment codes (cf/cG/cE/…) or labels over tc for brief annotations.
@@ -490,8 +491,29 @@ Examples:
  * Build the full generator system prompt for a given set of module ids.
  * BASE_RULES + one section per selected module.
  */
-export function buildGeneratorPrompt(moduleIds) {
+// Language names the model is asked to write in. Only the Latin-alphabet
+// languages the interface itself is translated into — the lesson renderer
+// handles accents and diacritics fine (French has shipped for a long time),
+// but a non-Latin script would need font and layout work first.
+const LANG_NAMES = { en: 'English', fr: 'French', de: 'German', es: 'Spanish' }
+
+export function buildGeneratorPrompt(moduleIds, lang = 'en') {
   const parts = [BASE_RULES.trim()]
+
+  // Appended after the base rules, and scoped to learner-visible prose only:
+  // compact codes, layout codes, ids and colour names are format, not content —
+  // translating those breaks parsing.
+  const langName = LANG_NAMES[lang]
+  if (langName && lang !== 'en') {
+    parts.push(
+      `\n${'═'.repeat(60)}\nLANGUAGE\n${'═'.repeat(60)}\n` +
+      `Write every learner-visible string in ${langName}: page titles, ` +
+      `text-box titles and content, and comment text.\n` +
+      `Do NOT translate anything structural — compact function codes, layout ` +
+      `codes, shape ids, colour names, ids you invent, and mathematical ` +
+      `notation all stay exactly as documented above.`
+    )
+  }
 
   for (const id of moduleIds) {
     const m = MODULES[id]

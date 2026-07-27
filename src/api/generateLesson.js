@@ -4,11 +4,11 @@ const STATUS_FALLBACK = {
   trivial:     "That's already a one-line answer — try a topic worth a full lesson.",
 }
 
-export async function generateLesson(prompt) {
+export async function generateLesson(prompt, lang = 'en') {
   const res = await fetch('/api/generate-lesson', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ prompt }),
+    body:    JSON.stringify({ prompt, lang }),
   })
   const data = await res.json()
   if (!res.ok) {

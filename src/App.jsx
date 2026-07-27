@@ -937,7 +937,7 @@ export default function App() {
     setAiError('')
     setAiRawOutput(null)
     try {
-      const raw    = await generateLesson(trimmed)
+      const raw    = await generateLesson(trimmed, langRef.current)
       const loaded = pagesFromJson(raw)
       const draft  = loaded.map(p => ({
         title: p.title, layout: p.layout,

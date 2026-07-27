@@ -1,15 +1,19 @@
-import { u } from '../i18n/uiText.js'
+import { u, SUPPORTED_LANGS } from '../i18n/uiText.js'
 import {
   GlobeIcon, SunIcon, MoonIcon, TypeIcon, VolumeIcon, VolumeMuteIcon,
   CreditCardIcon, TerminalIcon, CheckIcon,
 } from '../components/Icon.jsx'
 
+// comingSoon is derived, not hand-maintained: a language is selectable exactly
+// when UI strings exist for it (SUPPORTED_LANGS), so the list can never offer a
+// language whose labels would silently fall back to English.
 const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español',  comingSoon: true },
-  { code: 'de', label: 'Deutsch',  comingSoon: true },
-  { code: 'zh', label: '中文',      comingSoon: true },
-]
+  { code: 'en', label: 'English'  },
+  { code: 'fr', label: 'Français' },
+  { code: 'de', label: 'Deutsch'  },
+  { code: 'es', label: 'Español'  },
+  { code: 'zh', label: '中文'     },
+].map(l => ({ ...l, comingSoon: !SUPPORTED_LANGS.includes(l.code) }))
 
 const TEXT_SIZES = ['small', 'normal', 'large']
 

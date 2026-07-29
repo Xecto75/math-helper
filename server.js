@@ -6,6 +6,7 @@ import cors       from 'cors'
 import Anthropic  from '@anthropic-ai/sdk'
 import { CATEGORIES } from './src/data/functions.js'
 import { ROUTER_SYSTEM_PROMPT, buildGeneratorPrompt } from './src/data/moduleCatalog.js'
+import { EXAMPLE_LESSONS } from './src/data/exampleLessons.js'
 import {
   authConfigured, getUser, getProfile, consumeCredit, refundCredit, FREE_LESSON_LIMIT,
 } from './src/server/auth.js'
@@ -92,170 +93,11 @@ const SONNET_OUT = 15.00
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// ── Compact codec ─────────────────────────────────────────────────────────────
-
-const LAYOUTS = {
-  // Single-panel
-  sg: 'single-graph',     sG: 'single-geo',    sq: 'single-grid',
-  se: 'single-equation',  sc: 'single-calc',   s3: 'single-3d',
-  sm: 'single-mult',      sk: 'single-clock',  sn: 'single-numbers',
-  sM: 'text-mdas',        sT: 'single-text',
-  // Dual-panel
-  tg: 'text-graph',       tG: 'text-geo',      tq: 'text-grid',
-  te: 'text-equation',
-  ge: 'graph-equation',   Ge: 'geo-equation',   qe: 'grid-equation',
-}
-
-const FUNCS = {
-  // ── Text boxes ──────────────────────────────────────────────────────────────
-  tc: 'text-create',         ti: 'text-add-item',       tx: 'text-remove-item',
-  tt: 'text-update-title',   td: 'text-remove',         tf: 'text-fade-content',
-
-  // ── Equation ────────────────────────────────────────────────────────────────
-  eq: 'eq-create',           ec: 'eq-combine',          eD: 'eq-distribute',
-  es: 'eq-send-other-side',  eo: 'eq-reorder',          ed: 'eq-divide',
-  ef: 'eq-full-solve',       ev: 'eq-replace-variable', er: 'eq-racine-des-bords',
-  ea: 'eq-apply-inverse-trig', ee: 'eq-disparition-exposant',
-  eS: 'eq-save-result',        em: 'eq-multiply',
-
-  // ── Canvas geometry (SVG) ───────────────────────────────────────────────────
-  gp: 'geo-create-polygon',  gx: 'geo-erase-shape',     gm: 'geo-move-shape',
-  gh: 'geo-highlight-shape', gl: 'geo-label-sides',     gt: 'geo-add-text',
-  ga: 'geo-show-angles',     gw: 'geo-show-arrow',      gW: 'geo-remove-arrow',
-  gE: 'geo-highlight-edge',  gA: 'geo-highlight-angle', gC: 'geo-clear',
-  gr: 'geo-show-measure',    gM: 'geo-show-area-measures', gP: 'geo-show-perimeter-measures',
-
-  // ── 2D shapes — Three.js flat (screen-locked) ───────────────────────────────
-  S2c: 'geo3d-create-2d',
-  S2m: 'geo3d-move',
-  S2h: 'geo3d-highlight',
-  S2l: 'geo3d-label-sides',
-  S2a: 'geo3d-show-angles',
-  S2A: 'geo3d-highlight-angle',
-  S2E: 'geo3d-highlight-edge',    S2Ex: 'geo3d-remove-edge-highlight',
-  S2F: 'geo3d-highlight-face',    S2Fx: 'geo3d-remove-face-highlight',
-  S3m: 'geo3d-show-volume-measures', S3mx: 'geo3d-remove-volume-measures',
-  S2tk: 'geo3d-show-tick',    S2tx: 'geo3d-remove-tick',
-  S2w: 'geo3d-show-arrow',
-  S2W: 'geo3d-remove-arrow',
-  S2H: 'geo3d-clear-highlights',
-  S2v: 'geo3d-set-view',
-  S2x: 'geo3d-remove',
-  S2f: 'geo2d-flip',
-  S2r: 'geo2d-rotate',
-
-  // ── 3D shapes — Three.js volumetric (rotatable) ─────────────────────────────
-  S3c: 'geo3d-create',
-  S3t: 'geo3d-add-text',
-  S3x: 'geo3d-remove',
-  S3C: 'geo3d-clear',
-
-  // ── Graph (Desmos) ───────────────────────────────────────────────────────────
-  fp:  'graph-plot-function',      fx:  'graph-remove-function',
-  fs:  'graph-shade-area',         fi:  'graph-find-intersections',
-  fa:  'graph-add-point',          fap: 'graph-remove-point',
-  fbf: 'graph-best-fit-line',
-  fsc: 'graph-scatter-plot',       fscx: 'graph-remove-scatter-plot',
-  fsg: 'graph-add-segment',       fsgx: 'graph-remove-segment',
-  fst: 'graph-segment-tick',      fstx: 'graph-remove-segment-tick',
-  fsd: 'graph-divide-segment',    fsdx: 'graph-remove-divide-segment',
-  fv:  'graph-adjust-view',        fV:  'graph-set-viewport',
-  fn:  'graph-name-func',          ft:  'graph-tangent',
-  fh:  'graph-horizontal-line',    fr:  'graph-mark-roots',
-  fP:  'graph-show-projection',    fd:  'graph-plot-derivative',
-  fR:  'graph-riemann-sum',        fD:  'graph-draw-vector',
-  fT:  'graph-transform-function', fg:  'graph-draw-angle',
-  fB:  'graph-batch-add-points',   fBP: 'graph-batch-show-projections',
-  fTC: 'graph-trig-circle',
-
-  // ── Data tables ──────────────────────────────────────────────────────────────
-  Tt: 'table-create',
-  Tc: 'tab-create-grid',    Tx: 'tab-erase-grid',     Ta: 'tab-add-column',
-  Tr: 'tab-remove-column',  TR: 'tab-add-row',        TrR: 'tab-remove-row',
-  Tv: 'tab-change-value',   TV: 'tab-change-values',
-  Th: 'tab-highlight-row',  Thx: 'tab-clear-row-highlight',
-
-  // ── Comments & misc ──────────────────────────────────────────────────────────
-  cg: 'cmt-graph',       cf: 'cmt-graph-func',   cA: 'cmt-graph-area',
-  cq: 'cmt-grid',        cG: 'cmt-geo',          cE: 'cmt-geo-edge',
-  ce: 'cmt-equation',    cx: 'cmt-clear',         cu: 'cmt-update',
-  n:  'narrate',
-
-  // ── Page flow ────────────────────────────────────────────────────────────────
-  sL: 'set-layout',
-
-  // ── Step-by-step calc ────────────────────────────────────────────────────────
-  Cs: 'calc-step',   Cc: 'calc-clear',
-
-  // ── Arithmetic / multiplication (still used by lesson builder) ───────────────
-  as: 'arith-solve',
-  mt: 'mult-table-show',     mh: 'mult-table-highlight',
-  ck: 'clock-show',          ct: 'clock-set-time',      ch: 'clock-highlight-hand',
-  ns: 'numbers-show',        nh: 'numbers-show-numeral',
-  Mx: 'mdas-example',
-}
-
-// Build input metadata from the live function catalog
-const FUNC_META = {}
-for (const cat of CATEGORIES) {
-  for (const fn of cat.functions) {
-    FUNC_META[fn.id] = fn.inputs
-  }
-}
-
-const CLR = ['red','purple','orange','green','yellow','pink','teal','white']
-
-function expandStep([code, ...vals]) {
-  const funcId = FUNCS[code]
-  if (!funcId) throw new Error(`Unknown compact func code: "${code}"`)
-  const inputDefs = FUNC_META[funcId] ?? []
-  const inputs = {}
-  inputDefs.forEach((def, i) => {
-    if (i >= vals.length || vals[i] === null || vals[i] === undefined || vals[i] === '') return
-    const raw = vals[i]
-    if (def.type === 'color-name' && typeof raw === 'number') {
-      inputs[def.id] = CLR[raw] ?? String(raw)
-      return
-    }
-    const isBoolSelect = def.type === 'select' &&
-      def.options?.some(o => o.value === 'false') &&
-      def.options?.some(o => o.value === 'true')
-    inputs[def.id] = (typeof raw === 'number' && isBoolSelect)
-      ? (raw === 0 ? 'false' : 'true')
-      : String(raw)
-  })
-  return { func: funcId, inputs }
-}
-
-function expandCompact(compact) {
-  return compact.map(([title, layoutCode, steps]) => ({
-    title:  title ?? '',
-    layout: LAYOUTS[layoutCode] ?? layoutCode,
-    steps:  (steps ?? []).map(expandStep),
-  }))
-}
-
-// ── JSON repair ───────────────────────────────────────────────────────────────
-// Repair lone backslashes that the model forgot to double.
-function repairBackslashes(raw) {
-  const PH = '\x00'
-  let s = raw
-  s = s.replace(/\\\\/g, PH)
-  s = s.replace(/\\u(?![0-9a-fA-F]{4})/g, PH + 'u')
-  s = s.replace(/\\([ftnrb])(?=[a-zA-Z])/g, PH + '$1')
-  s = s.replace(/\\(?!["\\/bfnrtu])/g, PH)
-  return s.split(PH).join('\\\\')
-}
-
-function parseCompact(rawText) {
-  let raw = rawText.trim()
-  raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
-  const start = raw.indexOf('[')
-  const end   = raw.lastIndexOf(']')
-  if (start === -1 || end === -1 || end < start)
-    throw new Error('Response contained no JSON array')
-  return JSON.parse(repairBackslashes(raw.slice(start, end + 1)))
-}
+import {
+  LAYOUTS, FUNCS, CLR, FUNC_META,
+  expandStep, expandCompact, compactStep, compactLesson,
+  repairBackslashes, parseCompact, modulesForCompact,
+} from './src/server/codec.js'
 
 // ── Request 1: Router ─────────────────────────────────────────────────────────
 
@@ -276,20 +118,40 @@ async function routeModules(prompt) {
   let result
   try {
     const parsed = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1))
-    result = { status: parsed.status ?? 'ok', modules: parsed.modules ?? [], message: parsed.message }
+    result = { status: parsed.status ?? 'ok', modules: parsed.modules ?? [], message: parsed.message, exampleId: parsed.exampleId ?? null }
   } catch {
     console.warn('  Router parse failed — falling back to equation+text')
-    result = { status: 'ok', modules: ['equation', 'text'] }
+    result = { status: 'ok', modules: ['equation', 'text'], exampleId: null }
   }
-  console.log('  status:', result.status, result.status === 'ok' ? `modules:${result.modules}` : result.message ?? '')
+  console.log('  status:', result.status, result.status === 'ok' ? `modules:${result.modules} example:${result.exampleId ?? '—'}` : result.message ?? '')
   result.cost = cost
   return result
 }
 
 // ── Request 2: Generator ──────────────────────────────────────────────────────
 
-async function generateCompact(prompt, moduleIds, lang = 'en') {
-  const systemPrompt = buildGeneratorPrompt(moduleIds, lang)
+// Resolve the router's pick to compact form. Overrides win over the bundled
+// source, so the reference is whatever the author last saved.
+function referenceLesson(exampleId) {
+  if (!exampleId) return null
+  const pages = readOverridesFile()[exampleId]
+             ?? EXAMPLE_LESSONS.find(e => e.id === exampleId)?.pages
+  if (!pages) return null
+  try { return compactLesson(pages) } catch { return null }
+}
+
+async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null) {
+  const reference = referenceLesson(exampleId)
+
+  // Whatever the reference lesson uses, its docs must be in the prompt too —
+  // otherwise we hand the model codes it has no definition for and it copies
+  // them blindly. Union, not replace: the router's picks reflect what the USER
+  // asked for, the reference's are what the EXAMPLE needs to be readable.
+  const needed = reference ? modulesForCompact(reference) : []
+  const merged = [...new Set([...moduleIds, ...needed])]
+  const added  = needed.filter(m => !moduleIds.includes(m))
+
+  const systemPrompt = buildGeneratorPrompt(merged, lang, reference)
   const t0 = Date.now()
 
   console.log(`\n─── Generator (sonnet) modules=[${moduleIds.join(',')}]`)
@@ -388,7 +250,7 @@ app.post('/api/generate-lesson', async (req, res) => {
     const moduleIds = route.modules
 
     // ── Step 2: Generate ─────────────────────────────────────────────────────
-    const gen = await generateCompact(prompt, moduleIds, lang)
+    const gen = await generateCompact(prompt, moduleIds, lang, route.exampleId)
     rawApiText = gen.rawText
 
     const compact  = parseCompact(rawApiText)

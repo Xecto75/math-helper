@@ -18,6 +18,8 @@
 // ── BASE RULES ────────────────────────────────────────────────────────────────
 // Injected into every generator call, regardless of module selection.
 
+import { EXAMPLE_LESSONS } from './exampleLessons.js'
+
 export const BASE_RULES = `Lesson generator for math-engine. Return ONLY raw JSON, no prose, no fences.
 
 FORMAT: [["Title","LC",[["FC",a,...],...]],...]
@@ -111,15 +113,6 @@ FUNCTIONS [positional args]:
   ee:[equation,newDegree]            — change exponent (fade old, fade in new)
 
 INTENT: algebra/solve-for-x → te+eq-* | geo+equation mix → Ge layout
-
-EXAMPLE — linear equation:
-[["Solve 3x + 6 = 15","te",[["tc","b","Linear Equation","$3x + 6 = 15$",0,""],["eq","3x + 6 = 15"],["ef"]]]]
-
-EXAMPLE — quadratic manual steps:
-[["x² − 5x + 6 = 0","te",[["tc","b","Quadratic","$x^2 - 5x + 6 = 0$",0,""],["eq","x^2 - 5x + 6 = 0"],["ec"],["es",0],["ed",1]]]]
-
-EXAMPLE — chained solve, find y=mx+b from two points (save m, use it to find b, then show both):
-[["Line through (2,3) and (4,5)","ge",[["fa",2,3,"p1"],["fa",4,5,"p2"],["eq","m = (y2 - y1) / (x2 - x1)"],["ev","y2=[p2]y,y1=[p1]y,x2=[p2]x,x1=[p1]x"],["ef"],["eS","m"],["eq","b = y1 - m * x1"],["ev","y1=[p1]y,m=[m]v,x1=[p1]x"],["ef"],["eS","b"],["eq","y = m*x + b"],["ev","m=[m]v,b=[b]v"]]]]
 `,
   },
 
@@ -178,18 +171,6 @@ ARROWS: S2w draws an animated arrow from one anchor to another inside the polygo
   arrowId must be unique per shape so multiple arrows can coexist and be removed independently.
   Use to show relationships: e.g. angle v2 is opposite to edge e0 in a right-triangle.
 ORDERING: S2c MUST come before S2l/S2a/S2h/S2E/S2A/S2w/S2x on the same shape.
-
-EXAMPLE — right triangle with Pythagorean theorem:
-[["Pythagorean Theorem","s3",[["S2c","tri","right-triangle","3,4"],["S2E","tri",0,3],["S2E","tri",1,2],["S2E","tri",2,1],["S2a","tri",4],["S2l","tri","a,b,c"]]]]
-
-EXAMPLE — arrow from angle vertex to opposite edge (shows side-angle relationship):
-[["Opposite Side","s3",[["S2c","tri","right-triangle","3,4"],["S2a","tri",3],["S2l","tri",""],["S2w","tri","a1","v2","e0",4]]]]
-
-EXAMPLE — rectangle with labeled sides and highlighted angle:
-[["Rectangle","s3",[["S2c","rect","rectangle","6,4"],["S2l","rect",""],["S2A","rect",0,4],["S2A","rect",2,4]]]]
-
-EXAMPLE — circle:
-[["Circle","s3",[["S2c","circ","circle","3"],["S2h","circ"]]]]
 `,
   },
 
@@ -229,15 +210,6 @@ The shape auto-spins; no camera control needed.
 Use S3t for volume/surface-area formulas below the shape.
 Face/edge highlighting (S2E/S2F) only works on box-shaped solids (cube, prism,
 rectangular-prism) — curved and other polyhedra solids aren't supported yet.
-
-EXAMPLE — cube with volume:
-[["Cube","s3",[["S3c","box","cube",3,"","",1],["S3t","lbl","V = a³ = {{ 3**3 }} units³",0,-4]]]]
-
-EXAMPLE — cylinder:
-[["Cylinder","s3",[["S3c","cyl","cylinder",2,5,"",3],["S3t","lbl2","V = πr²h = {{ pi * 4 * 5 }}",0,-5]]]]
-
-EXAMPLE — highlight a face + an edge on a rectangular prism:
-[["Surface Area","s3",[["S3c","box","rectangular-prism",4,3,2,1],["S2F","box",2,3],["S2E","box",0,4]]]]
 `,
   },
 
@@ -281,9 +253,6 @@ chaining several gE+gl calls when teaching perimeter.
 RICH REFS in tc: [id]N=side  [id]h=height  [id]r=radius  [id]aN=angle°
 ANGLES: never guess — use {{ [id]aN }}°
 ga/gr/gM/gP clr: ""=light blue
-
-EXAMPLE — circle area:
-[["Circle Area","tG",[["gp","circ","circle","3",0,0,4,0],["gr","circ","",35],["gh","circ"],["tc","b","Circle","A = πr² = {{ pi * [circ]r^2 }}|C = 2πr = {{ 2 * pi * [circ]r }}",0,""]]]]
 `,
   },
 
@@ -334,12 +303,6 @@ color) whenever its expr has |name| sliders — nothing to call for this, it jus
 
 ORDERING: fp must come before fV/fr/fn/fP/ft/fs/cf on the same function
 fP needs a non-root x value (not exactly on an axis intercept)
-
-EXAMPLE — quadratic with roots:
-[["Quadratic f(x)=x²−2x−3","tg",[["fp","x^2-2x-3","f"],["fV",-3,6,-6,8],["fr","f"],["cg","","x=-1",-1,0,1],["cg","","x=3",3,0,2]]]]
-
-EXAMPLE — derivative:
-[["Derivative","sg",[["fp","x^3-3*x","f"],["fd","f"],["fn","f","f(x)",2],["ft","f",1,0]]]]
 `,
   },
 
@@ -364,10 +327,6 @@ FUNCTIONS [positional args]:
                                     walk through a per-row calculation; calling again just slides
                                     the same bar to the new row, no clear step needed between rows
   Thx:[id]                       — fade out the row highlight
-
-EXAMPLE:
-[["3x3 Table","sq",[["Tt","[[2,2,3],[5,5,6],[4,4,4]]"]]]]
-[["Grade Table","sq",[["Tc","t1",3,4,1,"Name,Score,Grade|Alice,95,A|Bob,82,B|Carol,78,B+"],["Tv","t1",2,3,"A-"]]]]
 `,
   },
 
@@ -407,12 +366,6 @@ FUNCTIONS [positional args]:
 
 One step per Cs call. LaTeX inside — double all backslashes.
 INTENT: PEMDAS / order-of-operations / arithmetic → sc+Cs | complex derivations → sc+Cs
-
-EXAMPLE — PEMDAS:
-[["Order of Operations","sc",[["Cs","3 + 4 \\\\times 2"],["Cs","= 3 + 8"],["Cs","= 11"]]]]
-
-EXAMPLE — integral:
-[["Definite Integral","sc",[["Cs","\\\\int_1^4 (2x+1)\\\\,dx"],["Cs","= [x^2+x]_1^4"],["Cs","= (16+4)-(1+1)"],["Cs","= 18"]]]]
 `,
   },
 
@@ -441,11 +394,21 @@ Prefer the c* comment codes over tc for brief labels on visual elements.
 
 // ── ROUTER ────────────────────────────────────────────────────────────────────
 
+// Title + description of every curated lesson, for the router to choose from.
+// Imported rather than duplicated so a new example shows up here automatically.
+export const EXAMPLE_INDEX = EXAMPLE_LESSONS.map(e => ({ id: e.id, title: e.title, desc: e.desc }))
+
 export const ROUTER_SYSTEM_PROMPT = `You are a math lesson module router.
 Given a topic or lesson description, first classify the request, then — only if it needs a lesson — decide which display modules it will need.
 
 Available modules:
 ${Object.entries(MODULES).map(([id, m]) => `  ${id.padEnd(12)} — ${m.description}`).join('\n')}
+
+Reference lessons — hand-built and verified. Pick the ONE closest in STRUCTURE
+to what is being asked; the generator is shown it as a worked model, so choose
+by "which of these is built the way this one should be built", not by keyword
+overlap. Use null only when none is even loosely related:
+${EXAMPLE_INDEX.map(e => `  ${e.id.padEnd(17)} — ${e.title}: ${e.desc}`).join('\n')}
 
 Prompts arrive in ANY language (English, French, German, Spanish, Italian,
 Portuguese…), often informal, unpunctuated, and misspelled. Language, spelling
@@ -480,7 +443,7 @@ Step 2 (only when status is "ok") — pick the minimum module set:
   · geo2d vs geo_canvas: prefer geo2d for new lessons (animated, Three.js); use geo_canvas for SVG constructions or when the lesson specifically needs arrows between vertices.
 
 Reply with ONLY valid JSON — no prose, no fences. One of:
-{"status":"ok","modules":["id1","id2",...]}
+{"status":"ok","modules":["id1","id2",...],"exampleId":"<id from the list above, or null>"}
 {"status":"off-topic"}
 {"status":"clarify","message":"<one short English sentence asking which math topic>"}
 {"status":"trivial","message":"<the direct English answer, one short sentence>"}
@@ -523,8 +486,26 @@ Examples:
 // but a non-Latin script would need font and layout work first.
 const LANG_NAMES = { en: 'English', fr: 'French', de: 'German', es: 'Spanish' }
 
-export function buildGeneratorPrompt(moduleIds, lang = 'en') {
+export function buildGeneratorPrompt(moduleIds, lang = 'en', exampleCompact = null) {
   const parts = [BASE_RULES.trim()]
+
+  // The router picked the closest hand-built lesson; show it in the exact
+  // output format we want back. A real, verified lesson is a far stronger
+  // model than the generic per-module snippets this replaced — and it is one
+  // the author has already approved.
+  if (exampleCompact) {
+    parts.push(
+      `
+${'═'.repeat(60)}
+REFERENCE LESSON
+${'═'.repeat(60)}
+` +
+      `A verified lesson in the exact output format. Follow its structure, its ` +
+      `pacing and its use of steps — do NOT copy its topic or its numbers.
+` +
+      JSON.stringify(exampleCompact)
+    )
+  }
 
   // Appended after the base rules, and scoped to learner-visible prose only:
   // compact codes, layout codes, ids and colour names are format, not content —

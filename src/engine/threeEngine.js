@@ -425,7 +425,9 @@ export function moveShape3D(threeRef, id, dx, dy, dz = 0, duration = 0.5) {
       display.offsetLabels(cmtLabelPrefix, frameDx, frameDy)
       prevP = p
       if (t < 1) requestAnimationFrame(tick)
-      else resolve()
+      // A move can carry the shape past the edge of the frame just as easily as
+      // an oversized shape can, so re-fit once it lands.
+      else { display.fitView2D?.(); resolve() }
     }
     requestAnimationFrame(tick)
   })
@@ -460,6 +462,7 @@ export function flipShape2D(threeRef, id) {
       } else {
         group.scale.x = -origScaleX
       }
+      display.fitView2D?.()
       resolve()
     }
     requestAnimationFrame(tick)
@@ -499,6 +502,9 @@ export function rotateShape2D(threeRef, id, degrees = 90) {
         newGroup.position.copy(savedPos)
         display.addObject(id, newGroup)
       }
+      // A rotated shape has a different bounding box — what fitted lying flat
+      // can stick out once it stands up.
+      display.fitView2D?.()
       resolve()
     }
     requestAnimationFrame(tick)

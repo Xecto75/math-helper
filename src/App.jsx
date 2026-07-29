@@ -1303,12 +1303,19 @@ export default function App() {
           <div className="prompt-row">
             <textarea
               className="prompt-input"
-              placeholder="Describe a lesson and let AI generate it… (Ctrl+Enter)"
+              placeholder="Describe a lesson and let AI generate it…"
               value={promptVal}
               onChange={e => setPromptVal(e.target.value)}
               disabled={aiLoading}
               rows={2}
-              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSendPrompt() }}
+              // Enter sends; Shift+Enter (and Ctrl/Cmd+Enter) still insert a
+              // newline, the usual chat-box convention. preventDefault stops
+              // the newline that would otherwise be typed before sending.
+              onKeyDown={e => {
+                if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return
+                e.preventDefault()
+                if (!aiLoading && promptVal.trim()) handleSendPrompt()
+              }}
             />
             <button
               className="prompt-send-btn"

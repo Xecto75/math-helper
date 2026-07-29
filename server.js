@@ -99,12 +99,22 @@ import {
   repairBackslashes, parseCompact, modulesForCompact,
 } from './src/server/codec.js'
 import { repairLesson, dropBadSteps, buildRepairPrompt } from './src/server/validate.js'
+import { startTrace } from './src/server/trace.js'
+
+// Single door to the API: every request and its full response is written to the
+// run's transcript file here, so no call can be logged partially or forgotten.
+async function callClaude(trace, label, params) {
+  const t0 = Date.now()
+  const message = await client.messages.create(params)
+  trace?.call(label, params, message, Date.now() - t0)
+  return message
+}
 
 // ── Request 1: Router ─────────────────────────────────────────────────────────
 
-async function routeModules(prompt) {
+async function routeModules(prompt, trace) {
   const t0 = Date.now()
-  const message = await client.messages.create({
+  const message = await callClaude(trace, 'Router (haiku)', {
     model:      'claude-haiku-4-5-20251001',
     max_tokens: 256,
     system:     ROUTER_SYSTEM_PROMPT,
@@ -141,7 +151,7 @@ function referenceLesson(exampleId) {
   try { return compactLesson(pages) } catch { return null }
 }
 
-async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null) {
+async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null, trace = null) {
   const reference = referenceLesson(exampleId)
 
   // Whatever the reference lesson uses, its docs must be in the prompt too —
@@ -158,7 +168,7 @@ async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null)
   console.log(`\n─── Generator (sonnet) modules=[${moduleIds.join(',')}]`)
   console.log('  system prompt chars:', systemPrompt.length)
 
-  const message = await client.messages.create({
+  const message = await callClaude(trace, 'Generator (sonnet)', {
     model:      'claude-sonnet-4-6',
     // A 5-6 page lesson in compact codes runs well under this; the headroom is
     // so a long one is never truncated mid-lesson. Even if it were all used the
@@ -188,9 +198,9 @@ async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null)
 
 // Layer 2 — the third request. Sends only the broken steps, what is wrong with
 // them, and the docs for those exact functions.
-async function repairWithAI(compact, issues) {
+async function repairWithAI(compact, issues, trace) {
   const t0 = Date.now()
-  const message = await client.messages.create({
+  const message = await callClaude(trace, 'Repair (sonnet)', {
     model:      'claude-sonnet-4-6',
     max_tokens: 12000,
     system:     buildRepairPrompt(compact, issues, docForCode),
@@ -256,19 +266,22 @@ app.post('/api/generate-lesson', async (req, res) => {
   }
 
   let rawApiText = null
+  const trace = startTrace(prompt, lang)
   try {
     // ── Step 1: Route ────────────────────────────────────────────────────────
-    const route = await routeModules(prompt)
+    const route = await routeModules(prompt, trace)
 
     if (route.status !== 'ok') {
       // No lesson was produced, so the credit should not be spent.
       if (auth) await refundCredit(auth.user.id)
+      trace.section('REFUSED', `status: ${route.status}\n${route.message ?? ''}`)
+      trace.finish()
       return res.json({ status: route.status, message: route.message })
     }
     const moduleIds = route.modules
 
     // ── Step 2: Generate ─────────────────────────────────────────────────────
-    const gen = await generateCompact(prompt, moduleIds, lang, route.exampleId)
+    const gen = await generateCompact(prompt, moduleIds, lang, route.exampleId, trace)
     rawApiText = gen.rawText
 
     // ── Validate → repair → (one) AI retry → drop ────────────────────────
@@ -286,7 +299,7 @@ app.post('/api/generate-lesson', async (req, res) => {
     if (issues.length) {
       console.log(`  ${issues.length} issue(s) need the model:`, issues.map(i => i.kind).join(', '))
       try {
-        const retryText = await repairWithAI(repaired, issues)
+        const retryText = await repairWithAI(repaired, issues, trace)
         const second    = repairLesson(parseCompact(retryText))
         if (second.issues.length < issues.length) {
           repaired = second.lesson
@@ -317,6 +330,18 @@ app.post('/api/generate-lesson', async (req, res) => {
       `${pages < 5 ? `  ⚠ only ${pages} pages (want 5-6)` : ''}
 `)
 
+    trace.section('VALIDATION', [
+      `auto-fixed (${fixed.length}):`,     ...fixed.map(f => '  ' + f),
+      `warnings (${warnings.length}):`,    ...warnings.map(w => '  ' + w),
+      `unresolved issues (${issues.length}):`,
+      ...issues.map(i => `  ${i.kind}${i.step !== undefined ? ` @step ${i.step}` : ''} ${i.detail ?? ''}`),
+    ].join('\n'))
+    trace.section('FINAL COMPACT (post-repair)',
+      typeof compact === 'string' ? compact : JSON.stringify(compact, null, 2))
+    trace.section(`FINAL LESSON — ${pages} page(s), $${total.toFixed(4)}`,
+      JSON.stringify(expanded, null, 2))
+    trace.finish()
+
     res.json({ lesson, modules: moduleIds })
 
   } catch (err) {
@@ -325,6 +350,8 @@ app.post('/api/generate-lesson', async (req, res) => {
     if (auth) await refundCredit(auth.user.id)
     console.error('generate-lesson error:', err)
     console.error('raw API output:\n', rawApiText)
+    trace.section('ERROR', `${err.stack ?? err.message}\n\nraw API output:\n${rawApiText ?? '(none)'}`)
+    trace.finish()
     res.status(500).json({ error: err.message ?? 'Generation failed', rawOutput: rawApiText })
   }
 })

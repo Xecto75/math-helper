@@ -1,1 +1,11 @@
-{}
+{
+  "quadratic-eq": true,
+  "law-of-sines": true,
+  "pythagoras": true,
+  "areas": true,
+  "volumes": true,
+  "perimeters": true,
+  "soh-cah-toa": true,
+  "parabola": true,
+  "exponential": true
+}

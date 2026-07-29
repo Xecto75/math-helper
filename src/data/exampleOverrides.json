@@ -480,11 +480,11 @@
   "soh-cah-toa": [
     {
       "title": "SOH — Sine",
-      "id": "lb601",
+      "id": "lb346",
       "layout": "text-geo",
       "steps": [
         {
-          "id": "lb603",
+          "id": "lb347",
           "funcId": "geo3d-create-2d",
           "inputs": {
             "id": "tri",
@@ -496,7 +496,7 @@
           }
         },
         {
-          "id": "lb604",
+          "id": "lb348",
           "funcId": "geo3d-set-view",
           "inputs": {
             "zoom": "2",
@@ -507,7 +507,7 @@
           }
         },
         {
-          "id": "lb605",
+          "id": "lb349",
           "funcId": "geo3d-highlight-angle",
           "inputs": {
             "id": "tri",
@@ -516,7 +516,7 @@
           }
         },
         {
-          "id": "lb606",
+          "id": "lb350",
           "funcId": "cmt-geo",
           "inputs": {
             "cmtId": "",
@@ -527,7 +527,7 @@
           }
         },
         {
-          "id": "lb607",
+          "id": "lb351",
           "funcId": "geo3d-highlight-edge",
           "inputs": {
             "id": "tri",
@@ -536,7 +536,7 @@
           }
         },
         {
-          "id": "lb608",
+          "id": "lb352",
           "funcId": "cmt-geo-edge",
           "inputs": {
             "cmtId": "",
@@ -547,7 +547,7 @@
           }
         },
         {
-          "id": "lb609",
+          "id": "lb353",
           "funcId": "geo3d-show-arrow",
           "inputs": {
             "id": "tri",
@@ -558,7 +558,7 @@
           }
         },
         {
-          "id": "lb610",
+          "id": "lb354",
           "funcId": "geo3d-highlight-edge",
           "inputs": {
             "id": "tri",
@@ -567,7 +567,7 @@
           }
         },
         {
-          "id": "lb611",
+          "id": "lb355",
           "funcId": "cmt-geo-edge",
           "inputs": {
             "cmtId": "",
@@ -578,7 +578,7 @@
           }
         },
         {
-          "id": "lb612",
+          "id": "lb356",
           "funcId": "geo3d-remove-arrow",
           "inputs": {
             "id": "tri",
@@ -586,7 +586,7 @@
           }
         },
         {
-          "id": "lb613",
+          "id": "lb357",
           "funcId": "text-create",
           "inputs": {
             "boxId": "formula",
@@ -599,11 +599,11 @@
     },
     {
       "title": "SOH — Sine example",
-      "id": "lb614",
+      "id": "lb358",
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "lb616",
+          "id": "lb359",
           "funcId": "geo3d-create-2d",
           "inputs": {
             "id": "tri",
@@ -615,7 +615,19 @@
           }
         },
         {
-          "id": "lb617",
+          "id": "lb360",
+          "funcId": "geo3d-set-view",
+          "inputs": {
+            "zoom": "2",
+            "panX": "0",
+            "panY": "0",
+            "distance": "",
+            "duration": "0.3",
+            "preset": ""
+          }
+        },
+        {
+          "id": "lb361",
           "funcId": "geo3d-label-sides",
           "inputs": {
             "id": "tri",
@@ -623,7 +635,7 @@
           }
         },
         {
-          "id": "lb618",
+          "id": "lb362",
           "funcId": "geo3d-highlight-angle",
           "inputs": {
             "id": "tri",
@@ -632,7 +644,7 @@
           }
         },
         {
-          "id": "lb619",
+          "id": "lb363",
           "funcId": "cmt-geo",
           "inputs": {
             "cmtId": "angle",
@@ -643,7 +655,7 @@
           }
         },
         {
-          "id": "lb620",
+          "id": "lb364",
           "funcId": "geo3d-highlight-edge",
           "inputs": {
             "id": "tri",
@@ -652,7 +664,7 @@
           }
         },
         {
-          "id": "lb621",
+          "id": "lb365",
           "funcId": "cmt-geo-edge",
           "inputs": {
             "cmtId": "",
@@ -663,7 +675,7 @@
           }
         },
         {
-          "id": "lb622",
+          "id": "lb366",
           "funcId": "geo3d-show-arrow",
           "inputs": {
             "id": "tri",
@@ -674,7 +686,7 @@
           }
         },
         {
-          "id": "lb623",
+          "id": "lb367",
           "funcId": "geo3d-highlight-edge",
           "inputs": {
             "id": "tri",
@@ -683,7 +695,7 @@
           }
         },
         {
-          "id": "lb624",
+          "id": "lb368",
           "funcId": "cmt-geo-edge",
           "inputs": {
             "cmtId": "",
@@ -694,7 +706,7 @@
           }
         },
         {
-          "id": "lb625",
+          "id": "lb369",
           "funcId": "geo3d-remove-arrow",
           "inputs": {
             "id": "tri",
@@ -702,29 +714,27 @@
           }
         },
         {
-          "id": "lb626",
+          "id": "lb370",
           "funcId": "eq-create",
           "inputs": {
             "eq": "|Opposite|{orange}/|Hypothenuse|{purple} = sin(|θ|{yellow})"
           }
         },
         {
-          "id": "lb627",
+          "id": "lb371",
           "funcId": "eq-replace-variable",
           "inputs": {
-            "var_Opposite": "4",
-            "var_Hypothenuse": "5"
+            "var_Opposite": "[tri]1",
+            "var_Hypothenuse": "[tri]2"
           }
         },
         {
-          "id": "lb628",
-          "funcId": "eq-apply-inverse-trig",
-          "inputs": {
-            "trig": "sin"
-          }
+          "id": "lb458",
+          "funcId": "eq-full-solve",
+          "inputs": {}
         },
         {
-          "id": "lb629",
+          "id": "lb373",
           "funcId": "cmt-update",
           "inputs": {
             "cmtId": "angle",
@@ -1605,11 +1615,11 @@
   "law-of-sines": [
     {
       "title": "The Triangle — Sides and Angles",
-      "id": "lb1",
+      "id": "lb142",
       "layout": "text-geo",
       "steps": [
         {
-          "id": "lb2",
+          "id": "lb143",
           "funcId": "geo3d-create-2d",
           "inputs": {
             "id": "tri",
@@ -1621,15 +1631,15 @@
           }
         },
         {
-          "id": "lb3",
+          "id": "lb144",
           "funcId": "geo3d-set-view",
           "inputs": {
-            "zoom": "1.2",
+            "zoom": "1.5",
             "duration": "0.3"
           }
         },
         {
-          "id": "lb4",
+          "id": "lb145",
           "funcId": "geo3d-show-angles",
           "inputs": {
             "id": "tri",
@@ -1638,15 +1648,15 @@
           }
         },
         {
-          "id": "lb5",
+          "id": "lb146",
           "funcId": "geo3d-label-sides",
           "inputs": {
             "id": "tri",
-            "labels": "a=5,b=7,c=9"
+            "labels": "a=,b=,c="
           }
         },
         {
-          "id": "lb6",
+          "id": "lb147",
           "funcId": "text-create",
           "inputs": {
             "boxId": "sines",
@@ -1659,23 +1669,23 @@
     },
     {
       "title": "Find b: a=7, A=60°, B=45°",
-      "id": "lb7",
+      "id": "lb148",
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "lb8",
+          "id": "lb149",
           "funcId": "geo3d-create-2d",
           "inputs": {
             "id": "tri2",
             "type": "triangle",
             "a": "7",
-            "b": "5.7",
-            "c": "7.8",
+            "b": "5.715476",
+            "c": "7.807486",
             "color": "purple"
           }
         },
         {
-          "id": "lb9",
+          "id": "lb150",
           "funcId": "geo3d-set-view",
           "inputs": {
             "zoom": "1.5",
@@ -1683,43 +1693,50 @@
           }
         },
         {
-          "id": "lb10",
+          "id": "lb151",
           "funcId": "geo3d-show-angles",
           "inputs": {
             "id": "tri2",
-            "color": "yellow",
-            "showValues": "true"
+            "color": "yellow"
           }
         },
         {
-          "id": "lb11",
+          "id": "lb152",
           "funcId": "geo3d-label-sides",
           "inputs": {
             "id": "tri2",
-            "labels": "a=7,b=?,c=7.8"
+            "labels": "a=,b=?,c="
           }
         },
         {
-          "id": "lb12",
+          "id": "lb153",
           "funcId": "eq-create",
           "inputs": {
-            "eq": "|b|/sin(|B|)=|a|/sin(|A|)"
+            "eq": "b = |a| * sin(|B|) / sin(|A|)"
           }
         },
         {
-          "id": "lb13",
+          "id": "lb198",
           "funcId": "eq-replace-variable",
           "inputs": {
             "replacements": "a=2,b=-3,c=1",
-            "var_B": "[tri2]a0",
             "var_a": "[tri2]0",
+            "var_B": "[tri2]a0",
             "var_A": "[tri2]a2"
           }
         },
         {
-          "id": "lb14",
+          "id": "lb154",
           "funcId": "eq-full-solve",
           "inputs": {}
+        },
+        {
+          "id": "lb155",
+          "funcId": "geo3d-label-sides",
+          "inputs": {
+            "id": "tri2",
+            "labels": "a=,b=,c="
+          }
         }
       ]
     }
@@ -1897,6 +1914,108 @@
             "text": "Chaotic card",
             "side": "right",
             "color": "#60a5fa"
+          }
+        }
+      ]
+    }
+  ],
+  "exponential": [
+    {
+      "title": "f(x) = a·bˣ + k — drag to explore",
+      "id": "lb274",
+      "layout": "text-graph",
+      "steps": [
+        {
+          "id": "lb275",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "intro",
+            "title": "The parameters a, b, and k",
+            "content": "$a$ stretches the curve vertically (its value at $x=0$ is $a+k$).|$b$ is the growth factor: $b>1$ means growth, $0<b<1$ means decay ($b$ must stay positive).|$k$ shifts the curve up or down — it moves the horizontal asymptote to $y=k$.",
+            "isList": "true"
+          }
+        },
+        {
+          "id": "lb276",
+          "funcId": "graph-set-viewport",
+          "inputs": {
+            "xMin": "-3",
+            "xMax": "5",
+            "yMin": "-5",
+            "yMax": "20"
+          }
+        },
+        {
+          "id": "lb277",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "|a|*|b|^x+|k|",
+            "id": "explore",
+            "hideLabel": "1"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Key Features — Asymptote and Y-Intercept",
+      "id": "lb278",
+      "layout": "single-graph",
+      "steps": [
+        {
+          "id": "lb279",
+          "funcId": "graph-set-viewport",
+          "inputs": {
+            "xMin": "-3",
+            "xMax": "5",
+            "yMin": "-6",
+            "yMax": "10"
+          }
+        },
+        {
+          "id": "lb280",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "2^x - 3",
+            "id": "exp",
+            "hideLabel": "1"
+          }
+        },
+        {
+          "id": "lb281",
+          "funcId": "graph-name-func",
+          "inputs": {
+            "funcId": "exp",
+            "label": "f(x) = 2ˣ − 3",
+            "x0": "2",
+            "y0": "3"
+          }
+        },
+        {
+          "id": "lb282",
+          "funcId": "graph-horizontal-line",
+          "inputs": {
+            "y": "-3"
+          }
+        },
+        {
+          "id": "lb283",
+          "funcId": "cmt-graph",
+          "inputs": {
+            "text": "Asymptote y = −3",
+            "x": "2.5",
+            "y": "-3",
+            "color": "gray"
+          }
+        },
+        {
+          "id": "lb284",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "0",
+            "y": "-2",
+            "id": "yint",
+            "label": "Y-intercept|(0, −2)",
+            "showCoords": "false"
           }
         }
       ]

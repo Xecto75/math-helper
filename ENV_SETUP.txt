@@ -1,0 +1,50 @@
+ENV SETUP — math-engine
+=======================
+
+Every environment variable the app reads, in one place. Values are left BLANK on
+purpose: this file is committed to git, so real keys must never be typed in here.
+Fill them in only in the local .env (which is gitignored).
+
+Mac setup
+---------
+1. git clone <this repo> && cd math-engine
+2. npm install
+3. cp ENV_SETUP.txt .env   (or: cp .env.example .env)
+4. Paste the real values into .env — copy them from the Windows machine's .env,
+   or re-read them from the dashboards listed below.
+5. npm run dev
+
+
+Variables
+---------
+
+# Anthropic — console.anthropic.com → API keys. Server-side only.
+ANTHROPIC_API_KEY=
+
+# Supabase — dashboard → Project Settings → API.
+# The VITE_ pair is compiled into the browser bundle and is PUBLIC by design;
+# that is fine for the anon key, row-level security decides what it can read.
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+
+# Same project, server-side only. NEVER prefix these with VITE_ — that would
+# ship them to every visitor. The service-role key bypasses row-level security
+# entirely; treat it like a root password and rotate it if it ever leaks.
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Custom lessons a free account may generate per calendar month. Defaults to 3
+# if unset.
+FREE_LESSON_LIMIT=3
+
+# Comma-separated emails that get the 'pro' plan without paying. Compared only
+# against the email inside a Supabase-verified token, so it cannot be spoofed.
+PREMIUM_EMAILS=Anthonyg7567@gmail.com
+
+
+Notes
+-----
+- The app still runs without the Supabase vars: auth is simply disabled and no
+  lesson limit is enforced (see src/server/auth.js — authConfigured).
+- ANTHROPIC_API_KEY is required for AI lesson generation.
+- .env is in .gitignore. Keep it that way — never commit filled-in values.

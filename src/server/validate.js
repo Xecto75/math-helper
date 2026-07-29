@@ -1,5 +1,17 @@
 // Validation + deterministic repair of a generated lesson, in compact form.
 //
+// SCOPE — read this before adding a rule.
+// A rule may block or rewrite a lesson ONLY if it corresponds to something the
+// engine actually rejects. An earlier version encoded assumptions instead, and
+// produced 24 false positives on lessons that render perfectly. Auditing the
+// engine showed why: every registry lookup in threeEngine is null-guarded, so a
+// step naming a shape that does not exist is a silent no-op, not a crash; and
+// every display slot is mounted on every layout (App.jsx), so a geometry step on
+// a text+equation layout draws into a hidden slot rather than failing. Neither
+// is an error. They are now warnings — logged, never acted on.
+//
+// The bar for a hard error is: I can point at the line that throws.
+//
 // Three layers, in order of preference:
 //   1. repairLesson()  — fix it here, no API call. Most model slips are
 //                        mechanical ("v0" where a number was wanted) and do not
@@ -149,7 +161,7 @@ export function repairLesson(compact) {
     // appear in the wild.
     let curLayout = layoutCode ? layoutCodeOf(layoutCode) : null
     if (layoutCode && !curLayout && !LAYOUT_NAMES.has(layoutCode)) {
-      issues.push({ page: pi, kind: 'unknown-layout', message: `unknown layout "${layoutCode}"` })
+      warnings.push(`p${pi}: unknown layout "${layoutCode}"`)
     }
 
     // Shapes created so far on this page, so a reference to a shape that does
@@ -180,7 +192,10 @@ export function repairLesson(compact) {
             fixed.push(`p${pi}s${si} ${code}.${def.id}: ${JSON.stringify(val)} → ${JSON.stringify(next)} (${rule.id})`)
             vals[i] = next
           } else {
-            issues.push({ ...where, kind: rule.id, message: msg })
+            // The input TYPES come from the builder's own field definitions,
+            // which are a UI hint, not a contract the engine enforces — a
+            // "number" field happily takes "3,4" or "5^2". Report only.
+            warnings.push(`p${pi}s${si} ${code}.${def.id}: ${msg}`)
           }
           break
         }
@@ -199,11 +214,9 @@ export function repairLesson(compact) {
             fixed.push(`p${pi}s${si} ${code}: shape "${id}" never created → "${only}"`)
             vals[idx] = only
           } else {
-            issues.push({
-              ...where, kind: 'unknown-shape',
-              message: `references shape "${id}" which is never created on this page` +
-                       (created.size ? ` (available: ${[...created].join(', ')})` : ' (no shape created)'),
-            })
+            // Not an error: threeEngine's lookups are all guarded, so this is a
+            // step that quietly does nothing.
+            warnings.push(`p${pi}s${si} ${code}: shape "${id}" is never created on this page`)
           }
         }
       }
@@ -220,10 +233,9 @@ export function repairLesson(compact) {
       const need = panelForCode(code)
       const have = curLayout ? (PANELS[curLayout] ?? []) : []
       if (need && have.length && !have.includes(need)) {
-        issues.push({
-          ...where, kind: 'wrong-panel',
-          message: `"${code}" needs a ${need} panel but layout "${layoutCode}" shows ${have.join(' + ')}`,
-        })
+        // Every display slot is mounted on every layout; the panel is merely
+        // hidden by CSS. Worth reporting, never worth deleting a step over.
+        warnings.push(`p${pi}s${si} ${code}: needs a ${need} panel, layout "${curLayout}" shows ${have.join(' + ')}`)
       }
 
       return [code, ...vals]

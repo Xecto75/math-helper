@@ -278,7 +278,10 @@ app.post('/api/generate-lesson', async (req, res) => {
     let compact = parseCompact(rawApiText)
     let { lesson: repaired, fixed, warnings, issues } = repairLesson(compact)
     if (fixed.length)    console.log(`  auto-fixed ${fixed.length}:`, fixed.join(' | '))
-    if (warnings.length) console.log(`  warnings:`, warnings.join(' | '))
+    // Warnings never change the lesson — they are here to be read, so a rule
+    // that keeps firing on good lessons can be spotted and removed rather than
+    // silently deleting someone's content.
+    if (warnings.length) console.log(`  ${warnings.length} warning(s):`, warnings.join(' | '))
 
     if (issues.length) {
       console.log(`  ${issues.length} issue(s) need the model:`, issues.map(i => i.kind).join(', '))

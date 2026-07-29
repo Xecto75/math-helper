@@ -88,6 +88,21 @@ function defsFor(code) {
   return funcId ? (FUNC_META[funcId] ?? []) : null
 }
 
+// The text-box fields whose value is "lines separated by |" (tc.content,
+// ti.item, tf.content). No other function has a field with these ids.
+const TEXT_CONTENT = new Set(['content', 'item'])
+
+// A line that is nothing but back-to-back $…$ formulas, e.g.
+// "$\sin\theta=\frac{o}{h}$ $\cos\theta=\frac{a}{h}$" → one per line.
+const ALL_FORMULAS = /^\s*(?:\$[^$]+\$[\s,;]*){2,}$/
+
+function splitFormulaLines(content) {
+  return content.split('|').map(line => {
+    if (!ALL_FORMULAS.test(line)) return line
+    return (line.match(/\$[^$]+\$/g) ?? [line]).join('|')
+  }).join('|')
+}
+
 // ── The rule list ───────────────────────────────────────────────────────────
 // Each entry inspects ONE step and returns issues. `fix` mutates vals in place
 // and returns true when it repaired the value.
@@ -134,6 +149,24 @@ const RULES = [
       return allowed.includes(v) ? null : `${def.id}: ${JSON.stringify(val)} not one of ${allowed.join('|')}`
     },
     fixArg: null,   // a wrong default is worse than the original value
+  },
+  {
+    // Two or more formulas crammed into ONE text-box line: the panel is narrow,
+    // so they wrap wherever they happen to run out of room — mid-fraction, with
+    // the numerator of one formula sitting above the denominator of the next.
+    // Each formula gets its own line (|) instead.
+    //
+    // Deliberately narrow: only a line made up ENTIRELY of $…$ chunks is split.
+    // A sentence like "$a$ and $b$ are equal" also holds two $…$ groups and is
+    // perfectly readable on one line — splitting that would break real prose.
+    id: 'formulas-on-one-line',
+    perArg: (def, val) => {
+      if (!TEXT_CONTENT.has(def.id) || typeof val !== 'string') return null
+      return splitFormulaLines(val) === val
+        ? null
+        : `${def.id}: several formulas share one line — they wrap mid-fraction`
+    },
+    fixArg: (def, val) => splitFormulaLines(String(val)),
   },
   {
     id: 'bad-color',

@@ -40,6 +40,8 @@ LENGTH: scale to the topic — typically 4–6 pages, 3 minimum and 8 maximum.
   idea across pages, and do not cram distinct stages onto one page.
   max 8 steps/page · no padding steps
 TEXT(tc/tf): lines sep by | · $latex$ inline · **bold** · JSON: double backslashes (\\\\frac not \\frac)
+  ONE FORMULA PER LINE: never put two $…$ formulas side by side on the same line —
+  the panel is narrow and they wrap mid-fraction. "$a$|$b$|$c$", never "$a$ $b$ $c$".
 tc max 3 lines — prefer the c* comment codes (cf/cG/cE/…) or labels over tc for brief annotations.
 tc clr: always "" unless user explicitly asks for a colored box.
 
@@ -156,6 +158,12 @@ SHAPE TYPES & VALS:
   regular-polygon  vals="r"
 
 fillColor/borderColor: numeric color index (0–7) or "" for default.
+
+SIZE: the 2D view is ~12 world units tall. Keep every side value in the 2–10 range so
+  the whole shape (plus its labels and angle arcs) stays inside the frame — a 30-40-50
+  triangle is auto-zoomed to fit, but everything then renders small and cramped.
+  Teach 30-40-50 as a 3-4-5 shape and put the real numbers in the labels (S2l) or the
+  equation instead. Never rely on the auto-fit as a substitute for sane values.
 
 VERTEX & EDGE INDICES:
   right-triangle : v0=bottom-left  v1=bottom-right(90°)  v2=top

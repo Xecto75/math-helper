@@ -82,15 +82,8 @@ app.post('/api/example-locks/:id', (req, res) => {
   res.json({ ok: true })
 })
 
-// Rate card, $ per million tokens. Kept in one place because these numbers are
-// what any usage-based billing is derived from — a stale constant here silently
-// under- or over-charges every request. Haiku 4.5 is $1/$5; the router was
-// costed at $0.8/$4, understating every routing call by ~20%.
-const HAIKU_IN  = 1.00
-const HAIKU_OUT = 5.00
-const SONNET_IN = 3.00   // cache write 1.25x, cache read 0.1x
-const SONNET_OUT = 15.00
-
+// The rate card now lives in src/server/pricing.js so the transcript writer can
+// price each call with the same numbers this file bills from.
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 import {
@@ -100,6 +93,7 @@ import {
 } from './src/server/codec.js'
 import { repairLesson, dropBadSteps, buildRepairPrompt } from './src/server/validate.js'
 import { startTrace } from './src/server/trace.js'
+import { costOf } from './src/server/pricing.js'
 
 // Single door to the API: every request and its full response is written to the
 // run's transcript file here, so no call can be logged partially or forgotten.
@@ -122,7 +116,7 @@ async function routeModules(prompt, trace) {
   })
   const raw  = message.content[0]?.text?.trim() ?? '{}'
   const u    = message.usage ?? {}
-  const cost = (u.input_tokens * HAIKU_IN + u.output_tokens * HAIKU_OUT) / 1_000_000
+  const cost = costOf('claude-haiku-4-5-20251001', u)
   console.log(`\n─── Router (haiku) ${Date.now() - t0}ms  in:${u.input_tokens} out:${u.output_tokens}  $${cost.toFixed(5)}`)
   console.log('  raw:', raw)
 
@@ -186,7 +180,7 @@ async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null,
     cWrite: u.cache_creation_input_tokens ?? 0,
     out:    u.output_tokens               ?? 0,
   }
-  const cost = (tok.in * SONNET_IN + tok.cWrite * SONNET_IN * 1.25 + tok.cRead * SONNET_IN * 0.1 + tok.out * SONNET_OUT) / 1_000_000
+  const cost = costOf('claude-sonnet-4-6', u)
   console.log(`  ${Date.now() - t0}ms  in:${tok.in} cRead:${tok.cRead} cWrite:${tok.cWrite} out:${tok.out}  $${cost.toFixed(5)}`)
   console.log('  stop reason:', message.stop_reason)
   console.log('─── raw output ──────────────────────────────')
@@ -207,7 +201,7 @@ async function repairWithAI(compact, issues, trace) {
     messages:   [{ role: 'user', content: 'Return the corrected lesson.' }],
   })
   const u    = message.usage ?? {}
-  const cost = ((u.input_tokens ?? 0) * SONNET_IN + (u.output_tokens ?? 0) * SONNET_OUT) / 1_000_000
+  const cost = costOf('claude-sonnet-4-6', u)
   console.log(`
 ─── Repair (sonnet) ${Date.now() - t0}ms  in:${u.input_tokens} out:${u.output_tokens}  $${cost.toFixed(5)}`)
   return message.content[0]?.text ?? ''

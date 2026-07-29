@@ -334,6 +334,10 @@ export function createShape3D(threeRef, id, type, a, b, c, opts = {}) {
   if (FLAT_TYPES.has(type) && !group.userData.isCircle && opts.autoTicks !== false) {
     autoTickEqualSides(threeRef, id, group.userData.vertices)
   }
+
+  // A shape built from big numbers is wider than the fixed 2D frustum and used
+  // to hang off the edge of the canvas. Widen the view until it fits.
+  if (FLAT_TYPES.has(type)) display.fitView2D?.()
 }
 
 // Auto-detect congruent (equal-length) sides right after a flat shape is

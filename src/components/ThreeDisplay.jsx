@@ -37,7 +37,10 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       const g2d      = grid2DRef.current
 
       if (want2D) {
-        // Reset ortho view to defaults on each mode switch
+        // Reset ortho view to defaults on each mode switch. Only the refs are
+        // touched: the render loop rebuilds the frustum from them every frame,
+        // against the container's live size, so the reset actually reaches the
+        // screen instead of waiting for the next resize event.
         orthoHalfRef.current = ORTHO_HALF
         orthoOffXRef.current = 0
         orthoOffYRef.current = 0
@@ -259,6 +262,59 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       }
     },
 
+    // ── Auto-fit the 2D view ─────────────────────────────────────────────────
+    // The ortho frustum is a fixed 12 world units tall, so a shape built from
+    // bigger numbers (a 10-15-18 triangle, say) simply ran off the canvas and
+    // the student saw a corner of it. After every step that changes what is on
+    // screen, widen the frustum until everything fits.
+    //
+    // Only ever widens: the floor is ORTHO_HALF, so a small shape still renders
+    // at exactly the size it always did rather than being blown up to fill the
+    // panel. The centre is left where it is (0,0, or wherever S2v panned to),
+    // so this cannot fight a deliberate camera move — it just makes sure the
+    // shape is inside the frame.
+    fitView2D({ margin = 1.15, duration = 0.4 } = {}) {
+      if (!is2DRef.current) return
+      const ortho = orthoCamRef.current
+      const el    = containerRef.current
+      const objs  = Object.values(objectsRef.current)
+      if (!ortho || !el || !objs.length) return
+
+      const box = new THREE.Box3()
+      for (const o of objs) {
+        o.updateMatrixWorld(true)
+        box.expandByObject(o)
+      }
+      if (box.isEmpty()) return
+
+      const asp = el.clientWidth / (el.clientHeight || 1)
+      const cx  = orthoOffXRef.current
+      const cy  = orthoOffYRef.current
+      const dx  = Math.max(Math.abs(box.max.x - cx), Math.abs(box.min.x - cx))
+      const dy  = Math.max(Math.abs(box.max.y - cy), Math.abs(box.min.y - cy))
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return
+
+      const toH   = Math.max(dy, dx / asp) * margin
+      const fromH = (ortho.top - ortho.bottom) / 2 || orthoHalfRef.current
+      // Never zoom back IN past what a step already asked for, and never below
+      // the default — otherwise every new shape would yank the zoom around.
+      if (toH <= fromH + 0.01) return
+
+      const ease = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
+      const dur  = Math.max(duration * 1000, 1)
+      const t0   = performance.now()
+      const tick = () => {
+        const p = ease(Math.min((performance.now() - t0) / dur, 1))
+        const h = fromH + (toH - fromH) * p
+        orthoHalfRef.current = h
+        ortho.left   = cx - h * asp;  ortho.right  = cx + h * asp
+        ortho.top    = cy + h;        ortho.bottom = cy - h
+        ortho.updateProjectionMatrix()
+        if (p < 1) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    },
+
     // Convert a world-space (wx, wy) coordinate to page (viewport) pixel coordinates
     getWorldToScreen(wx, wy) {
       const cam = cameraRef.current
@@ -369,11 +425,55 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       controls.autoRotate = false
     }, { once: true })
 
+    // ── Resize handler ───────────────────────────────────────────────────────
+    const resize = () => {
+      const nw = el.clientWidth, nh = el.clientHeight
+      if (!nw || !nh) return
+      const asp = nw / nh
+
+      perspCam.aspect = asp
+      perspCam.updateProjectionMatrix()
+
+      const h = orthoHalfRef.current
+      const ox = orthoOffXRef.current, oy = orthoOffYRef.current
+      orthoCam.left   = ox - h * asp;  orthoCam.right  = ox + h * asp
+      orthoCam.top    = oy + h;         orthoCam.bottom = oy - h
+      orthoCam.updateProjectionMatrix()
+
+      renderer.setSize(nw, nh, false)
+    }
+
+    // ── Keep the 2D frustum square with the canvas ───────────────────────────
+    // The ortho frustum is rebuilt from the refs every frame against the
+    // container's CURRENT size. Anything else — a step that panned/zoomed while
+    // a layout transition was still animating, a panel that changed size
+    // without the ResizeObserver firing — could leave left/right sized for one
+    // aspect and the canvas at another. That scales X and Y by different
+    // amounts, which is why a squashed view shows fat horizontal edges and
+    // angle arcs drawn as ellipses instead of circles.
+    let lastW = 0, lastH = 0
+    const syncOrtho = () => {
+      const nw = el.clientWidth, nh = el.clientHeight
+      if (!nw || !nh) return
+      if (nw !== lastW || nh !== lastH) { lastW = nw; lastH = nh; resize() }
+      const oc = orthoCamRef.current
+      if (!oc) return
+      const asp = nw / nh
+      const h  = orthoHalfRef.current
+      const ox = orthoOffXRef.current
+      const oy = orthoOffYRef.current
+      const l = ox - h * asp, r = ox + h * asp, t = oy + h, b = oy - h
+      if (oc.left === l && oc.right === r && oc.top === t && oc.bottom === b) return
+      oc.left = l; oc.right = r; oc.top = t; oc.bottom = b
+      oc.updateProjectionMatrix()
+    }
+
     // ── Animation loop ───────────────────────────────────────────────────────
     let animId
     const animate = () => {
       animId = requestAnimationFrame(animate)
       if (!is2DRef.current) controls.update()
+      else syncOrtho()
       const cam = cameraRef.current
       renderer.render(scene, cam)
 
@@ -398,23 +498,6 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
     }
     animate()
 
-    // ── Resize handler ───────────────────────────────────────────────────────
-    const resize = () => {
-      const nw = el.clientWidth, nh = el.clientHeight
-      if (!nw || !nh) return
-      const asp = nw / nh
-
-      perspCam.aspect = asp
-      perspCam.updateProjectionMatrix()
-
-      const h = orthoHalfRef.current
-      const ox = orthoOffXRef.current, oy = orthoOffYRef.current
-      orthoCam.left   = ox - h * asp;  orthoCam.right  = ox + h * asp
-      orthoCam.top    = oy + h;         orthoCam.bottom = oy - h
-      orthoCam.updateProjectionMatrix()
-
-      renderer.setSize(nw, nh, false)
-    }
     const ro = new ResizeObserver(resize)
     ro.observe(el)
     resize()

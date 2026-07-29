@@ -10,6 +10,7 @@
 import fs   from 'fs'
 import path from 'path'
 import { exec } from 'child_process'
+import { costOf, rateFor } from './pricing.js'
 
 const DIR       = path.join(process.cwd(), 'logs')
 const ENABLED   = process.env.LESSON_TRACE      !== '0'
@@ -59,6 +60,7 @@ export function startTrace(prompt, lang) {
   const started = new Date()
   const parts   = []
   let   nCalls  = 0
+  let   total   = 0
 
   const trace = {
     file: path.join(DIR, `lesson-${stamp(started)}.txt`),
@@ -80,6 +82,14 @@ export function startTrace(prompt, lang) {
       const usage = Object.entries(u)
         .map(([k, v]) => `${k}=${v !== null && typeof v === 'object' ? JSON.stringify(v) : v}`)
         .join('  ')
+      // Split in/out so it is obvious which half of the bill a long system
+      // prompt is actually driving.
+      const rate    = rateFor(params.model)
+      const costIn  = costOf(params.model, { ...u, output_tokens: 0 })
+      const costOut = ((u.output_tokens ?? 0) * rate.out) / 1_000_000
+      const cost    = costIn + costOut
+      total += cost
+
       trace.section(`CALL ${nCalls} — ${label}`,
         [
           `model:       ${params.model}`,
@@ -87,6 +97,8 @@ export function startTrace(prompt, lang) {
           `duration:    ${ms}ms`,
           `stop_reason: ${message?.stop_reason ?? '—'}`,
           `usage:       ${usage || '—'}`,
+          `cost:        in $${costIn.toFixed(5)} + out $${costOut.toFixed(5)}` +
+          ` = $${cost.toFixed(5)}   (running total $${total.toFixed(5)})`,
           '',
           `${rule}\nINPUT — system (${flatten(params.system).length} chars)\n${rule}`,
           flatten(params.system) || '(none)',
@@ -105,7 +117,8 @@ export function startTrace(prompt, lang) {
         fs.mkdirSync(DIR, { recursive: true })
         const header =
           `LESSON GENERATION TRACE\n${started.toISOString()}\n` +
-          `${nCalls} API call(s), ${Date.now() - started.getTime()}ms total\n`
+          `${nCalls} API call(s), ${Date.now() - started.getTime()}ms, ` +
+          `TOTAL COST $${total.toFixed(5)}\n`
         fs.writeFileSync(trace.file, header + parts.join(''), 'utf8')
         console.log(`  trace → ${trace.file}`)
         if (AUTO_OPEN) openFile(trace.file)

@@ -15,6 +15,7 @@ const LAYOUTS = {
   tg: 'text-graph',       tG: 'text-geo',      tq: 'text-grid',
   te: 'text-equation',
   ge: 'graph-equation',   Ge: 'geo-equation',   qe: 'grid-equation',
+  qg: 'grid-graph',
 }
 
 const FUNCS = {

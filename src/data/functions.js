@@ -910,6 +910,7 @@ export const CATEGORIES = [
               { value: 'single-equation', label: 'Equation only' },
               { value: 'single-calc',     label: 'Calculation steps' },
               { value: 'grid-graph',      label: 'Table + Graph' },
+              { value: 'grid-equation',  label: 'Table + Equation' },
               { value: 'geo-equation',    label: 'Geometry + Equation' },
               { value: 'graph-equation',  label: 'Graph + Equation' },
               { value: 'text-graph',      label: 'Text + Graph' },

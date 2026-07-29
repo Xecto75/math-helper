@@ -510,8 +510,10 @@ ${'═'.repeat(60)}
   // Appended after the base rules, and scoped to learner-visible prose only:
   // compact codes, layout codes, ids and colour names are format, not content —
   // translating those breaks parsing.
-  const langName = LANG_NAMES[lang]
-  if (langName && lang !== 'en') {
+  // Always state the language, English included: with no instruction at all the
+  // model drifts (a plain English prompt came back entirely in Dutch).
+  const langName = LANG_NAMES[lang] ?? 'English'
+  {
     parts.push(
       `\n${'═'.repeat(60)}\nLANGUAGE\n${'═'.repeat(60)}\n` +
       `Write every learner-visible string in ${langName}: page titles, ` +
@@ -530,3 +532,18 @@ ${'═'.repeat(60)}
 
   return parts.join('\n')
 }
+
+// One documentation line per compact code, for the repair prompt: the model is
+// shown the signature of exactly the functions it got wrong, not the whole
+// catalogue — a targeted fix is far more reliable than a re-read of everything.
+export function docForCode(code) {
+  const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const re = new RegExp('^\\s*' + escaped + ':')
+  for (const m of Object.values(MODULES)) {
+    for (const line of m.doc.split('\n')) {
+      if (re.test(line)) return line.trim()
+    }
+  }
+  return null
+}
+

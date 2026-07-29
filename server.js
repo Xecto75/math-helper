@@ -5,7 +5,7 @@ import express    from 'express'
 import cors       from 'cors'
 import Anthropic  from '@anthropic-ai/sdk'
 import { CATEGORIES } from './src/data/functions.js'
-import { ROUTER_SYSTEM_PROMPT, buildGeneratorPrompt } from './src/data/moduleCatalog.js'
+import { ROUTER_SYSTEM_PROMPT, buildGeneratorPrompt, docForCode } from './src/data/moduleCatalog.js'
 import { EXAMPLE_LESSONS } from './src/data/exampleLessons.js'
 import {
   authConfigured, getUser, getProfile, consumeCredit, refundCredit, FREE_LESSON_LIMIT,
@@ -98,6 +98,7 @@ import {
   expandStep, expandCompact, compactStep, compactLesson,
   repairBackslashes, parseCompact, modulesForCompact,
 } from './src/server/codec.js'
+import { repairLesson, dropBadSteps, buildRepairPrompt } from './src/server/validate.js'
 
 // ── Request 1: Router ─────────────────────────────────────────────────────────
 
@@ -185,6 +186,23 @@ async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null)
   return { rawText, cost }
 }
 
+// Layer 2 — the third request. Sends only the broken steps, what is wrong with
+// them, and the docs for those exact functions.
+async function repairWithAI(compact, issues) {
+  const t0 = Date.now()
+  const message = await client.messages.create({
+    model:      'claude-sonnet-4-6',
+    max_tokens: 12000,
+    system:     buildRepairPrompt(compact, issues, docForCode),
+    messages:   [{ role: 'user', content: 'Return the corrected lesson.' }],
+  })
+  const u    = message.usage ?? {}
+  const cost = ((u.input_tokens ?? 0) * SONNET_IN + (u.output_tokens ?? 0) * SONNET_OUT) / 1_000_000
+  console.log(`
+─── Repair (sonnet) ${Date.now() - t0}ms  in:${u.input_tokens} out:${u.output_tokens}  $${cost.toFixed(5)}`)
+  return message.content[0]?.text ?? ''
+}
+
 // ── Who am I / what's left ────────────────────────────────────────────────────
 // The client renders from this, but never decides from it — the generate
 // endpoint re-checks everything server-side on each call.
@@ -253,7 +271,37 @@ app.post('/api/generate-lesson', async (req, res) => {
     const gen = await generateCompact(prompt, moduleIds, lang, route.exampleId)
     rawApiText = gen.rawText
 
-    const compact  = parseCompact(rawApiText)
+    // ── Validate → repair → (one) AI retry → drop ────────────────────────
+    // Bounded on purpose: there is no "retry until valid" path. Whatever is
+    // still broken after one retry gets deleted, so a bad step can never reach
+    // the renderer and the loop always terminates.
+    let compact = parseCompact(rawApiText)
+    let { lesson: repaired, fixed, warnings, issues } = repairLesson(compact)
+    if (fixed.length)    console.log(`  auto-fixed ${fixed.length}:`, fixed.join(' | '))
+    if (warnings.length) console.log(`  warnings:`, warnings.join(' | '))
+
+    if (issues.length) {
+      console.log(`  ${issues.length} issue(s) need the model:`, issues.map(i => i.kind).join(', '))
+      try {
+        const retryText = await repairWithAI(repaired, issues)
+        const second    = repairLesson(parseCompact(retryText))
+        if (second.issues.length < issues.length) {
+          repaired = second.lesson
+          issues   = second.issues
+          console.log(`  after retry: ${issues.length} left`)
+        } else {
+          console.log('  retry did not improve — keeping the first version')
+        }
+      } catch (e) {
+        console.log('  repair request failed:', e.message)
+      }
+      if (issues.length) {
+        repaired = dropBadSteps(repaired, issues)
+        console.log(`  dropped ${issues.filter(i => i.step !== undefined).length} unfixable step(s)`)
+      }
+    }
+
+    compact = repaired
     const expanded = expandCompact(compact)
     const lesson   = JSON.stringify(expanded)
 

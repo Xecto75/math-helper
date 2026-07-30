@@ -287,6 +287,21 @@ app.post('/api/generate-lesson', async (req, res) => {
         alternatives: route.alternatives ?? [],
       })
     }
+    // No reference lesson, no lesson. The generator only produces something
+    // worth showing when it has a verified lesson to model from; asked to
+    // invent one from the docs alone it returns pages with nothing good on
+    // them. Refused here, BEFORE the expensive generator call — and the credit
+    // goes back, since the user got no lesson.
+    if (!route.exampleId) {
+      if (auth) await refundCredit(auth.user.id)
+      const message = route.message ??
+        'That topic is not covered yet. Every lesson here is built from a verified example, and none of them matches this one closely enough to build from.'
+      console.log('  no reference lesson for this prompt — refusing before the generator call')
+      trace.section('REFUSED', `status: not-covered (router said ok, exampleId null)\n${message}`)
+      trace.finish()
+      return res.json({ status: 'too-advanced', message, alternatives: [] })
+    }
+
     const moduleIds = route.modules
 
     // ── Step 2: Generate ─────────────────────────────────────────────────────

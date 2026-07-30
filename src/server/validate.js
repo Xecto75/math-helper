@@ -202,13 +202,25 @@ export function repairLesson(compact) {
     const created = new Set()
 
     const outSteps = steps.map((step, si) => {
-      const [code, ...vals] = step
+      const [code, ...rest] = step
       const where = { page: pi, step: si, code }
 
       const defs = defsFor(code)
       if (!defs) {
         issues.push({ ...where, kind: 'unknown-func', message: `unknown function code "${code}"`, fatal: true })
         return step
+      }
+
+      // The args are positional and FLAT. The model sometimes wraps them in a
+      // second array — ["fv",[0,0,6]] instead of ["fv",0,0,6] — and then every
+      // argument lands in the FIRST input ("cx": "0,0,6") while the rest stay
+      // empty, so the step renders as nonsense with no error anywhere. No
+      // compact function takes an array argument, so a lone nested array is
+      // always this mistake.
+      let vals = rest
+      if (vals.length === 1 && Array.isArray(vals[0])) {
+        fixed.push(`p${pi}s${si} ${code}: args were nested — unwrapped ${JSON.stringify(vals[0])}`)
+        vals = vals[0]
       }
 
       // per-argument type rules

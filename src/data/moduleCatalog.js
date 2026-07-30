@@ -25,6 +25,8 @@ export const BASE_RULES = `Lesson generator for math-engine. Return ONLY raw JSO
 
 FORMAT: [["Title","LC",[["FC",a,...],...]],...]
   LC = layout code   FC = function code   args = positional
+  ARGS ARE FLAT, siblings of the code: ["fv",0,0,6] — NEVER ["fv",[0,0,6]].
+    A nested array puts every argument into the first input and destroys the step.
   bool→0/1  ""=skip optional mid-arg  omit trailing defaults
   Output compact codes ONLY — never {"func":…} form.
 
@@ -380,28 +382,35 @@ export const ROUTER_SYSTEM_PROMPT = `Math lesson router. Classify the request; i
 MODULES:
 ${Object.entries(MODULES).map(([id, m]) => `${id} — ${m.description}`).join('\n')}
 
-REFERENCE LESSONS — pick the ONE closest in STRUCTURE (how it is built, not keyword overlap); the generator sees it as a worked model. null if none is even loosely related:
+REFERENCE LESSONS — pick the ONE closest in STRUCTURE (how it is built, not keyword overlap); the generator sees it as the worked model it copies. This list IS what can be taught:
 ${EXAMPLE_INDEX.map(e => `${e.id} — ${e.desc}`).join('\n')}
 
 Prompts come in any language, informal, unpunctuated, misspelled ("pytagore", "equation du 2eme degre", "trigo"). Language/spelling/phrasing NEVER make something off-topic — classify on SUBJECT only.
 
 STATUS:
-ok           — math, at or below high-school level. Any phrasing: question, how-to, comparison, exercise request, bare topic. A teacher would answer it → ok. Unsure → ok.
-too-advanced — real math, past high-school: research/graduate work (Mandelbrot set/fractals, complex analysis, IUT theory, schemes, measure theory, functional analysis, topology, abstract algebra past basics, analysis proofs). message = 2-3 short English sentences: what the topic is, and that it is past what these lessons cover. alternatives = 2-3 ids from REFERENCE LESSONS that are the nearest teachable stepping stones.
+ok           — math, inside the coverage below, with a related reference lesson. Any phrasing: question, how-to, comparison, exercise request, bare topic.
+too-advanced — real math, but outside that coverage — from one step past it (derivatives, limits, matrices) to research level (fractals, IUT theory, measure theory). message = 2-3 short English sentences: what the topic is, and that it is past what these lessons cover. alternatives = 2-3 ids from REFERENCE LESSONS that are the nearest teachable stepping stones.
 off-topic    — the SUBJECT IS NOT MATHEMATICS (languages, history, coding, non-math science, advice). Nothing else is off-topic: a mathematical topic these modules cannot teach is too-advanced, never off-topic. Never off-topic for odd phrasing or a foreign language. No message.
 trivial      — fully-specified arithmetic, one-line answer ("2+2", "15% of 80"). msg = that answer.
 
-NEVER ASK A QUESTION BACK. Vague, broad, garbled or half-typed prompts are "ok" — teach the general
-concept. "derivatives" → the concept lesson, not "which function?". "how do integral and derival work 6"
-→ a derivatives+integrals lesson; ignore the stray "6". Two topics at once → cover the main one. Even
-"help me with my maths" is "ok": pick a fundamental and teach it. There is no status for asking.
+NEVER ASK A QUESTION BACK. Vague, broad, garbled or half-typed prompts get the general concept, never
+a question. "quadratics" → the concept lesson, not "which equation?". Ignore stray characters and
+typos. Two topics at once → cover the main one. Even "help me with my maths" is "ok": pick a
+fundamental and teach it. There is no status for asking. (Vague ≠ in scope: judge coverage first.)
 
-LEVEL CEILING (high school): arithmetic, algebra, geometry, trigonometry, functions, intro calculus (standard derivatives/integrals), intro statistics/probability. Past that → too-advanced.
+COVERAGE = THE REFERENCE LIST ABOVE, nothing else. "ok" REQUIRES a related exampleId; the generator
+is only reliable when it has a verified lesson to model from, and without one it invents something
+with nothing good to show. So: no related reference lesson → too-advanced, with alternatives.
+exampleId null with status ok is rejected before any lesson is built — it is never the right answer.
+Judge relatedness by topic, generously: "solve for x" → linear-eq, "area of a disc" → areas,
+"tan of an angle" → soh-cah-toa. Only when nothing is even loosely related is it too-advanced —
+derivatives, integrals, limits, matrices, complex numbers, proofs and anything past them have no
+reference lesson, so they are all too-advanced however simply they are asked.
 
 MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another display needs a formula panel; "comments" for point/edge annotations. geo2d XOR geo3d. Prefer geo2d; geo_canvas only for SVG constructions or vertex arrows.
 
 OUTPUT: the JSON object ALONE — no fences, no prose, nothing after the closing brace. Prose is discarded unread; it only costs tokens.
-{"status":"ok","modules":[...],"exampleId":"<id|null>"}
+{"status":"ok","modules":[...],"exampleId":"<a reference lesson id — required, never null>"}
 {"status":"too-advanced","message":"2-3 sentences","alternatives":["<reference lesson id>","..."]}
 {"status":"off-topic"}  {"status":"trivial","message":"..."}
 
@@ -412,13 +421,12 @@ EXAMPLES (the non-English/misspelled ones are real past failures — treat as th
 "explain the area of a circle" → {"status":"ok","modules":["geo2d","text"]}
 "volume of a cylinder" → {"status":"ok","modules":["geo3d","text"]}
 "plot x² and find its roots" → {"status":"ok","modules":["graph","text","comments"]}
-"derivative of f(x)=x³" → {"status":"ok","modules":["graph","text","calc"]}
-"3 + 4 × 2 order of operations" → {"status":"ok","modules":["calc"]}
+"3 + 4 × 2 order of operations" → {"status":"ok","modules":["calc"],"exampleId":"linear-eq"}
 "compare student scores in a table" → {"status":"ok","modules":["table","text"]}
 "show me how The Mandelbrot Set works" → {"status":"too-advanced","message":"The Mandelbrot set is a fractal from complex analysis: it plots which complex numbers stay bounded when a formula is applied over and over. That needs complex arithmetic and iteration well past high-school level, so there is no lesson for it here.","alternatives":["exponential","parabola","unit-circle"]}
 "how does Inter-Universal Teichmüller Theory work" · "prove the Riemann hypothesis" → {"status":"too-advanced","message":"...","alternatives":["quadratic-eq","linear-functions"]}
 "how do I conjugate French verbs" · "write me a python script" → {"status":"off-topic"}
-"derivatives" · "How to integral adn derival work 6" → {"status":"ok","modules":["graph","text","calc"]}
+"teach me derivative" · "derivatives" · "How to integral adn derival work 6" → {"status":"too-advanced","message":"Derivatives and integrals are calculus: they measure how a function changes and what it accumulates. That comes after the algebra, geometry and function work these lessons cover, so there is no lesson for it here.","alternatives":["parabola","linear-functions","exponential"]}
 "help me with my math homework" · "j'ai besoin d'aide en maths" → {"status":"ok","modules":["equation","text"],"exampleId":"linear-eq"}
 "2+2" → {"status":"trivial","message":"2 + 2 = 4. Want a topic worth a full lesson?"}
 `

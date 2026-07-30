@@ -1,9 +1,10 @@
 import { authedFetch } from '../lib/supabase.js'
 
 const STATUS_FALLBACK = {
-  'off-topic': "I'm focused on math only — try a question about algebra, geometry, trigonometry, calculus…",
-  clarify:     'Which math topic? (e.g. algebra, geometry, trigonometry…)',
-  trivial:     "That's already a one-line answer — try a topic worth a full lesson.",
+  'off-topic':    "I'm focused on math only — try a question about algebra, geometry, trigonometry, calculus…",
+  'too-advanced': 'That one is past high-school level — the lessons here stop around intro calculus and statistics.',
+  clarify:        'Which math topic? (e.g. algebra, geometry, trigonometry…)',
+  trivial:        "That's already a one-line answer — try a topic worth a full lesson.",
 }
 
 export async function generateLesson(prompt, lang = 'en') {

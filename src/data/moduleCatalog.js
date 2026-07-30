@@ -8,7 +8,7 @@
  *     Input : user prompt
  *     Output: { status: "ok", modules: ["geo2d", "equation", ...] }
  *           | { status: "off-topic" }
- *           | { status: "clarify" | "trivial", message: "..." }
+ *           | { status: "too-advanced" | "clarify" | "trivial", message: "..." }
  *
  *   Request 2 — Generator (sonnet)
  *     System: BASE_RULES + per-module docs for selected modules only
@@ -70,7 +70,7 @@ export const MODULES = {
   // ── Equation ───────────────────────────────────────────────────────────────
   equation: {
     label: 'Equation Solving',
-    description: 'Algebraic equations — linear solving, distribute, combine, inverse trig, variable substitution, exponent steps',
+    description: 'Algebra: solve, distribute, combine, substitute, inverse trig, exponents',
     layouts: ['se', 'te', 'ge', 'Ge', 'qe'],
     doc: `EQUATION LAYOUTS: se=single-equation  te=text-equation  ge=graph-equation  Ge=geo-equation  qe=grid-equation
 
@@ -121,7 +121,7 @@ INTENT: algebra/solve-for-x → te+eq-* | geo+equation mix → Ge layout
   // ── 2D Shapes (Three.js flat) ──────────────────────────────────────────────
   geo2d: {
     label: '2D Shapes (animated)',
-    description: 'Flat 2D shapes in a 2D canvas: triangles, rectangles, circles, polygons — with animated edges, angle arcs, side labels, movement',
+    description: 'Flat 2D shapes (animated): triangles, rectangles, circles, polygons — edges, angle arcs, side labels',
     layouts: ['s3'],
     doc: `GEO2D LAYOUT: s3=single-3d  (used for ALL Three.js displays — 2D and 3D)
 
@@ -178,7 +178,7 @@ ORDERING: S2c before S2l/S2a/S2h/S2E/S2A/S2w/S2x on the same shape.
   // ── 3D Shapes (Three.js volumetric) ───────────────────────────────────────
   geo3d: {
     label: '3D Shapes (volumetric)',
-    description: 'Rotatable 3D shapes with perspective: cube, sphere, cone, cylinder, prism, pyramid, etc.',
+    description: 'Rotatable 3D solids: cube, sphere, cone, cylinder, prism, pyramid',
     layouts: ['s3'],
     doc: `GEO3D LAYOUT: s3=single-3d
 
@@ -217,7 +217,7 @@ rectangular-prism) — curved and other polyhedra solids aren't supported yet.
   // ── Canvas Geometry (SVG) ──────────────────────────────────────────────────
   geo_canvas: {
     label: 'Canvas Geometry (SVG)',
-    description: 'SVG-based 2D geometry for detailed step-by-step geometric constructions, proofs, and measurements with arrows and annotations',
+    description: 'SVG 2D constructions/proofs — arrows, annotations, measurements',
     layouts: ['sG', 'tG', 'Ge'],
     doc: `GEO-CANVAS LAYOUTS: sG=single-geo  tG=text-geo  Ge=geo-equation
 
@@ -260,7 +260,7 @@ ga/gr/gM/gP clr: ""=light blue
   // ── Graphing (Desmos) ──────────────────────────────────────────────────────
   graph: {
     label: 'Function Graphing',
-    description: 'Desmos-based graphing: plot functions, shade areas, intersections, derivatives, Riemann sums, trig circle, vectors, geometric angles, transformations',
+    description: 'Desmos graphing: plot, shade, intersections, derivatives, Riemann, unit circle, vectors, transforms',
     layouts: ['sg', 'tg', 'ge'],
     doc: `GRAPH LAYOUTS: sg=single-graph  tg=text-graph  ge=graph-equation
 
@@ -310,7 +310,7 @@ fP needs a non-root x value (not exactly on an axis intercept)
   // ── Data Tables ───────────────────────────────────────────────────────────
   table: {
     label: 'Data Tables',
-    description: 'Animated data grids for showing values, comparisons, frequency tables, or step-by-step table manipulations',
+    description: 'Animated data grids: values, comparisons, frequency tables',
     layouts: ['sq', 'tq', 'qe'],
     doc: `TABLE LAYOUTS: sq=single-grid  tq=text-grid  qe=grid-equation (table + equation, no text — pair with Th to walk a per-row calculation next to its formula)
 
@@ -334,7 +334,7 @@ FUNCTIONS [positional args]:
   // ── Text Boxes ────────────────────────────────────────────────────────────
   text: {
     label: 'Text & Formula Panels',
-    description: 'Floating text panels with LaTeX, bullet lists, and computed values — used alongside other displays to show formulas or explanations',
+    description: 'Text/formula panels: LaTeX, lists, computed values',
     layouts: [],
     doc: `TEXT LAYOUTS: sT=single-text (text box alone, no paired display)
 TEXT FUNCTIONS [positional args]:
@@ -357,7 +357,7 @@ Prefer tc for key formulas. Prefer the c* comment codes for brief point annotati
   // ── Step-by-step Calculation ───────────────────────────────────────────────
   calc: {
     label: 'Step-by-step Calculation',
-    description: 'Vertical LaTeX calculation display for PEMDAS, integrals, derivatives, multi-step arithmetic — each line appears one at a time',
+    description: 'Vertical LaTeX calculation lines, one at a time (PEMDAS, integrals, derivations)',
     layouts: ['sc'],
     doc: `CALC LAYOUTS: sc=single-calc
 
@@ -373,7 +373,7 @@ INTENT: PEMDAS / order-of-operations / arithmetic → sc+Cs | complex derivation
   // ── Comment Annotations ────────────────────────────────────────────────────
   comments: {
     label: 'Comment Annotations',
-    description: 'Floating comment bubbles anchored to graph points, curve segments, grid cells, shape vertices/edges, or equation terms',
+    description: 'Comment bubbles on points, curves, cells, vertices/edges, equation terms',
     layouts: [],
     doc: `COMMENT FUNCTIONS [positional args]:
   cg:[id,text,x,y,clr]              — comment at exact graph point (x,y)
@@ -399,80 +399,46 @@ Prefer the c* comment codes over tc for brief labels on visual elements.
 // Imported rather than duplicated so a new example shows up here automatically.
 export const EXAMPLE_INDEX = EXAMPLE_LESSONS.map(e => ({ id: e.id, title: e.title, desc: e.desc }))
 
-export const ROUTER_SYSTEM_PROMPT = `You are a math lesson module router.
-Given a topic or lesson description, first classify the request, then — only if it needs a lesson — decide which display modules it will need.
+export const ROUTER_SYSTEM_PROMPT = `Math lesson router. Classify the request; if "ok", pick the display modules.
 
-Available modules:
-${Object.entries(MODULES).map(([id, m]) => `  ${id.padEnd(12)} — ${m.description}`).join('\n')}
+MODULES:
+${Object.entries(MODULES).map(([id, m]) => `${id} — ${m.description}`).join('\n')}
 
-Reference lessons — hand-built and verified. Pick the ONE closest in STRUCTURE
-to what is being asked; the generator is shown it as a worked model, so choose
-by "which of these is built the way this one should be built", not by keyword
-overlap. Use null only when none is even loosely related:
-${EXAMPLE_INDEX.map(e => `  ${e.id.padEnd(17)} — ${e.title}: ${e.desc}`).join('\n')}
+REFERENCE LESSONS — pick the ONE closest in STRUCTURE (how it is built, not keyword overlap); the generator sees it as a worked model. null if none is even loosely related:
+${EXAMPLE_INDEX.map(e => `${e.id} — ${e.desc}`).join('\n')}
 
-Prompts arrive in ANY language (English, French, German, Spanish, Italian,
-Portuguese…), often informal, unpunctuated, and misspelled. Language, spelling
-and phrasing are NEVER grounds for "off-topic" — classify on SUBJECT MATTER only.
-Expect and accept misspelled math terms ("pytagore", "pythagore", "equation du
-2eme degre", "trigo").
+Prompts come in any language, informal, unpunctuated, misspelled ("pytagore", "equation du 2eme degre", "trigo"). Language/spelling/phrasing NEVER make something off-topic — classify on SUBJECT only.
 
-Step 1 — classify:
-  "ok"        — the subject is mathematics. ANY phrasing counts, not just
-                "make me a lesson": a direct question ("how do I find c?"),
-                a how-to, a concept comparison ("when do I use the law of sines
-                vs cosines?"), a request for exercises or practice, or a bare
-                topic name. If a math teacher would answer it, it is "ok".
-  "off-topic" — the SUBJECT is not mathematics (languages, history, event
-                planning, general knowledge, coding, non-math science,
-                personal advice). Not for odd phrasing or a foreign language.
-  "clarify"   — mentions math but names NO topic at all (e.g. "help me with my
-                math homework", "j'ai besoin d'aide en maths"). If any topic is
-                named — fractions, equations, triangles… — it is "ok", however
-                vague or discouraged the wording ("I don't get fractions at all,
-                help" names fractions, so it is "ok", NOT clarify).
-  "trivial"   — a fully-specified arithmetic question with a one-line answer, not worth a full lesson (e.g. "2+2", "15% of 80").
+STATUS:
+ok           — math, at or below high-school level. Any phrasing: question, how-to, comparison, exercise request, bare topic. A teacher would answer it → ok. Unsure → ok.
+too-advanced — real math, past high-school: research/graduate work (IUT theory, schemes, measure theory, functional analysis, topology, abstract algebra past basics, real analysis proofs). msg = one short English sentence.
+off-topic    — subject is not math (languages, history, coding, non-math science, advice). Never for odd phrasing or a foreign language.
+clarify      — math but NO topic named ("help me with my math homework"). Any named topic → ok, however vague the wording.
+trivial      — fully-specified arithmetic, one-line answer ("2+2", "15% of 80"). msg = that answer.
 
-  Math includes: algebra, geometry, trigonometry, calculus, statistics, functions, arithmetic.
-  When in doubt, classify as "ok" — a false positive (treating a borderline request as math) is far less costly than a false negative (blocking a real math question). Only use "off-topic" when the request is clearly not math. Short ambiguous prompts (e.g. "9/11") should default to math.
+LEVEL CEILING (high school): arithmetic, algebra, geometry, trigonometry, functions, intro calculus (standard derivatives/integrals), intro statistics/probability. Past that → too-advanced, NOT off-topic.
 
-Step 2 (only when status is "ok") — pick the minimum module set:
-  · Pick the minimum set needed — don't add modules speculatively.
-  · Always include "text" when another display needs a formula panel alongside it.
-  · Always include "comments" when point annotations or edge labels would help clarity.
-  · geo2d and geo3d are mutually exclusive (you can't show a 2D flat shape AND a 3D shape on the same page).
-  · geo2d vs geo_canvas: prefer geo2d for new lessons (animated, Three.js); use geo_canvas for SVG constructions or when the lesson specifically needs arrows between vertices.
+MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another display needs a formula panel; "comments" for point/edge annotations. geo2d XOR geo3d. Prefer geo2d; geo_canvas only for SVG constructions or vertex arrows.
 
-Reply with ONLY valid JSON — no prose, no fences. One of:
-{"status":"ok","modules":["id1","id2",...],"exampleId":"<id from the list above, or null>"}
-{"status":"off-topic"}
-{"status":"clarify","message":"<one short English sentence asking which math topic>"}
-{"status":"trivial","message":"<the direct English answer, one short sentence>"}
+OUTPUT: the JSON object ALONE — no fences, no prose before or after, stop at the closing brace.
+{"status":"ok","modules":[...],"exampleId":"<id|null>"}
+{"status":"too-advanced","message":"..."}  {"status":"off-topic"}
+{"status":"clarify","message":"..."}  {"status":"trivial","message":"..."}
 
-Examples:
-  "solve 2x + 5 = 11"                            → {"status":"ok","modules":["equation","text"]}
-  "right triangle and Pythagorean theorem"        → {"status":"ok","modules":["geo2d","equation","text","comments"]}
-  "plot x² and find its roots"                    → {"status":"ok","modules":["graph","text","comments"]}
-  "explain the area of a circle"                  → {"status":"ok","modules":["geo2d","text"]}
-  "volume of a cylinder"                          → {"status":"ok","modules":["geo3d","text"]}
-  "3 + 4 × 2 order of operations"                → {"status":"ok","modules":["calc"]}
-  "compare student scores in a table"             → {"status":"ok","modules":["table","text"]}
-  "derivative of f(x) = x³"                      → {"status":"ok","modules":["graph","text","calc"]}
-  "9/11"                                          → {"status":"ok","modules":["equation","text"]}
-
-  Non-English, informal, misspelled — all "ok". These are REAL failures the
-  router previously rejected as off-topic; treat them as the reference bar:
-  "comment on fait pour trouver c dans pytagore"  → {"status":"ok","modules":["geo2d","equation","text","comments"]}
-  "donne moi des exercices sur les equation du 2eme degre" → {"status":"ok","modules":["equation","text"]}
-  "la loi des sinus vs cosinus cest quand on utilise laquelle" → {"status":"ok","modules":["geo2d","equation","text","comments"]}
-  "2x-6+3x=8 ca fait quoi"                        → {"status":"ok","modules":["equation","text"]}
-  "wie berechne ich den Umfang eines Kreises"     → {"status":"ok","modules":["geo2d","equation","text"]}
-  "¿cómo se resuelve una ecuación de segundo grado?" → {"status":"ok","modules":["equation","text"]}
-
-  "how do I conjugate French verbs"               → {"status":"off-topic"}
-  "write me a python script to sort a list"       → {"status":"off-topic"}
-  "help me with my math problem"                  → {"status":"clarify","message":"Which math topic? (e.g. algebra, geometry, trigonometry…)"}
-  "2+2"                                           → {"status":"trivial","message":"2 + 2 = 4. Want to explore a deeper concept instead?"}
+EXAMPLES (the non-English/misspelled ones are real past failures — treat as the bar):
+"solve 2x+5=11" · "2x-6+3x=8 ca fait quoi" · "donne moi des exercices sur les equation du 2eme degre" · "¿cómo se resuelve una ecuación de segundo grado?" · "9/11" → {"status":"ok","modules":["equation","text"]}
+"right triangle and Pythagorean theorem" · "comment on fait pour trouver c dans pytagore" · "la loi des sinus vs cosinus cest quand on utilise laquelle" → {"status":"ok","modules":["geo2d","equation","text","comments"]}
+"wie berechne ich den Umfang eines Kreises" → {"status":"ok","modules":["geo2d","equation","text"]}
+"explain the area of a circle" → {"status":"ok","modules":["geo2d","text"]}
+"volume of a cylinder" → {"status":"ok","modules":["geo3d","text"]}
+"plot x² and find its roots" → {"status":"ok","modules":["graph","text","comments"]}
+"derivative of f(x)=x³" → {"status":"ok","modules":["graph","text","calc"]}
+"3 + 4 × 2 order of operations" → {"status":"ok","modules":["calc"]}
+"compare student scores in a table" → {"status":"ok","modules":["table","text"]}
+"how does Inter-Universal Teichmüller Theory work" · "prove the Riemann hypothesis" → {"status":"too-advanced","message":"That's research-level maths — this covers up to high-school topics."}
+"how do I conjugate French verbs" · "write me a python script" → {"status":"off-topic"}
+"help me with my math problem" → {"status":"clarify","message":"Which math topic? (e.g. algebra, geometry, trigonometry…)"}
+"2+2" → {"status":"trivial","message":"2 + 2 = 4. Want a topic worth a full lesson?"}
 `
 
 // ── GENERATOR PROMPT BUILDER ──────────────────────────────────────────────────

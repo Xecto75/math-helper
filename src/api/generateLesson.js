@@ -44,6 +44,9 @@ export async function generateLesson(prompt, lang = 'en') {
   if (data.status && data.status !== 'ok') {
     const err = new Error(data.message ?? STATUS_FALLBACK[data.status] ?? 'Could not generate a lesson for that.')
     err.status = data.status
+    // too-advanced comes with reference lessons to offer instead; the caller
+    // turns them into buttons that load the lesson.
+    err.alternatives = data.alternatives ?? []
     throw err
   }
   return data.lesson

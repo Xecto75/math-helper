@@ -451,7 +451,28 @@
 }
 .prompt-send-btn:hover:not(:disabled) { background: rgba(165,180,252,0.22); border-color: var(--accent-2); }
 .prompt-send-btn:disabled { opacity: 0.35; cursor: default; }
-.prompt-error { font-size: 0.78rem; color: #f87171; margin-top: 4px; }
+.prompt-error { font-size: 0.78rem; color: #f87171; margin-top: 4px; line-height: 1.45; }
+
+/* Reference lessons offered when a topic is real maths but past this level */
+.prompt-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.prompt-suggest-lead { font-size: 0.75rem; color: var(--text-dim, #94a3b8); }
+.prompt-suggest-btn {
+  font-size: 0.75rem;
+  color: var(--ex-color, #a5b4fc);
+  background: rgba(165,180,252,0.10);
+  border: 1px solid var(--ex-color, #a5b4fc);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.prompt-suggest-btn:hover { background: rgba(165,180,252,0.24); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    LESSON SHELL  —  flex column, full viewport

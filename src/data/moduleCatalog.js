@@ -386,18 +386,19 @@ Prompts come in any language, informal, unpunctuated, misspelled ("pytagore", "e
 
 STATUS:
 ok           — math, at or below high-school level. Any phrasing: question, how-to, comparison, exercise request, bare topic. A teacher would answer it → ok. Unsure → ok.
-too-advanced — real math, past high-school: research/graduate work (IUT theory, schemes, measure theory, functional analysis, topology, abstract algebra past basics, real analysis proofs). msg = one short English sentence.
-off-topic    — subject is not math (languages, history, coding, non-math science, advice). Never for odd phrasing or a foreign language.
+too-advanced — real math, past high-school: research/graduate work (Mandelbrot set/fractals, complex analysis, IUT theory, schemes, measure theory, functional analysis, topology, abstract algebra past basics, analysis proofs). message = 2-3 short English sentences: what the topic is, and that it is past what these lessons cover. alternatives = 2-3 ids from REFERENCE LESSONS that are the nearest teachable stepping stones.
+off-topic    — the SUBJECT IS NOT MATHEMATICS (languages, history, coding, non-math science, advice). Nothing else is off-topic: a mathematical topic these modules cannot teach is too-advanced, never off-topic. Never off-topic for odd phrasing or a foreign language. No message.
 clarify      — math but NO topic named ("help me with my math homework"). Any named topic → ok, however vague the wording.
 trivial      — fully-specified arithmetic, one-line answer ("2+2", "15% of 80"). msg = that answer.
 
-LEVEL CEILING (high school): arithmetic, algebra, geometry, trigonometry, functions, intro calculus (standard derivatives/integrals), intro statistics/probability. Past that → too-advanced, NOT off-topic.
+LEVEL CEILING (high school): arithmetic, algebra, geometry, trigonometry, functions, intro calculus (standard derivatives/integrals), intro statistics/probability. Past that → too-advanced.
 
 MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another display needs a formula panel; "comments" for point/edge annotations. geo2d XOR geo3d. Prefer geo2d; geo_canvas only for SVG constructions or vertex arrows.
 
-OUTPUT: the JSON object ALONE — no fences, no prose before or after, stop at the closing brace.
+OUTPUT: the JSON object ALONE — no fences, no prose, nothing after the closing brace. Prose is discarded unread; it only costs tokens.
 {"status":"ok","modules":[...],"exampleId":"<id|null>"}
-{"status":"too-advanced","message":"..."}  {"status":"off-topic"}
+{"status":"too-advanced","message":"2-3 sentences","alternatives":["<reference lesson id>","..."]}
+{"status":"off-topic"}
 {"status":"clarify","message":"..."}  {"status":"trivial","message":"..."}
 
 EXAMPLES (the non-English/misspelled ones are real past failures — treat as the bar):
@@ -410,7 +411,8 @@ EXAMPLES (the non-English/misspelled ones are real past failures — treat as th
 "derivative of f(x)=x³" → {"status":"ok","modules":["graph","text","calc"]}
 "3 + 4 × 2 order of operations" → {"status":"ok","modules":["calc"]}
 "compare student scores in a table" → {"status":"ok","modules":["table","text"]}
-"how does Inter-Universal Teichmüller Theory work" · "prove the Riemann hypothesis" → {"status":"too-advanced","message":"That's research-level maths — this covers up to high-school topics."}
+"show me how The Mandelbrot Set works" → {"status":"too-advanced","message":"The Mandelbrot set is a fractal from complex analysis: it plots which complex numbers stay bounded when a formula is applied over and over. That needs complex arithmetic and iteration well past high-school level, so there is no lesson for it here.","alternatives":["exponential","parabola","unit-circle"]}
+"how does Inter-Universal Teichmüller Theory work" · "prove the Riemann hypothesis" → {"status":"too-advanced","message":"...","alternatives":["quadratic-eq","linear-functions"]}
 "how do I conjugate French verbs" · "write me a python script" → {"status":"off-topic"}
 "help me with my math problem" → {"status":"clarify","message":"Which math topic? (e.g. algebra, geometry, trigonometry…)"}
 "2+2" → {"status":"trivial","message":"2 + 2 = 4. Want a topic worth a full lesson?"}

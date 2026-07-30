@@ -84,6 +84,7 @@ import {
   demoSetLayout,
 } from './engine/demoScripts.js'
 import { generateLesson } from './api/generateLesson.js'
+import { EXAMPLE_LESSONS } from './data/exampleLessons.js'
 import './App.css'
 
 const ALL_READY_APP = CATEGORIES.flatMap(c => c.functions).filter(f => f.status === 'ready')
@@ -290,6 +291,9 @@ export default function App() {
   const [promptVal,   setPromptVal]   = useState('')
   const [aiLoading,   setAiLoading]   = useState(false)
   const [aiError,     setAiError]     = useState('')
+  // Reference lessons offered when a topic is real maths but past what this
+  // teaches — clicking one loads it instead of leaving the user at a dead end.
+  const [aiSuggestions, setAiSuggestions] = useState([])
   const [aiRawOutput, setAiRawOutput] = useState(null)
   const [hintIdx,     setHintIdx]     = useState(0)
   const promptSnapRef = useRef('')
@@ -935,6 +939,7 @@ export default function App() {
     promptSnapRef.current = trimmed
     setAiLoading(true)
     setAiError('')
+    setAiSuggestions([])
     setAiRawOutput(null)
     try {
       const raw    = await generateLesson(trimmed, langRef.current)
@@ -949,6 +954,11 @@ export default function App() {
     } catch (err) {
       const msg = err.message ?? 'Generation failed'
       setAiError(msg)
+      setAiSuggestions(
+        (err.alternatives ?? [])
+          .map(id => EXAMPLE_LESSONS.find(e => e.id === id))
+          .filter(Boolean)
+      )
       if (err.rawOutput) {
         const lineMatch = msg.match(/line (\d+)/)
         setAiRawOutput({ text: err.rawOutput, errLine: lineMatch ? parseInt(lineMatch[1], 10) : null })
@@ -957,6 +967,26 @@ export default function App() {
       setAiLoading(false)
     }
   }, [promptVal, aiLoading, handleBuilderBuildAll])
+
+  // Load one of the suggested reference lessons. Author edits live in the
+  // overrides file, same as the Examples gallery reads — the bundled pages are
+  // only the fallback when that request fails.
+  const handleLoadSuggestion = useCallback(async (id) => {
+    const ex = EXAMPLE_LESSONS.find(e => e.id === id)
+    if (!ex) return
+    let pages = ex.pages
+    try {
+      const res = await fetch('/api/example-overrides')
+      if (res.ok) {
+        const all = await res.json()
+        if (Array.isArray(all?.[id])) pages = all[id]
+      }
+    } catch { /* bundled copy is fine */ }
+    setAiError('')
+    setAiSuggestions([])
+    setPromptVal('')
+    handleBuilderBuildAll(pages, 1)
+  }, [handleBuilderBuildAll])
 
   // Stepping forward onto the very next segment of the SAME page (a
   // set-layout split) continues from exactly where the previous segment
@@ -1326,6 +1356,21 @@ export default function App() {
             </button>
           </div>
           {aiError && <div className="prompt-error">{aiError}</div>}
+          {aiSuggestions.length > 0 && (
+            <div className="prompt-suggest">
+              <span className="prompt-suggest-lead">Try instead:</span>
+              {aiSuggestions.map(ex => (
+                <button
+                  key={ex.id}
+                  className="prompt-suggest-btn"
+                  style={{ '--ex-color': ex.color }}
+                  onClick={() => handleLoadSuggestion(ex.id)}
+                >
+                  {ex.title}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

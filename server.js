@@ -123,7 +123,17 @@ async function routeModules(prompt, trace) {
   let result
   try {
     const parsed = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1))
-    result = { status: parsed.status ?? 'ok', modules: parsed.modules ?? [], message: parsed.message, exampleId: parsed.exampleId ?? null }
+    result = {
+      status:    parsed.status ?? 'ok',
+      modules:   parsed.modules ?? [],
+      message:   parsed.message,
+      exampleId: parsed.exampleId ?? null,
+      // too-advanced only: reference lessons to offer instead. Filtered to ids
+      // that actually exist, so a hallucinated one can never reach the UI as a
+      // button that loads nothing.
+      alternatives: (Array.isArray(parsed.alternatives) ? parsed.alternatives : [])
+        .filter(id => EXAMPLE_LESSONS.some(e => e.id === id)),
+    }
   } catch {
     console.warn('  Router parse failed — falling back to equation+text')
     result = { status: 'ok', modules: ['equation', 'text'], exampleId: null }
@@ -268,9 +278,14 @@ app.post('/api/generate-lesson', async (req, res) => {
     if (route.status !== 'ok') {
       // No lesson was produced, so the credit should not be spent.
       if (auth) await refundCredit(auth.user.id)
-      trace.section('REFUSED', `status: ${route.status}\n${route.message ?? ''}`)
+      trace.section('REFUSED', `status: ${route.status}\n${route.message ?? ''}\n` +
+        `alternatives: ${route.alternatives?.join(', ') || '—'}`)
       trace.finish()
-      return res.json({ status: route.status, message: route.message })
+      return res.json({
+        status: route.status,
+        message: route.message,
+        alternatives: route.alternatives ?? [],
+      })
     }
     const moduleIds = route.modules
 

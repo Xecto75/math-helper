@@ -48,7 +48,7 @@ function renderCommentText(text) {
   return <MathText text={text} />
 }
 
-const CommentBox = memo(function CommentBox({ c }) {
+const CommentBox = memo(function CommentBox({ c, smooth = true }) {
   const [shown, setShown] = useState({ text: c.text, color: c.color ?? '#60a5fa', title: c.title ?? null })
   const [popKey, setPopKey] = useState(0)
 
@@ -64,6 +64,12 @@ const CommentBox = memo(function CommentBox({ c }) {
   return (
     <div data-cmt-id={c.id} style={{
       animation: 'cmtFadeIn 0.35s ease both',
+      // A comment re-anchors whenever another one appears next to it, the
+      // layout changes, or its target moves — and it used to teleport to the
+      // new spot. Slide instead. Suppressed while the user is dragging the
+      // graph, where the position changes every frame and any easing would
+      // just trail behind the cursor.
+      transition: smooth ? 'left 0.28s ease, top 0.28s ease' : 'none',
       position: 'absolute', left: c.boxX, top: c.boxY,
       width: BOX_W, minHeight: BOX_H,
       background: 'rgba(10,10,20,0.90)',
@@ -354,9 +360,16 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
                     fill={color} fillOpacity={0.14}
                     stroke={color} strokeOpacity={0.65} strokeWidth={1.5} rx={3} />
                 ))}
+                {/* The connector has to travel with the box it points at, or
+                    the leader line snaps while the card slides. SVG geometry
+                    properties are animatable as CSS in Chrome; anywhere they
+                    are not, this degrades to the previous instant move. */}
                 <line x1={lx} y1={ly} x2={c.tx} y2={dotTy}
+                  style={{ transition: fadeForPan ? 'none' : 'x1 0.28s ease, y1 0.28s ease, x2 0.28s ease, y2 0.28s ease' }}
                   stroke={color} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.8} />
-                <circle cx={c.tx} cy={dotTy} r={DOT_R} fill={color} opacity={0.9} />
+                <circle cx={c.tx} cy={dotTy} r={DOT_R}
+                  style={{ transition: fadeForPan ? 'none' : 'cx 0.28s ease, cy 0.28s ease' }}
+                  fill={color} opacity={0.9} />
               </g>
             </g>
           )
@@ -364,7 +377,11 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
       </svg>
 
       {resolved.map(c => (
-        <CommentBox key={c.id} c={c} />
+        <CommentBox
+          key={c.id}
+          c={c}
+          smooth={!(graphInteractive && c.target?.type === 'graph')}
+        />
       ))}
 
     </div>

@@ -169,6 +169,17 @@ const RULES = [
     fixArg: (def, val) => splitFormulaLines(String(val)),
   },
   {
+    // Side labels are comma-separated, but "|" is the separator everywhere in
+    // tc content, so the model reaches for it here too — and the whole string
+    // then lands on edge 0 as one literal label reading "6|4||".
+    id: 'pipe-separated-labels',
+    perArg: (def, val) => (def.id === 'labels' && typeof val === 'string' &&
+                           val.includes('|') && !val.includes(','))
+      ? `${def.id}: pipe-separated — side labels are comma-separated`
+      : null,
+    fixArg: (def, val) => String(val).split('|').join(','),
+  },
+  {
     id: 'bad-color',
     perArg: (def, val) => {
       if (def.type !== 'color-name' || val === '') return null
@@ -221,6 +232,15 @@ export function repairLesson(compact) {
       if (vals.length === 1 && Array.isArray(vals[0])) {
         fixed.push(`p${pi}s${si} ${code}: args were nested — unwrapped ${JSON.stringify(vals[0])}`)
         vals = vals[0]
+      }
+
+      // Arguments past the last input are dropped by expandStep without a
+      // sound. That silence is how a documented signature can disagree with
+      // the real one for a long time: S2c was documented with 7 args against 6
+      // real inputs, so every colour the model passed vanished.
+      if (vals.length > defs.length) {
+        warnings.push(`p${pi}s${si} ${code}: ${vals.length} args for ${defs.length} inputs ` +
+          `(${defs.map(d => d.id).join(',')}) — dropped ${JSON.stringify(vals.slice(defs.length))}`)
       }
 
       // per-argument type rules

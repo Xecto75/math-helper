@@ -122,10 +122,16 @@ INTENT: algebra/solve-for-x → te+eq-* | geo+equation mix → Ge layout
     doc: `GEO2D LAYOUT: s3=single-3d  (used for ALL Three.js displays — 2D and 3D)
 
 FUNCTIONS [positional args]:
-  S2c:[id,type,vals,flipX,flipY,fillColor,borderColor]  — create flat 2D shape
+  S2c:[id,type,a,b,c,color]                             — create flat 2D shape. a/b/c are SEPARATE
+                                                          numeric args (not one "6,4" string) and
+                                                          there is ONE color. Flip/rotate are S2f/S2r.
   S2m:[id,dx,dy]                                        — move shape by offset
   S2h:[id]                                              — pulse highlight
-  S2l:[id,customLabels]                                 — label sides (blank=auto-lengths)
+  S2l:[id,labels]                                       — label sides. labels is ONE string, entries
+                                                          COMMA-separated in edge order, never "|":
+                                                          "6,4,," labels e0 and e1 and leaves e2/e3
+                                                          alone; "" labels every side with its real
+                                                          computed length.
   S2a:[id,color,showValues]                             — show all interior angle arcs; showValues=true also labels each arc with its measured degrees
   S2A:[id,angleIndex,color]                             — pop+recolor one angle arc
   S2E:[id,edgeIndex,color]                              — animated highlight on one edge
@@ -140,20 +146,16 @@ FUNCTIONS [positional args]:
   gM:[id,clr]                                           — show ALL area-formula measures (dashed height + relevant side labels — square→s, rectangle→l+h, parallelogram→b+h, trapeze→B+b+h, triangle→b+h, circle→r). Same function as geo_canvas's gM — works on geo2d shapes too.
   gP:[id,clr]                                           — show ALL perimeter-formula measures (every side highlighted in turn + labeled with its length; circle→r same as gM). Same function as geo_canvas's gP — works on geo2d shapes too.
 
-SHAPE TYPES & VALS:
-  triangle         vals="a,b,c"          (3 side lengths)
-  right-triangle   vals="a,b"            (two legs; hypotenuse auto)
-  rectangle        vals="w,h"
-  square           vals="s"
-  circle           vals="r"
-  parallelogram    vals="w,h,dx"
-  trapeze          vals="aTop,bBot,h"
-  pentagon         vals="r"             (circumradius)
-  hexagon          vals="r"
-  octagon          vals="r"
-  regular-polygon  vals="r"
+SHAPE TYPES — what a, b, c mean (leave the unused ones ""):
+  triangle         a,b,c = the 3 side lengths      right-triangle   a,b = the 2 legs (hyp auto)
+  rectangle        a=width  b=height               square           a=side
+  circle           a=radius                        line             a=length
+  parallelogram    a=width  b=height  c=dx         trapeze          a=top  b=bottom  c=height
+  pentagon/hexagon/octagon/regular-polygon         a=circumradius
 
-fillColor/borderColor: color index (0–7) or "" for default.
+color: index (0–7) or "" for default. A triangle given 3 sides has a height it COMPUTES — you do not
+choose it. Never assume it: read it as [id]h (a 6,5,7 triangle is 3.87 tall, not 4), and if a second
+shape has to match that height, it cannot be hand-typed — build the lesson around what gM shows.
 
 SIZE: view is ~12 world units tall — keep every side value 2-10 so the shape, its labels and its
   arcs all fit. Oversized values are auto-zoomed to fit but render small and cramped: teach
@@ -215,11 +217,14 @@ S2E/S2F work on box solids only (cube, prism, rectangular-prism), never curved o
     doc: `GEO-CANVAS LAYOUTS: sG=single-geo  tG=text-geo  Ge=geo-equation
 
 FUNCTIONS [positional args]:
-  gp:[shId,type,vals,flipX,flipY,fillClr,borderClr]   — create polygon/shape
+  gp:[shId,type,values,fillClr,borderClr,flipX,flipY]  — create polygon/shape. NOTE the order:
+                                                         colors BEFORE flips. Unlike geo2d's S2c,
+                                                         values here IS one comma string ("6,4").
   gx:[id]                                              — erase shape
   gm:[id,dx,dy]                                        — move shape
   gh:[id]                                              — highlight shape (pulse)
-  gl:[id,labels]                                       — label sides
+  gl:[id,labels]                                       — label sides (ONE comma-separated string,
+                                                         never "|", same as geo2d's S2l)
   gt:[lId,text,x,y]                                    — add floating text
   ga:[id,clr]                                          — show all angle arcs
   gw:[id,arrId,from,to,clr]                            — draw arrow (from vertex to vertex)

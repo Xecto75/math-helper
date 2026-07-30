@@ -664,23 +664,18 @@ export async function removeSegment(calc, id) {
   await fadeOut(calc, [e.calcId], e.fadeProps ?? { lineOpacity: 1 })
 }
 
-// An "on curve" anchor may name a SEGMENT rather than a plotted function.
-// Anchoring a segment by x is unreliable — and impossible when it is vertical,
-// where every point shares the same x — so the midpoint is the natural anchor,
-// the same point showSegmentTick already marks. An x that genuinely lands on
-// the segment is still honoured, so "somewhere along it" stays available.
-// Returns null when the id is not a segment, which is how callers tell the two
-// kinds of target apart.
-export function segmentAnchor(id, x) {
+// An "on curve" anchor may name a SEGMENT rather than a plotted function, in
+// which case it lands on the MIDPOINT — the same point showSegmentTick marks —
+// in both x and y. The x argument is ignored on purpose: anchoring a segment by
+// x is meaningless on a vertical one, and on any other the field's default of 1
+// would silently drag the comment to an end of the segment instead of the
+// middle. Returns null when the id is not a segment, which is how callers tell
+// the two kinds of target apart.
+export function segmentAnchor(id) {
   const seg = registry.get(`seg::${id}`)
   if (!seg) return null
   const { x1, y1, x2, y2 } = seg
-  const mid = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 }
-  const xv  = (x === '' || x === null || x === undefined) ? NaN : Number(x)
-  if (!isFinite(xv) || Math.abs(x2 - x1) < 1e-9) return mid
-  if (xv < Math.min(x1, x2) || xv > Math.max(x1, x2)) return mid
-  const t = (xv - x1) / (x2 - x1)
-  return { x: xv, y: y1 + t * (y2 - y1) }
+  return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 }
 }
 
 // Congruent-side tick mark(s) at a segment's midpoint — same notation as the

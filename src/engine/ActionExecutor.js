@@ -2129,7 +2129,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
           // midpoint unless the given x really lands on it) rather than making
           // the author hand-type coordinates that drift the moment the
           // segment moves.
-          const seg = graphEngine.segmentAnchor(target.funcId, target.x)
+          const seg = graphEngine.segmentAnchor(target.funcId)
           if (seg) {
             target = { ...target, x: seg.x, y: seg.y }
           } else {

@@ -772,7 +772,7 @@ export const CATEGORIES = [
       {
         id: 'cmt-graph-func', label: 'Comment → On Curve', status: 'ready',
         useGraph: true,
-        description: 'Comment dot snapped onto a curve at x — or onto a SEGMENT (its id from Add Segment), where it lands on the midpoint and X is ignored unless it really falls on the segment',
+        description: 'Comment dot snapped onto a curve at x — or onto a SEGMENT (its id from Add Segment), where it lands on the midpoint and X is ignored',
         inputs: [
           { id: 'cmtId',  label: 'Comment ID (optional)', type: 'text',    default: '', placeholder: 'e.g. cmt1' },
           { id: 'text',   label: 'Text',     type: 'text',    default: 'f(x)' },

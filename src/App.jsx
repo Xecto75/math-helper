@@ -1150,6 +1150,21 @@ export default function App() {
     setExerciseResult('revealed')
   }, [])
 
+  // A right answer ends the page — there is nothing left to do on it, so move
+  // on rather than making the student hunt for the arrow after every question.
+  // The delay lets the ✓ Correct! land first. Only on 'correct': a revealed
+  // answer is something they may want to sit and read.
+  //
+  // The cleanup cancels the pending jump if they navigate themselves, replay,
+  // or the page changes under it — so this can never fire onto a page the
+  // student already left.
+  useEffect(() => {
+    if (exerciseResult !== 'correct') return
+    if (!lessonPages || lessonPageIdx >= lessonPages.length - 1) return
+    const t = setTimeout(() => handleLessonNav(1), 1100)
+    return () => clearTimeout(t)
+  }, [exerciseResult, lessonPages, lessonPageIdx, handleLessonNav])
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="app">

@@ -1313,75 +1313,82 @@ export function nameFunc(calc, id, funcId, label, x, y, opts = {}) {
   const f = makeEval(fn.expr)
   if (!f) return
 
-  let x0 = isFinite(x) ? x : null
+  const vp   = getViewport()
+  const vpW  = (vp.right - vp.left) || 8
+  const vpH  = Math.abs(vp.top - vp.bottom) || 8
+  const cxV  = (vp.left + vp.right) / 2
+  const cyV  = (vp.bottom + vp.top) / 2
+  const yLo  = Math.min(vp.bottom, vp.top) + 0.06 * vpH
+  const yHi  = Math.max(vp.bottom, vp.top) - 0.06 * vpH
+  const { px: ppx, py: ppy } = pixelsPerUnit(calc)
+  // A rendered label can be 1-3 lines tall (see the |-separator newline
+  // support) — plain anchor-to-anchor distance needs real headroom above a
+  // single line's height, or two labels whose anchors are "far enough" by this
+  // metric can still have their actual text boxes overlapping.
+  const minDistPx = 90
+  const others = [...registry.entries()]
+    .filter(([k]) => k.startsWith('lbl::'))
+    .map(([, e]) => e)
+
+  const evalAt = (xx) => {
+    let yy
+    try { yy = f(xx) } catch { return null }
+    return isFinite(yy) ? yy : null
+  }
+  const onScreen = (xx, yy) => xx >= vp.left && xx <= vp.right && yy >= yLo && yy <= yHi
+  const clearOf  = (xx, yy) => others.every(o =>
+    Math.hypot((xx - o.x) * ppx, (yy - o.y) * ppy) >= minDistPx)
+
+  let x0 = null
+  let yVal = null
   let orientation = 'above'
 
+  // An explicit x from the caller wins — but only if it actually lands on
+  // screen. Honouring one that does not is how a label ended up off frame and
+  // dragged the camera after it.
+  if (isFinite(x)) {
+    const yy = isFinite(y) ? y : evalAt(x)
+    if (yy !== null && onScreen(x, yy)) { x0 = x; yVal = yy }
+  }
+
+  // Otherwise: the point of the curve NEAREST THE CENTRE of the current view.
+  // Sampling x and taking the first in-frame hit put the label wherever the
+  // curve happened to be at the middle column, which for a steep line is way
+  // off the top or bottom. Ranking by true screen distance to the centre puts
+  // it in the middle when the curve passes there, and as close to the middle
+  // as the curve allows when it does not.
   if (x0 === null) {
-    // No x given — start from the current viewport's own center (so the
-    // label lands in view without needing a re-adjust) and, only for this
-    // auto-picked case, nudge sideways if that spot would sit too close to
-    // another function's label already on screen — an explicit x from the
-    // caller is never overridden, even if it happens to collide.
-    const vp = getViewport()
-    const spanX = (vp.right - vp.left) || 8
-    const centerX = (vp.left + vp.right) / 2
-    const { px: ppx, py: ppy } = pixelsPerUnit(calc)
-    // A rendered label can be 1-3 lines tall (see the |-separator newline
-    // support) — plain anchor-to-anchor distance needs real headroom above
-    // a single line's height, or two labels whose anchors are "far enough"
-    // by this metric can still have their actual text boxes overlapping.
-    const minDistPx = 90
-    const others = [...registry.entries()]
-      .filter(([k]) => k.startsWith('lbl::'))
-      .map(([, e]) => e)
-
-    // Walk outwards from the centre, and take the first spot that is ON the
-    // curve AND already inside the frame — moving the camera to reveal a label
-    // is a last resort, not the normal case. Only if no visible point exists
-    // (the curve is genuinely off screen) does the second pass drop the
-    // visibility requirement and let ensureVisible pan afterwards.
-    const vpH  = Math.abs(vp.top - vp.bottom) || 8
-    const yLo  = Math.min(vp.bottom, vp.top) + 0.06 * vpH
-    const yHi  = Math.max(vp.bottom, vp.top) - 0.06 * vpH
-    const offsets = [0]
-    for (let i = 1; i <= 10; i++) offsets.push(i * 0.045, -i * 0.045)
-
-    const scan = (mustBeVisible) => {
-      let found = null
-      for (const frac of offsets) {
-        const candX = centerX + frac * spanX
-        let candY
-        try { candY = f(candX) } catch { continue }
-        if (!isFinite(candY)) continue
-        if (mustBeVisible && (candY < yLo || candY > yHi)) continue
-        const dist = others.length
-          ? Math.min(...others.map(o => Math.hypot((candX - o.x) * ppx, (candY - o.y) * ppy)))
-          : Infinity
-        if (!found || dist > found.dist) found = { x: candX, y: candY, dist }
-        if (dist >= minDistPx) break
-      }
-      return found
+    const cands = []
+    const N = 60
+    for (let i = 0; i <= N; i++) {
+      const xx = vp.left + vpW * (0.06 + 0.88 * (i / N))
+      const yy = evalAt(xx)
+      if (yy === null || !onScreen(xx, yy)) continue
+      cands.push({ x: xx, y: yy, d: Math.hypot((xx - cxV) * ppx, (yy - cyV) * ppy) })
     }
-
-    const best = scan(true) ?? scan(false)
-    x0 = best ? best.x : centerX
-
-    // Sliding along x still couldn't clear the threshold — two near-parallel
-    // curves keep the same gap everywhere no matter which x is picked — so
-    // flip which side of the curve the text renders on, away from whichever
-    // existing label ended up closest, as a second, independent lever.
-    if (best && best.dist < minDistPx && others.length) {
-      const nearest = others.reduce((a, b) =>
-        Math.hypot((x0 - a.x) * ppx, (best.y - a.y) * ppy) <
-        Math.hypot((x0 - b.x) * ppx, (best.y - b.y) * ppy) ? a : b)
-      orientation = nearest.y > best.y ? 'below' : 'above'
+    cands.sort((a, b) => a.d - b.d)
+    const pick = cands.find(c => clearOf(c.x, c.y)) ?? cands[0]
+    if (pick) {
+      x0 = pick.x
+      yVal = pick.y
+      // Every in-frame spot collides with an existing label — two near-parallel
+      // curves keep the same gap everywhere — so flip which side of the curve
+      // the text renders on, as a second, independent lever.
+      if (!clearOf(pick.x, pick.y) && others.length) {
+        const nearest = others.reduce((a, b) =>
+          Math.hypot((pick.x - a.x) * ppx, (pick.y - a.y) * ppy) <
+          Math.hypot((pick.x - b.x) * ppx, (pick.y - b.y) * ppy) ? a : b)
+        orientation = nearest.y > pick.y ? 'below' : 'above'
+      }
     }
   }
 
-  let yVal = y
-  if (yVal === undefined || yVal === null || !isFinite(yVal)) {
-    try { yVal = f(x0) } catch { return }
-    if (!isFinite(yVal)) return
+  // Nothing on the curve is in frame at all — last resort, place it and let
+  // ensureVisible pan afterwards.
+  if (x0 === null) {
+    x0 = isFinite(x) ? x : cxV
+    yVal = isFinite(y) ? y : evalAt(x0)
+    if (yVal === null) return
   }
   const color = opts.color ? rgbToHex(opts.color) : darken(fn.color, 0.7)
   const cId   = `lbl_${id}`

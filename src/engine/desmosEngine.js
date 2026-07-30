@@ -569,11 +569,13 @@ export async function addPoint(calc, id, x, y, opts = {}) {
     // point near the center, scatters badly for a general point far from
     // it), and not via a separately-positioned phantom point either — that
     // stacked with Desmos's own labelOrientation push and ended up far from
-    // the dot. 'right' alone is the verified-reliable, tight option.
+    // the dot. A built-in orientation is the verified-reliable, tight option;
+    // 'below_right' keeps it beside the dot but drops it clear of the curve,
+    // axis or grid line the point usually sits on.
     const xLbl = toUnicodeLabel(x)
     const yLbl = toUnicodeLabel(y)
     calc.setExpression({ id: cId, latex: `(${latX},${latY})`, color,
-      showLabel: true, label: `(${xLbl}, ${yLbl})`, labelOrientation: 'right', pointOpacity: 0 })
+      showLabel: true, label: `(${xLbl}, ${yLbl})`, labelOrientation: 'below_right', pointOpacity: 0 })
 
     // Angle label slightly inside the circle (0.65× toward center) — this one
     // legitimately wants to radiate from the origin (trig-circle angle call-outs).
@@ -594,7 +596,7 @@ export async function addPoint(calc, id, x, y, opts = {}) {
     calc.setExpression({
       id: cId, latex: `(${latX},${latY})`, color,
       showLabel: !!opts.label, label: formatPointLabel(opts.label),
-      labelOrientation: 'right', pointOpacity: 0,
+      labelOrientation: 'below_right', pointOpacity: 0,
     })
   }
 

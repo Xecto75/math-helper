@@ -117,8 +117,9 @@ async function routeModules(prompt, trace) {
   const raw  = message.content[0]?.text?.trim() ?? '{}'
   const u    = message.usage ?? {}
   const cost = costOf('claude-haiku-4-5-20251001', u)
+  // Prompts and raw model output go to the transcript file only — the console
+  // keeps the one-line summary you actually read while a lesson is building.
   console.log(`\n─── Router (haiku) ${Date.now() - t0}ms  in:${u.input_tokens} out:${u.output_tokens}  $${cost.toFixed(5)}`)
-  console.log('  raw:', raw)
 
   let result
   try {
@@ -197,7 +198,6 @@ async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null,
   const t0 = Date.now()
 
   console.log(`\n─── Generator (sonnet) modules=[${moduleIds.join(',')}]`)
-  console.log('  system prompt chars:', systemPrompt.length)
 
   const message = await callClaude(trace, 'Generator (sonnet)', {
     model:      'claude-sonnet-4-6',
@@ -220,9 +220,6 @@ async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null,
   const cost = costOf('claude-sonnet-4-6', u)
   console.log(`  ${Date.now() - t0}ms  in:${tok.in} cRead:${tok.cRead} cWrite:${tok.cWrite} out:${tok.out}  $${cost.toFixed(5)}`)
   console.log('  stop reason:', message.stop_reason)
-  console.log('─── raw output ──────────────────────────────')
-  console.log(rawText)
-  console.log('─────────────────────────────────────────────\n')
 
   return { rawText, cost }
 }
@@ -394,8 +391,8 @@ app.post('/api/generate-lesson', async (req, res) => {
     // The user asked for a lesson and did not get one — that is on us, not on
     // their monthly allowance.
     if (auth) await refundCredit(auth.user.id)
-    console.error('generate-lesson error:', err)
-    console.error('raw API output:\n', rawApiText)
+    // The raw output that caused it is in the transcript file, under ERROR.
+    console.error('generate-lesson error:', err.message)
     trace.section('ERROR', `${err.stack ?? err.message}\n\nraw API output:\n${rawApiText ?? '(none)'}`)
     trace.finish()
     res.status(500).json({ error: err.message ?? 'Generation failed', rawOutput: rawApiText })

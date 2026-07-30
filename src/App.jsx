@@ -855,7 +855,12 @@ export default function App() {
       // the graph container's aspect ratio varies per layout (e.g. the slider
       // column narrows single-graph/graph-equation), so Desmos' auto-fitted
       // bounds only match reality once this has run post-layout.
-      if (graphRef.current?.calculator) graphEngine.syncViewport(graphRef.current.calculator)
+      // …then re-square it: the new panel's shape may make the bounds we were
+      // tracking the wrong aspect, which is what turns a circle into an oval.
+      if (graphRef.current?.calculator) {
+        graphEngine.syncViewport(graphRef.current.calculator)
+        graphEngine.resquareViewport(graphRef.current.calculator)
+      }
 
       // Second cleanup: any animation coroutine that raced through GSAP-killed
       // tween promises during the settle window may have queued new tweens or

@@ -1001,19 +1001,43 @@ function animateViewport(calc, from, to, duration = 0.35) {
   })
 }
 
-export function adjustView(calc, cx = 0, cy = 0, range = 10) {
-  // 'range' = vertical (y) span. x is derived from pixel ratio so 1 unit = same size on both axes.
-  const hy = range / 2
+// How many pixels wide the graph is per pixel of height. Every viewport goes
+// through this: the panel is almost never square, so bounds that ARE square in
+// math units get stretched to fill it and a unit circle renders as an oval.
+function pixelAspect(calc) {
   let pw = 0, ph = 0
   try {
-    const pc = calc.graphpaperBounds?.pixelCoordinates
+    const pc = calc?.graphpaperBounds?.pixelCoordinates
     if (pc) { pw = Math.abs(pc.right - pc.left); ph = Math.abs(pc.bottom - pc.top) }
-  } catch {}
+  } catch { /* not mounted yet — the element measurement below covers it */ }
   if (!pw || !ph) {
-    pw = calc.elt?.clientWidth  || 800
-    ph = calc.elt?.clientHeight || 600
+    pw = calc?.elt?.clientWidth  || 800
+    ph = calc?.elt?.clientHeight || 600
   }
-  const hx = hy * (pw / ph)
+  return (pw || 800) / (ph || 600)
+}
+
+// Stretch the bounds so one unit of x covers the same number of pixels as one
+// unit of y — a circle is round, a square is square, a 45° line looks like 45°.
+// Only ever EXPANDS: whatever was asked for stays inside the frame, and the
+// extra span goes to whichever axis had pixels to spare.
+export function squareBounds(calc, vp) {
+  const { left, right, bottom, top } = vp
+  let w = Math.abs(right - left)
+  let h = Math.abs(top - bottom)
+  if (![left, right, bottom, top].every(Number.isFinite) || !w || !h) return { ...vp }
+  const asp = pixelAspect(calc)
+  const cx  = (left + right) / 2
+  const cy  = (top + bottom) / 2
+  if (w / h < asp) w = h * asp
+  else             h = w / asp
+  return { left: cx - w / 2, right: cx + w / 2, bottom: cy - h / 2, top: cy + h / 2 }
+}
+
+export function adjustView(calc, cx = 0, cy = 0, range = 10) {
+  // 'range' = vertical (y) span; x follows from the pixel ratio.
+  const hy   = range / 2
+  const hx   = hy * pixelAspect(calc)
   const from = { ..._vp }
   _vp = { left: cx - hx, right: cx + hx, bottom: cy - hy, top: cy + hy }
   return animateViewport(calc, from, _vp)
@@ -1021,8 +1045,19 @@ export function adjustView(calc, cx = 0, cy = 0, range = 10) {
 
 export function setViewport(calc, xMin, xMax, yMin, yMax) {
   const from = { ..._vp }
-  _vp = { left: xMin, right: xMax, bottom: yMin, top: yMax }
+  _vp = squareBounds(calc, { left: xMin, right: xMax, bottom: yMin, top: yMax })
   return animateViewport(calc, from, _vp)
+}
+
+// The panel's shape changes under a fixed viewport — a layout switch, a window
+// resize, the slider column appearing — and the same bounds are suddenly the
+// wrong aspect. Re-square them around the same centre, no animation.
+export function resquareViewport(calc) {
+  if (!calc) return
+  const next = squareBounds(calc, _vp)
+  if (Math.abs(next.left - _vp.left) < 1e-6 && Math.abs(next.top - _vp.top) < 1e-6) return
+  _vp = next
+  try { calc.setMathBounds(next) } catch { /* calculator torn down mid-resize */ }
 }
 
 export function getViewport() {

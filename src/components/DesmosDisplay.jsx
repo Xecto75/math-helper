@@ -1,6 +1,6 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react'
 import {
-  getViewport, setViewport, onTrigOverlay, offTrigOverlay,
+  getViewport, setViewport, resquareViewport, onTrigOverlay, offTrigOverlay,
   onLiveEquationsChange, offLiveEquationsChange, onSliderChange, offSliderChange, getLiveEquationText,
   onGraphClear, offGraphClear, setGraphInteractive,
 } from '../engine/desmosEngine.js'
@@ -121,11 +121,28 @@ const DesmosDisplay = forwardRef(function DesmosDisplay(_, ref) {
         lockViewport:  true,
       })
       setStatus('ready')
+      resquareViewport(calcRef.current)
     })
     return () => {
       alive = false
       if (calcRef.current) { calcRef.current.destroy(); calcRef.current = null }
     }
+  }, [])
+
+  // The panel changes shape on layout switches and window resizes, and Desmos
+  // keeps the same math bounds — so the units stop being square and circles
+  // render as ovals. Re-square on every size change, on the next frame so the
+  // measurement is of the settled box.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    let pending = 0
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(pending)
+      pending = requestAnimationFrame(() => resquareViewport(calcRef.current))
+    })
+    ro.observe(el)
+    return () => { cancelAnimationFrame(pending); ro.disconnect() }
   }, [])
 
   return (

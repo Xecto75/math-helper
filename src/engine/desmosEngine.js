@@ -1277,19 +1277,35 @@ export function nameFunc(calc, id, funcId, label, x, y, opts = {}) {
       .filter(([k]) => k.startsWith('lbl::'))
       .map(([, e]) => e)
 
-    const offsets = [0, 0.12, -0.12, 0.22, -0.22, 0.32, -0.32, 0.42, -0.42]
-    let best = null
-    for (const frac of offsets) {
-      const candX = centerX + frac * spanX
-      let candY
-      try { candY = f(candX) } catch { continue }
-      if (!isFinite(candY)) continue
-      const dist = others.length
-        ? Math.min(...others.map(o => Math.hypot((candX - o.x) * ppx, (candY - o.y) * ppy)))
-        : Infinity
-      if (!best || dist > best.dist) best = { x: candX, y: candY, dist }
-      if (dist >= minDistPx) break
+    // Walk outwards from the centre, and take the first spot that is ON the
+    // curve AND already inside the frame — moving the camera to reveal a label
+    // is a last resort, not the normal case. Only if no visible point exists
+    // (the curve is genuinely off screen) does the second pass drop the
+    // visibility requirement and let ensureVisible pan afterwards.
+    const vpH  = Math.abs(vp.top - vp.bottom) || 8
+    const yLo  = Math.min(vp.bottom, vp.top) + 0.06 * vpH
+    const yHi  = Math.max(vp.bottom, vp.top) - 0.06 * vpH
+    const offsets = [0]
+    for (let i = 1; i <= 10; i++) offsets.push(i * 0.045, -i * 0.045)
+
+    const scan = (mustBeVisible) => {
+      let found = null
+      for (const frac of offsets) {
+        const candX = centerX + frac * spanX
+        let candY
+        try { candY = f(candX) } catch { continue }
+        if (!isFinite(candY)) continue
+        if (mustBeVisible && (candY < yLo || candY > yHi)) continue
+        const dist = others.length
+          ? Math.min(...others.map(o => Math.hypot((candX - o.x) * ppx, (candY - o.y) * ppy)))
+          : Infinity
+        if (!found || dist > found.dist) found = { x: candX, y: candY, dist }
+        if (dist >= minDistPx) break
+      }
+      return found
     }
+
+    const best = scan(true) ?? scan(false)
     x0 = best ? best.x : centerX
 
     // Sliding along x still couldn't clear the threshold — two near-parallel
@@ -1456,19 +1472,50 @@ function isIsolatedLhs(lhs) {
 // residual=0 for y needs no string algebra at all. Returns NaN (not a
 // number, but a valid function output) for anything not linear in y, e.g. a
 // real curve like y²=x, rather than guessing wrong.
-function makeImplicitEval(expr) {
+export function makeImplicitEval(expr) {
   const eqIdx = expr.indexOf('=')
   if (eqIdx < 0) return null
   try {
     const lhsJs = toJsExpr(expr.slice(0, eqIdx).trim())
     const rhsJs = toJsExpr(expr.slice(eqIdx + 1).trim())
     const residual = new Function('x', 'y', `"use strict"; return (${lhsJs}) - (${rhsJs})`)
+    const onCurve  = (x, y) => isFinite(y) && Math.abs(residual(x, y)) < 1e-6
+
     return (x) => {
+      // Fast path, exact for anything linear in y ("-6x+3y=12"): read the
+      // residual at two y values and solve the straight line between them.
       const g0 = residual(x, 0)
       const g1 = residual(x, 1)
       const k  = g1 - g0
-      if (!isFinite(k) || Math.abs(k) < 1e-9) return NaN
-      return -g0 / k
+      if (isFinite(k) && Math.abs(k) > 1e-9) {
+        const y = -g0 / k
+        if (onCurve(x, y)) return y
+      }
+      // It wasn't linear in y. That line was previously returned anyway, which
+      // for x²+y²=1 means y = 1−x² — a parabola, not the circle, so labels and
+      // tangents anchored to points that are nowhere near the curve. Solve it
+      // properly instead: walk y looking for a sign change in the residual,
+      // then bisect. Returns the LOWEST solution; a circle has two per x.
+      const R = 50, steps = 400, dy = (2 * R) / steps
+      let yPrev = -R
+      let gPrev = residual(x, yPrev)
+      for (let i = 1; i <= steps; i++) {
+        const yCur = -R + i * dy
+        const gCur = residual(x, yCur)
+        if (isFinite(gPrev) && isFinite(gCur) && gPrev * gCur <= 0) {
+          let lo = yPrev, hi = yCur
+          for (let j = 0; j < 60; j++) {
+            const mid = (lo + hi) / 2
+            if (residual(x, lo) * residual(x, mid) <= 0) hi = mid
+            else lo = mid
+          }
+          const y = (lo + hi) / 2
+          if (onCurve(x, y)) return y
+        }
+        yPrev = yCur; gPrev = gCur
+      }
+      // No y satisfies the relation at this x — the curve does not exist here.
+      return NaN
     }
   } catch { return null }
 }

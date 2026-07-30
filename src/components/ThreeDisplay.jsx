@@ -1,4 +1,4 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
+import { useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
@@ -22,6 +22,77 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
   const objectsRef   = useRef({})
   const labelsRef    = useRef(new Map())
   const overlayRef   = useRef(null)
+  const fitPendingRef = useRef(false)
+
+  // ── Auto-fit the 2D view ───────────────────────────────────────────────────
+  // The ortho frustum is a fixed 12 world units tall, so a shape built from
+  // bigger numbers (a 10-15-18 triangle, say) simply ran off the canvas and the
+  // student saw a corner of it. Widen the frustum until everything on screen —
+  // shapes AND their labels — is inside it.
+  //
+  // Only ever widens: the floor is whatever zoom is already in effect (never
+  // below ORTHO_HALF), so a small shape still renders at exactly the size it
+  // always did rather than being blown up to fill the panel. The centre is left
+  // where it is (0,0, or wherever S2v panned to), so this cannot fight a
+  // deliberate camera move — it just makes sure nothing is cut off.
+  const fit2D = useCallback(({ margin = 1.15, duration = 0.4 } = {}) => {
+    if (!is2DRef.current) return
+    const ortho = orthoCamRef.current
+    const el    = containerRef.current
+    const objs  = Object.values(objectsRef.current)
+    if (!ortho || !el || !objs.length) return
+
+    const box = new THREE.Box3()
+    for (const o of objs) {
+      o.updateMatrixWorld(true)
+      box.expandByObject(o)
+    }
+    if (box.isEmpty()) return
+
+    const asp   = el.clientWidth / (el.clientHeight || 1)
+    const cx    = orthoOffXRef.current
+    const cy    = orthoOffYRef.current
+    const fromH = (ortho.top - ortho.bottom) / 2 || orthoHalfRef.current
+
+    // Side lengths, angle values and comments are HTML sitting OUTSIDE the
+    // shape, so fitting the geometry alone still clipped them — the "5" under a
+    // triangle's base ended up half off the canvas. A label is a fixed number
+    // of PIXELS whatever the zoom, so its world size depends on the zoom we are
+    // solving for: measure at the current zoom, solve, measure again at that
+    // answer, and keep the larger of the two.
+    const solve = (h) => {
+      const pxToWorld = (2 * h) / (el.clientHeight || 1)
+      let minX = box.min.x, maxX = box.max.x
+      let minY = box.min.y, maxY = box.max.y
+      for (const [, lbl] of labelsRef.current) {
+        const w = (lbl.el.offsetWidth  || 0) * pxToWorld
+        const t = (lbl.el.offsetHeight || 0) * pxToWorld
+        // Matches the anchoring the render loop applies to each label.
+        const left = lbl.align === 'left'  ? lbl.worldPos.x
+                   : lbl.align === 'right' ? lbl.worldPos.x - w
+                   :                         lbl.worldPos.x - w / 2
+        minX = Math.min(minX, left);  maxX = Math.max(maxX, left + w)
+        minY = Math.min(minY, lbl.worldPos.y - t / 2)
+        maxY = Math.max(maxY, lbl.worldPos.y + t / 2)
+      }
+      const dx = Math.max(Math.abs(maxX - cx), Math.abs(minX - cx))
+      const dy = Math.max(Math.abs(maxY - cy), Math.abs(minY - cy))
+      return Math.max(dy, dx / asp) * margin
+    }
+
+    const toH = Math.max(solve(fromH), solve(solve(fromH)))
+    if (!Number.isFinite(toH) || toH <= fromH + 0.01) return
+
+    const ease = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
+    const dur  = Math.max(duration * 1000, 1)
+    const t0   = performance.now()
+    const tick = () => {
+      const p = ease(Math.min((performance.now() - t0) / dur, 1))
+      orthoHalfRef.current = fromH + (toH - fromH) * p
+      if (p < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }, [])
 
   useImperativeHandle(ref, () => ({
     isReady: () => !!sceneRef.current,
@@ -130,6 +201,9 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
         transition:    'color 0.25s',
       })
       overlayRef.current?.appendChild(el)
+      // Any label can land outside the current frame; re-fit on the next frame
+      // rather than per label, so a shape labelling all its sides costs one fit.
+      fitPendingRef.current = true
       labelsRef.current.set(id, {
         el,
         defaultColor: color,
@@ -262,58 +336,7 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       }
     },
 
-    // ── Auto-fit the 2D view ─────────────────────────────────────────────────
-    // The ortho frustum is a fixed 12 world units tall, so a shape built from
-    // bigger numbers (a 10-15-18 triangle, say) simply ran off the canvas and
-    // the student saw a corner of it. After every step that changes what is on
-    // screen, widen the frustum until everything fits.
-    //
-    // Only ever widens: the floor is ORTHO_HALF, so a small shape still renders
-    // at exactly the size it always did rather than being blown up to fill the
-    // panel. The centre is left where it is (0,0, or wherever S2v panned to),
-    // so this cannot fight a deliberate camera move — it just makes sure the
-    // shape is inside the frame.
-    fitView2D({ margin = 1.15, duration = 0.4 } = {}) {
-      if (!is2DRef.current) return
-      const ortho = orthoCamRef.current
-      const el    = containerRef.current
-      const objs  = Object.values(objectsRef.current)
-      if (!ortho || !el || !objs.length) return
-
-      const box = new THREE.Box3()
-      for (const o of objs) {
-        o.updateMatrixWorld(true)
-        box.expandByObject(o)
-      }
-      if (box.isEmpty()) return
-
-      const asp = el.clientWidth / (el.clientHeight || 1)
-      const cx  = orthoOffXRef.current
-      const cy  = orthoOffYRef.current
-      const dx  = Math.max(Math.abs(box.max.x - cx), Math.abs(box.min.x - cx))
-      const dy  = Math.max(Math.abs(box.max.y - cy), Math.abs(box.min.y - cy))
-      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return
-
-      const toH   = Math.max(dy, dx / asp) * margin
-      const fromH = (ortho.top - ortho.bottom) / 2 || orthoHalfRef.current
-      // Never zoom back IN past what a step already asked for, and never below
-      // the default — otherwise every new shape would yank the zoom around.
-      if (toH <= fromH + 0.01) return
-
-      const ease = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
-      const dur  = Math.max(duration * 1000, 1)
-      const t0   = performance.now()
-      const tick = () => {
-        const p = ease(Math.min((performance.now() - t0) / dur, 1))
-        const h = fromH + (toH - fromH) * p
-        orthoHalfRef.current = h
-        ortho.left   = cx - h * asp;  ortho.right  = cx + h * asp
-        ortho.top    = cy + h;        ortho.bottom = cy - h
-        ortho.updateProjectionMatrix()
-        if (p < 1) requestAnimationFrame(tick)
-      }
-      requestAnimationFrame(tick)
-    },
+    fitView2D: fit2D,
 
     // Convert a world-space (wx, wy) coordinate to page (viewport) pixel coordinates
     getWorldToScreen(wx, wy) {
@@ -473,7 +496,10 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
     const animate = () => {
       animId = requestAnimationFrame(animate)
       if (!is2DRef.current) controls.update()
-      else syncOrtho()
+      else {
+        if (fitPendingRef.current) { fitPendingRef.current = false; fit2D() }
+        syncOrtho()
+      }
       const cam = cameraRef.current
       renderer.render(scene, cam)
 
@@ -518,7 +544,9 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       for (const [, lbl] of labelsRef.current) lbl.el.remove()
       labelsRef.current.clear()
     }
-  }, [])
+    // fit2D is a stable useCallback([]) — listed to satisfy the lint rule, it
+    // never changes and so never re-runs this setup.
+  }, [fit2D])
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#0f0f1a' }}>

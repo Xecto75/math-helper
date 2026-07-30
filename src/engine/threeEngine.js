@@ -652,6 +652,8 @@ export async function labelSides3D(threeRef, id, customLabels = []) {
     if (!entry.storedLabels) entry.storedLabels = []
     entry.storedLabels[i] = custom
   }
+  // No explicit re-fit here: adding a label schedules one for the next frame,
+  // which covers every path that puts a label on screen, not just this one.
   return new Promise(resolve => setTimeout(resolve, 440))
 }
 

@@ -27,52 +27,40 @@ FORMAT: [["Title","LC",[["FC",a,...],...]],...]
   bool→0/1  ""=skip optional mid-arg  omit trailing defaults
   Output compact codes ONLY — never {"func":…} form.
 
-ANIMATION FIRST: teach by drawing/animating, not text. Never add narration steps.
-tc/tf only for a key formula or label — never prose. Every step must be a visual action.
+ANIMATION FIRST: teach by drawing/animating, not text. No narration steps. Every step = a visual action.
 
-COLORS: 0=red 1=purple 2=orange 3=green 4=yellow 5=pink 6=teal 7=white
-  Never use blue. Never repeat a color on the same page.
+COLORS: 0=red 1=purple 2=orange 3=green 4=yellow 5=pink 6=teal 7=white. Never blue. Never repeat one on a page.
 
-LENGTH: scale to the topic — typically 4–6 pages, 3 minimum and 8 maximum.
-  A one- or two-page answer does not teach enough; beyond 8 it stops being one lesson.
-  Build a full lesson arc: concept → worked example → a second, different case → recap.
-  Each page must earn its place (its own idea, its own visual) — do not pad a thin
-  idea across pages, and do not cram distinct stages onto one page.
-  max 8 steps/page · no padding steps
+LENGTH: 4-6 pages typical, 3 min, 8 max. Arc: concept → worked example → different case → recap.
+  One idea + one visual per page. No padding pages, no cramming stages. Max 8 steps/page.
+
 TEXT(tc/tf): lines sep by | · $latex$ inline · **bold** · JSON: double backslashes (\\\\frac not \\frac)
-  ONE FORMULA PER LINE: never put two $…$ formulas side by side on the same line —
-  the panel is narrow and they wrap mid-fraction. "$a$|$b$|$c$", never "$a$ $b$ $c$".
-tc max 3 lines — prefer the c* comment codes (cf/cG/cE/…) or labels over tc for brief annotations.
-tc clr: always "" unless user explicitly asks for a colored box.
+  ONE FORMULA PER LINE: "$a$|$b$|$c$", never "$a$ $b$ $c$" (narrow panel, wraps mid-fraction).
+  Max 3 lines. clr "" unless the user asks for a colored box. Brief annotations → c* codes, not tc.
 
-LAYOUT RULE: any layout with a text panel (tg/tG/tq/te/ge/Ge/Gc) MUST contain ≥1 tc — never leave the text panel empty. If no formula is needed, use a non-text layout instead.
-sL:[layout] — switch THIS page's layout mid-script (e.g. start te, later sL:"single-equation", later sL:"graph-equation" once a graph is needed). Panels shared by both layouts (e.g. the equation panel across te→se→ge) resize smoothly instead of popping; panels that appear/disappear fade. IMPORTANT: layout here is the FULL name string ("single-equation", "graph-equation", …), never the short LC code ("se", "ge") — LC codes are only for the page's own top-level layout slot, not this arg. Only use sL when the page genuinely benefits from evolving its layout as steps progress — most pages should just pick one layout and stay in it.
-COMPUTE not assert: derive every number via {{ expr }} (mathjs) or eq-*; never hand-type a computed result.
-COLOR LINKS: coloring a shape edge/angle REQUIRES coloring its matching eq term or comment. One color per concept.
-ORDERING: fp→before fV/fr/fn/fP/ft/fs/cf | gp→before gl/ga/gh/gE/gA/gr | S2c→before S2l/S2a/S2h/S2E/S2A | fp needs an explicit id arg.
+LAYOUT: any layout with a text panel (tg/tG/tq/te/ge/Ge/Gc) needs ≥1 tc, else pick a non-text layout.
+sL:[layout] — change THIS page's layout mid-script (te → "single-equation" → "graph-equation"). Shared
+  panels resize smoothly, others fade. Arg is the FULL name, never the LC code. Most pages need no sL.
 
-RICH TEXT (tc/tf content) — NEVER hand-type a number that some other step already
-created; pull it live with [id]token instead, so it can never drift out of sync:
-  Flat 2D shape (gp or S2c) : [id]N=side N  [id]h=height  [id]r=radius  [id]aN=angle N°
-  Volumetric 3D solid (S3c) : [id]a/r/h/l/d/R — letter depends on shape type, matches
-                               exactly what S3m (Show Volume Measures) labels on screen:
-                               cube→a  sphere→r  cone/cylinder→r+h  rectangular-prism→l+h+d
-                               pyramid→a+h  tetrahedron/octahedron→a  torus→R+r
-  Graph point (fa)          : [id]x  [id]y
-  Graph segment (fsg)       : [id]x1 [id]y1 [id]x2 [id]y2 [id]len
-  Graph function (fp)       : [id]expr — its plotted expression as text (not a number)
-                               [id]N  — the Nth number written in it, left to right, whether
-                               a literal ("2x+4" → [id]0=2 [id]1=4) or a |slider| var's live
-                               value ("|a|x+|b|" → [id]0=a's value [id]1=b's value)
-  Slider (a |name| in fp)   : [name]v — that slider's current value, by its own name,
-                               regardless of which function(s) use it
-  Table cell (Tt or Tc)     : [id]r<row>c<col>, both 0-indexed, e.g. [grid1]r0c1
-  Computed  : {{ mathjs expression }} — runs AFTER [id]token substitution, so
-              {{ [trap]0 + [trap]1 }} works
-  Color text: {color: text}  or inside $ $: \\clr{color}{x}
-  [eq-result]: pull current equation's numeric answer (for tf/cu)
-This SAME [id]token syntax also works as an ev: replacement value (see ev: below) —
-e.g. ev:[a=[tri]0,b=[tri]1] instead of typing the side lengths again.
+COMPUTE not assert: every number via {{ expr }} (mathjs) or eq-*; never hand-type a computed result.
+SHOW THE WORK: the quantity being solved for stays an UNKNOWN everywhere until the steps derive it —
+  in the equation, in tc content, and in shape labels alike. A lesson that states the answer before
+  deriving it has taught nothing. Reveal it only after, from the step that found it ([eq-result]).
+COLOR LINKS: a colored shape edge/angle REQUIRES its matching eq term or comment in that color. One color per concept.
+ORDERING: fp→before fV/fr/fn/fP/ft/fs/cf | gp→before gl/ga/gh/gE/gA/gr | S2c→before S2l/S2a/S2h/S2E/S2A | fp needs an id arg.
+
+[id]token refs (in tc/tf content, and as an ev: value e.g. ev:[a=[tri]0,b=[tri]1]) — never retype a
+number another step made; pull it live so it cannot drift:
+  2D shape (gp/S2c): [id]N=side N · [id]h=height · [id]r=radius · [id]aN=angle N°
+  3D solid (S3c)   : [id]a/r/h/l/d/R — same letters S3m labels: cube→a sphere→r cone/cylinder→r+h
+                     rect-prism→l+h+d pyramid→a+h tetra/octahedron→a torus→R+r
+  Point (fa)       : [id]x [id]y          Segment (fsg): [id]x1 [id]y1 [id]x2 [id]y2 [id]len
+  Function (fp)    : [id]expr=its expression as text · [id]N=Nth number in it L→R, literal
+                     ("2x+4"→[id]0=2 [id]1=4) or |slider| live value ("|a|x+|b|"→[id]0=a)
+  Slider           : [name]v — by its own name, whichever function uses it
+  Table cell       : [id]r<row>c<col> 0-indexed, e.g. [grid1]r0c1
+  {{ mathjs }}     : runs AFTER token substitution, so {{ [trap]0 + [trap]1 }} works
+  {color: text} or \\clr{color}{x} inside $ $ · [eq-result]=current eq's answer (tf/cu)
 `
 
 // ── MODULE DEFINITIONS ────────────────────────────────────────────────────────
@@ -86,13 +74,11 @@ export const MODULES = {
     layouts: ['se', 'te', 'ge', 'Ge', 'qe'],
     doc: `EQUATION LAYOUTS: se=single-equation  te=text-equation  ge=graph-equation  Ge=geo-equation  qe=grid-equation
 
-EQUATION RULE:
-  · Call eq ONCE to create. NEVER call eq again mid-solve.
-  · Use ef for any degree-1 single-variable equation (fractions, multi-term, constants both sides).
-  · For non-linear (quadratic, trig, log): use ec/es/eo/ed/eD steps manually.
+RULES: eq ONCE per page, never again mid-solve. ef for ANY degree-1 single-variable eq (fractions,
+multi-term, constants both sides). Non-linear (quadratic/trig/log): ec/es/eo/ed/eD manually.
 
-STRING SYNTAX: plain math — fractions: x/2 (NOT \\frac), exponents: x^2, colored vars: |label|{color}
-  NO LaTeX in eq strings. LaTeX only inside $...$ in tc.
+STRING SYNTAX: plain math, no LaTeX (LaTeX only inside $...$ in tc) — fractions x/2 (NOT \\frac),
+exponents x^2, colored vars |label|{color}
 
 FUNCTIONS [positional args]:
   eq:[equation]                      — create/display equation (plain math string)
@@ -103,7 +89,13 @@ FUNCTIONS [positional args]:
   ed:[divisor]                       — divide both sides by number
   em:[multiplier]                    — multiply both sides by number (clears x/2=4 style fractions)
   ef:[]                              — animated full solve (combine→send→divide) — use for any degree-1 eq
-  ev:[replacements]                  — substitute values e.g. "a=2,b=-3,c=1" — prefer
+  ev:[replacements]                  — substitute KNOWN values only, never the one being solved
+                                        for: to find b from a=5,c=13 write ev:"a=5,c=13" and let
+                                        er/ed/ef produce b. ev:"a=5,b=12,c=13" hands over the
+                                        answer and the lesson shows nothing. Same for tc content
+                                        ("$b^2=169-25=144$" is the answer pre-written) and for
+                                        S2l labels — the unknown side stays "?"/"b" until solved,
+                                        then S2l/tf/cu reveal it. Prefer
                                         a live [id]token ref over a literal when the
                                         value came from a shape/graph/table, e.g.
                                         "a=[tri]0,r=[circ]r" (see RICH TEXT above)
@@ -157,28 +149,21 @@ SHAPE TYPES & VALS:
   octagon          vals="r"
   regular-polygon  vals="r"
 
-fillColor/borderColor: numeric color index (0–7) or "" for default.
+fillColor/borderColor: color index (0–7) or "" for default.
 
-SIZE: the 2D view is ~12 world units tall. Keep every side value in the 2–10 range so
-  the whole shape (plus its labels and angle arcs) stays inside the frame — a 30-40-50
-  triangle is auto-zoomed to fit, but everything then renders small and cramped.
-  Teach 30-40-50 as a 3-4-5 shape and put the real numbers in the labels (S2l) or the
-  equation instead. Never rely on the auto-fit as a substitute for sane values.
+SIZE: view is ~12 world units tall — keep every side value 2-10 so the shape, its labels and its
+  arcs all fit. Oversized values are auto-zoomed to fit but render small and cramped: teach
+  30-40-50 as a 3-4-5 and put the real numbers in S2l labels or the equation.
 
-VERTEX & EDGE INDICES:
-  right-triangle : v0=bottom-left  v1=bottom-right(90°)  v2=top
-                   e0=base  e1=vertical  e2=hypotenuse    ← Right angle is ALWAYS v1
-  rectangle/square: v0=BL CCW → v1=BR, v2=TR, v3=TL
-                    e0=bottom  e1=right  e2=top  e3=left
-  trapeze/parallelogram: e0=bottom  e1=right  e2=top  e3=left
+INDICES:
+  right-triangle : v0=BL v1=BR(90°, ALWAYS) v2=top · e0=base e1=vertical e2=hyp
+  rectangle/square: v0=BL CCW → v1=BR v2=TR v3=TL · e0=bottom e1=right e2=top e3=left
+  trapeze/parallelogram: e0=bottom e1=right e2=top e3=left
 
-LABELS: S2l blank=auto-computed lengths; use literal labels only for unknowns like "c = ?"
-ANGLES: S2a draws all arcs; S2A pops one. Use {{ [id]aN }}° for the angle value in text.
-ARROWS: S2w draws an animated arrow from one anchor to another inside the polygon.
-  from/to anchors — "v0","v1",… = vertex positions · "e0","e1",… = edge midpoints
-  arrowId must be unique per shape so multiple arrows can coexist and be removed independently.
-  Use to show relationships: e.g. angle v2 is opposite to edge e0 in a right-triangle.
-ORDERING: S2c MUST come before S2l/S2a/S2h/S2E/S2A/S2w/S2x on the same shape.
+S2l blank=auto lengths; literal text only for unknowns ("c = ?"). S2a=all arcs, S2A=pop one;
+angle value in text = {{ [id]aN }}°. S2w anchors: "v0","v1"…=vertices, "e0","e1"…=edge midpoints;
+arrowId unique per shape; use it for relationships (v2 is opposite e0 in a right-triangle).
+ORDERING: S2c before S2l/S2a/S2h/S2E/S2A/S2w/S2x on the same shape.
 `,
   },
 
@@ -503,14 +488,9 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', exampleCompact = nu
   // the author has already approved.
   if (exampleCompact) {
     parts.push(
-      `
-${'═'.repeat(60)}
-REFERENCE LESSON
-${'═'.repeat(60)}
-` +
-      `A verified lesson in the exact output format. Follow its structure, its ` +
-      `pacing and its use of steps — do NOT copy its topic or its numbers.
-` +
+      `\n# REFERENCE LESSON\n` +
+      `Verified, in the exact output format. Copy its structure/pacing/step use; ` +
+      `NOT its topic or numbers.\n` +
       JSON.stringify(exampleCompact)
     )
   }
@@ -521,21 +501,16 @@ ${'═'.repeat(60)}
   // Always state the language, English included: with no instruction at all the
   // model drifts (a plain English prompt came back entirely in Dutch).
   const langName = LANG_NAMES[lang] ?? 'English'
-  {
-    parts.push(
-      `\n${'═'.repeat(60)}\nLANGUAGE\n${'═'.repeat(60)}\n` +
-      `Write every learner-visible string in ${langName}: page titles, ` +
-      `text-box titles and content, and comment text.\n` +
-      `Do NOT translate anything structural — compact function codes, layout ` +
-      `codes, shape ids, colour names, ids you invent, and mathematical ` +
-      `notation all stay exactly as documented above.`
-    )
-  }
+  parts.push(
+    `\n# LANGUAGE\n` +
+    `Learner-visible strings (page titles, tc titles+content, comment text) in ${langName}. ` +
+    `Never translate structure: func/layout codes, ids, colour names, math notation.`
+  )
 
   for (const id of moduleIds) {
     const m = MODULES[id]
     if (!m) continue
-    parts.push(`\n${'═'.repeat(60)}\nMODULE: ${m.label.toUpperCase()}\n${'═'.repeat(60)}\n${m.doc.trim()}`)
+    parts.push(`\n# ${m.label.toUpperCase()}\n${m.doc.trim()}`)
   }
 
   return parts.join('\n')

@@ -80,6 +80,14 @@ multi-term, constants both sides). Non-linear (quadratic/trig/log): ec/es/eo/ed/
 STRING SYNTAX: plain math, no LaTeX (LaTeX only inside $...$ in tc) — fractions x/2 (NOT \\frac),
 exponents x^2, colored vars |label|{color}
 
+FIND-THE-MISSING-VALUE PAGES — the derivation IS the lesson, so build it as steps:
+  eq:"a^2+b^2=c^2" → ev:"a=5,c=13" (knowns ONLY) → es to isolate the unknown term → er (√) / ed / ef
+  → the value appears BECAUSE of the steps → only now S2l/tf/cu put it on the shape.
+  The shape's own S2c vals do hold the real numbers (geometry cannot be drawn without them) and that
+  is fine — they are not learner-visible. Everything the student READS (eq, tc, labels) must keep the
+  unknown unknown until derived. Substituting it, or writing "$b^2=169-25=144$" in a tc, skips the
+  entire lesson.
+
 FUNCTIONS [positional args]:
   eq:[equation]                      — create/display equation (plain math string)
   ec:[]                              — auto-combine like terms
@@ -98,7 +106,7 @@ FUNCTIONS [positional args]:
                                         then S2l/tf/cu reveal it. Prefer
                                         a live [id]token ref over a literal when the
                                         value came from a shape/graph/table, e.g.
-                                        "a=[tri]0,r=[circ]r" (see RICH TEXT above)
+                                        "a=[tri]0,r=[circ]r" (see [id]token refs above)
   eS:[name]                          — stash the equation's current solved numeric result
                                         under a name (no visual change), so a LATER eq/ev/tc/cu
                                         step can pull it back via [name]v — use to chain solves

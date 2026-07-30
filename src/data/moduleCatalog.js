@@ -362,7 +362,10 @@ One step per Cs, LaTeX with doubled backslashes. PEMDAS / arithmetic / long deri
     layouts: [],
     doc: `COMMENT FUNCTIONS [positional args]:
   cg:[id,text,x,y,clr]              — comment at exact graph point (x,y)
-  cf:[id,text,funcId,x,clr]         — comment snapped onto curve f at x
+  cf:[id,text,funcId,x,clr]         — comment snapped onto curve f at x. funcId may instead be a
+                                      SEGMENT id (from fsg): it anchors on the segment's midpoint
+                                      and x is ignored — use this for "rise = 6" style labels rather
+                                      than cg with hand-typed coordinates.
   cA:[id,text,funcId,x,clr]         — comment inside shaded area under curve at x
   cq:[id,text,gridId,col,row,clr]   — comment on a grid cell
   cG:[id,text,shapeId,vtx,clr]      — comment on a shape vertex

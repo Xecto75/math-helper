@@ -2125,9 +2125,19 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       let target = action.target
       if (target?.type === 'graph') {
         if (target.mode === 'func') {
-          // y = f(x) for the named function
-          const y = graphEngine.evalFunction(target.funcId, target.x)
-          if (y !== null) target = { ...target, y }
+          // The id may name a SEGMENT instead of a curve — anchor on it (its
+          // midpoint unless the given x really lands on it) rather than making
+          // the author hand-type coordinates that drift the moment the
+          // segment moves.
+          const seg = graphEngine.segmentAnchor(target.funcId, target.x)
+          if (seg) {
+            target = { ...target, x: seg.x, y: seg.y }
+          } else {
+            // y = f(x) for the named function (a blank x reads as 0, as before)
+            const fx = Number(target.x) || 0
+            const y  = graphEngine.evalFunction(target.funcId, fx)
+            if (y !== null) target = { ...target, x: fx, y }
+          }
         } else if (target.mode === 'area') {
           // y = 40% of f(x) — places dot inside the shaded region
           const fy = graphEngine.evalFunction(target.funcId, target.x)

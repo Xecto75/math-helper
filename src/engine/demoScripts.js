@@ -1026,7 +1026,10 @@ export function demoAddCommentGraph(textRaw, xRaw, yRaw, colorRaw, cmtIdRaw) {
 export function demoAddCommentGraphFunc(textRaw, funcIdRaw, xRaw, colorRaw, cmtIdRaw) {
   const text   = (textRaw   || 'f(x)').trim()
   const funcId = (funcIdRaw || 'f').trim()
-  const x      = Number(xRaw) || 0
+  // Blank stays blank rather than becoming 0: on a SEGMENT target that is what
+  // selects the midpoint. The function path still reads it as 0 (see
+  // add-comment in ActionExecutor), exactly as before.
+  const x      = (xRaw === '' || xRaw == null) ? '' : (Number(xRaw) || 0)
   const color  = (colorRaw  || '#60a5fa').trim()
   const id     = (cmtIdRaw || '').trim() || crypto.randomUUID()
   return {

@@ -1067,11 +1067,34 @@ export function setViewport(calc, xMin, xMax, yMin, yMax) {
 
 // The panel's shape changes under a fixed viewport — a layout switch, a window
 // resize, the slider column appearing — and the same bounds are suddenly the
-// wrong aspect. Re-square them around the same centre, no animation.
+// wrong aspect. Re-square around the same centre, no animation.
+//
+// This one keeps the VERTICAL span and re-derives x from it, unlike
+// squareBounds which only ever expands. Expanding is right when a lesson asks
+// for explicit bounds (nothing it wanted to show may be cropped) but wrong
+// here: a resize fires repeatedly, and expand-only compounds — one measurement
+// taken while the panel was a few pixels tall was enough to blow the axes out
+// to ±15000 and keep them there. Keeping y makes it idempotent.
 export function resquareViewport(calc) {
   if (!calc) return
-  const next = squareBounds(calc, _vp)
-  if (Math.abs(next.left - _vp.left) < 1e-6 && Math.abs(next.top - _vp.top) < 1e-6) return
+  // A container mid-mount or mid-transition measures near zero, and its aspect
+  // is meaningless. Wait for a real box rather than squaring against garbage.
+  let pw = 0, ph = 0
+  try {
+    const pc = calc.graphpaperBounds?.pixelCoordinates
+    if (pc) { pw = Math.abs(pc.right - pc.left); ph = Math.abs(pc.bottom - pc.top) }
+  } catch { /* not mounted yet */ }
+  if (!pw || !ph) { pw = calc.elt?.clientWidth ?? 0; ph = calc.elt?.clientHeight ?? 0 }
+  if (pw < 40 || ph < 40) return
+
+  const asp = pw / ph
+  const cx  = (_vp.left + _vp.right) / 2
+  const cy  = (_vp.top + _vp.bottom) / 2
+  const hy  = Math.abs(_vp.top - _vp.bottom) / 2
+  if (!isFinite(cx) || !isFinite(cy) || !isFinite(hy) || hy <= 0) return
+
+  const next = { left: cx - hy * asp, right: cx + hy * asp, top: cy + hy, bottom: cy - hy }
+  if (Math.abs(next.left - _vp.left) < 1e-6 && Math.abs(next.right - _vp.right) < 1e-6) return
   _vp = next
   try { calc.setMathBounds(next) } catch { /* calculator torn down mid-resize */ }
 }

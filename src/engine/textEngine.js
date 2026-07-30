@@ -59,7 +59,16 @@ export function updateBoxColor(ref, id, color) {
   ref?.current?.updateBoxColor(id, color)
 }
 
+// Page teardown: instant. Everything else on the canvas is being wiped in the
+// same breath, and a lingering fade would overlap the next page's build.
 export function clearAll(ref) {
+  registry.clear()
+  ref?.current?.clearAllNow?.()
+}
+
+// The authored "clear the text panel" step, mid-lesson — that one the viewer
+// watches happen, so the cards fade out the way they faded in.
+export function clearAllAnimated(ref) {
   registry.clear()
   ref?.current?.clearAll()
 }

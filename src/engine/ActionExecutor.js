@@ -2250,15 +2250,17 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       break
     }
 
+    // Both wait out the fade rather than the old 0.15s, so the next step does
+    // not start on top of a card that is still on screen.
     case 'text-remove': {
       textEngine.removeBox(textRef, action.id)
-      await wait(0.15)
+      await wait(0.3)
       break
     }
 
     case 'text-clear': {
-      textEngine.clearAll(textRef)
-      await wait(0.15)
+      textEngine.clearAllAnimated(textRef)
+      await wait(0.3)
       break
     }
 

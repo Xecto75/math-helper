@@ -15,6 +15,10 @@ function ListItem({ text, entering }) {
   )
 }
 
+// How long a card takes to fade out — must match the .tb-card transition in
+// App.css, since the element is only unmounted once the transition has run.
+export const TB_FADE_MS = 280
+
 // Single text box card
 function TextBox({ box }) {
   const [visible, setVisible] = useState(false)
@@ -22,6 +26,11 @@ function TextBox({ box }) {
     const id = requestAnimationFrame(() => setVisible(true))
     return () => cancelAnimationFrame(id)
   }, [])
+  // Dropping the card straight out of the array made it vanish between two
+  // frames while every other change on screen animates. Removal now flips this
+  // flag first, which runs the same transition backwards, and the unmount
+  // happens after it.
+  const shown = visible && !box.leaving
 
   // No accent set → reserved blue, the app-wide default whenever a color is
   // left empty.
@@ -31,7 +40,7 @@ function TextBox({ box }) {
   return (
     <div
       data-box-id={box.id}
-      className={`tb-card${visible ? ' tb-card--in' : ''}`}
+      className={`tb-card${shown ? ' tb-card--in' : ''}`}
       style={{ '--tb-accent': accent, '--tb-scale': scale, borderLeftColor: accent }}
     >
       {box.title && (
@@ -67,7 +76,9 @@ const TextBoxDisplay = forwardRef(function TextBoxDisplay(_, ref) {
   useImperativeHandle(ref, () => ({
     isReady: () => true,
     getBoxesState()       { return boxesRef.current },
-    restoreBoxesState(bxs) { setBoxes([...bxs]) },
+    // Strip `leaving`: a snapshot taken mid-fade would otherwise restore a card
+    // that a pending timer then deletes.
+    restoreBoxesState(bxs) { setBoxes(bxs.map(b => ({ ...b, leaving: false }))) },
 
     getBoxEl(id) {
       return panelRef.current?.querySelector(`[data-box-id="${id}"]`) ?? null
@@ -88,8 +99,15 @@ const TextBoxDisplay = forwardRef(function TextBoxDisplay(_, ref) {
       })
     },
 
+    // Fade out first, unmount after. The timer only drops a card that is still
+    // marked leaving, so re-adding the same id mid-fade (addBox rebuilds the
+    // entry without the flag) brings it back instead of being wiped by the
+    // pending removal.
     removeBox(id) {
-      setBoxes(prev => prev.filter(b => b.id !== id))
+      setBoxes(prev => prev.map(b => b.id === id ? { ...b, leaving: true } : b))
+      setTimeout(() => {
+        setBoxes(prev => prev.filter(b => !(b.id === id && b.leaving)))
+      }, TB_FADE_MS)
     },
 
     addItem(id, text) {
@@ -109,6 +127,13 @@ const TextBoxDisplay = forwardRef(function TextBoxDisplay(_, ref) {
     },
 
     clearAll() {
+      setBoxes(prev => prev.map(b => ({ ...b, leaving: true })))
+      setTimeout(() => setBoxes(prev => prev.filter(b => !b.leaving)), TB_FADE_MS)
+    },
+
+    // Page teardown — no fade, the whole panel is going away anyway and a
+    // pending timer would fight the next page's boxes.
+    clearAllNow() {
       setBoxes([])
     },
   }))

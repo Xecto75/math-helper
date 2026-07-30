@@ -124,10 +124,12 @@ async function routeModules(prompt, trace) {
   try {
     const parsed = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1))
     result = {
-      status:    parsed.status ?? 'ok',
-      modules:   parsed.modules ?? [],
-      message:   parsed.message,
-      exampleId: parsed.exampleId ?? null,
+      status:  parsed.status ?? 'ok',
+      modules: parsed.modules ?? [],
+      message: parsed.message,
+      // An id that names no real lesson is the same as none at all — the
+      // caller's fallback then picks one that exists.
+      exampleId: EXAMPLE_LESSONS.some(e => e.id === parsed.exampleId) ? parsed.exampleId : null,
       // too-advanced only: reference lessons to offer instead. Filtered to ids
       // that actually exist, so a hallucinated one can never reach the UI as a
       // button that loads nothing.
@@ -145,6 +147,27 @@ async function routeModules(prompt, trace) {
 
 // ── Request 2: Generator ──────────────────────────────────────────────────────
 
+// Which reference lesson stands in when the router names none. Keyed on the
+// display the lesson will be built around, since what the generator needs from
+// the reference is how a lesson on THAT display is structured — a shape being
+// created, labelled and annotated; a curve being plotted and marked up — not
+// the topic it happens to teach.
+const FALLBACK_BY_MODULE = {
+  geo2d:      'pythagoras',
+  geo_canvas: 'pythagoras',
+  geo3d:      'volumes',
+  graph:      'linear-functions',
+  table:      'central-tendency',
+  equation:   'linear-eq',
+  calc:       'linear-eq',
+}
+const FALLBACK_ORDER = ['geo2d', 'geo_canvas', 'geo3d', 'graph', 'table', 'calc', 'equation']
+
+function fallbackExample(moduleIds = []) {
+  const hit = FALLBACK_ORDER.find(m => moduleIds.includes(m))
+  return (hit && FALLBACK_BY_MODULE[hit]) || 'linear-eq'
+}
+
 // Resolve the router's pick to compact form. Overrides win over the bundled
 // source, so the reference is whatever the author last saved.
 function referenceLesson(exampleId) {
@@ -156,7 +179,11 @@ function referenceLesson(exampleId) {
 }
 
 async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null, trace = null) {
-  const reference = referenceLesson(exampleId)
+  // Last line of defence: if that id resolves to nothing (its pages were
+  // deleted, its steps no longer compact cleanly), fall back rather than send
+  // the generator out with no model at all.
+  const reference = referenceLesson(exampleId) ?? referenceLesson(fallbackExample(moduleIds))
+  if (!reference) console.warn('  WARNING: no reference lesson resolved — output quality will suffer')
 
   // Whatever the reference lesson uses, its docs must be in the prompt too —
   // otherwise we hand the model codes it has no definition for and it copies
@@ -287,25 +314,20 @@ app.post('/api/generate-lesson', async (req, res) => {
         alternatives: route.alternatives ?? [],
       })
     }
-    // No reference lesson, no lesson. The generator only produces something
-    // worth showing when it has a verified lesson to model from; asked to
-    // invent one from the docs alone it returns pages with nothing good on
-    // them. Refused here, BEFORE the expensive generator call — and the credit
-    // goes back, since the user got no lesson.
+    const moduleIds = route.modules
+    // The generator is never sent to work without a worked model: it copies
+    // one, and with nothing to copy it invents pages with nothing good on them.
+    // The reference does NOT have to share the topic — it is a model of how a
+    // lesson is BUILT — so when the router leaves exampleId null the closest
+    // structural match for the modules it picked stands in.
+    const exampleId = route.exampleId ?? fallbackExample(moduleIds)
     if (!route.exampleId) {
-      if (auth) await refundCredit(auth.user.id)
-      const message = route.message ??
-        'That topic is not covered yet. Every lesson here is built from a verified example, and none of them matches this one closely enough to build from.'
-      console.log('  no reference lesson for this prompt — refusing before the generator call')
-      trace.section('REFUSED', `status: not-covered (router said ok, exampleId null)\n${message}`)
-      trace.finish()
-      return res.json({ status: 'too-advanced', message, alternatives: [] })
+      console.log(`  router sent no exampleId — falling back to "${exampleId}"`)
+      trace.note(`(no exampleId from the router — fell back to "${exampleId}")`)
     }
 
-    const moduleIds = route.modules
-
     // ── Step 2: Generate ─────────────────────────────────────────────────────
-    const gen = await generateCompact(prompt, moduleIds, lang, route.exampleId, trace)
+    const gen = await generateCompact(prompt, moduleIds, lang, exampleId, trace)
     rawApiText = gen.rawText
 
     // ── Validate → repair → (one) AI retry → drop ────────────────────────

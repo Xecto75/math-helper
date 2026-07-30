@@ -398,14 +398,19 @@ a question. "quadratics" → the concept lesson, not "which equation?". Ignore s
 typos. Two topics at once → cover the main one. Even "help me with my maths" is "ok": pick a
 fundamental and teach it. There is no status for asking. (Vague ≠ in scope: judge coverage first.)
 
-COVERAGE = THE REFERENCE LIST ABOVE, nothing else. "ok" REQUIRES a related exampleId; the generator
-is only reliable when it has a verified lesson to model from, and without one it invents something
-with nothing good to show. So: no related reference lesson → too-advanced, with alternatives.
-exampleId null with status ok is rejected before any lesson is built — it is never the right answer.
-Judge relatedness by topic, generously: "solve for x" → linear-eq, "area of a disc" → areas,
-"tan of an angle" → soh-cah-toa. Only when nothing is even loosely related is it too-advanced —
-derivatives, integrals, limits, matrices, complex numbers, proofs and anything past them have no
-reference lesson, so they are all too-advanced however simply they are asked.
+exampleId IS REQUIRED AND NEVER null. The generator copies it as a worked model, and without one it
+invents a lesson with nothing good in it. It does NOT have to be the same topic — it has to be built
+the way this lesson should be built. "types of angles in shapes" has no lesson of its own → areas or
+pythagoras (a shape, labelled and annotated). "reading a bar chart" → central-tendency. Always
+something. If two fit, take the one whose STRUCTURE matches, not the one sharing a keyword.
+
+COVERAGE — judged on the TOPIC, separately from which example fits:
+  IN  — arithmetic and fractions, order of operations, algebra (linear, quadratic, systems), plane
+        geometry, angles, perimeter/area/volume, right-triangle trigonometry, the unit circle,
+        functions (linear, quadratic, exponential), unit conversion, descriptive statistics.
+  OUT — derivatives, integrals, limits, sequences and series, vectors, matrices, probability
+        distributions, complex numbers, formal proofs, and everything past them up to research
+        level → too-advanced, however simply they are asked.
 
 MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another display needs a formula panel; "comments" for point/edge annotations. geo2d XOR geo3d. Prefer geo2d; geo_canvas only for SVG constructions or vertex arrows.
 
@@ -422,6 +427,7 @@ EXAMPLES (the non-English/misspelled ones are real past failures — treat as th
 "volume of a cylinder" → {"status":"ok","modules":["geo3d","text"]}
 "plot x² and find its roots" → {"status":"ok","modules":["graph","text","comments"]}
 "3 + 4 × 2 order of operations" → {"status":"ok","modules":["calc"],"exampleId":"linear-eq"}
+"types of angles in shapes" → {"status":"ok","modules":["geo2d","text","comments"],"exampleId":"pythagoras"}
 "compare student scores in a table" → {"status":"ok","modules":["table","text"]}
 "show me how The Mandelbrot Set works" → {"status":"too-advanced","message":"The Mandelbrot set is a fractal from complex analysis: it plots which complex numbers stay bounded when a formula is applied over and over. That needs complex arithmetic and iteration well past high-school level, so there is no lesson for it here.","alternatives":["exponential","parabola","unit-circle"]}
 "how does Inter-Universal Teichmüller Theory work" · "prove the Riemann hypothesis" → {"status":"too-advanced","message":"...","alternatives":["quadratic-eq","linear-functions"]}

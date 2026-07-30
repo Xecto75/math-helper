@@ -1167,10 +1167,27 @@ export async function ensureVisible(calc) {
     if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x
     if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y
   }
-  // A single point (or several coincident ones) has a zero-size box —
-  // give it a sane minimum span instead of zooming in to a single pixel.
-  const spanX = Math.max(maxX - minX, 4)
-  const spanY = Math.max(maxY - minY, 3)
+  const from = { ..._vp }
+  const w = vp.right - vp.left
+  const h = vp.top - vp.bottom
+
+  // PAN FIRST. If the anchors already fit at this zoom, the zoom is not the
+  // problem — shift the view by the smallest amount that brings the stragglers
+  // inside the margins and leave the span alone. Re-framing tightly around the
+  // anchors instead is what turned "plot one line" into a view centred on
+  // (3,7) at 4x3: one label an inch inside the top margin re-zoomed everything.
+  const usableX = w / 2 - marginX
+  const usableY = h / 2 - marginY
+  if (maxX - minX <= usableX * 2 && maxY - minY <= usableY * 2) {
+    const clamp = (c, lo, hi) => Math.min(Math.max(c, lo), hi)
+    const cx = clamp((vp.left + vp.right) / 2, maxX - usableX, minX + usableX)
+    const cy = clamp((vp.bottom + vp.top) / 2, maxY - usableY, minY + usableY)
+    _vp = { left: cx - w / 2, right: cx + w / 2, bottom: cy - h / 2, top: cy + h / 2 }
+    await animateViewport(calc, from, _vp)
+    return
+  }
+
+  // Genuinely too big for the current frame — zoom OUT to fit, never in.
   const cx = (minX + maxX) / 2
   const cy = (minY + maxY) / 2
 
@@ -1178,7 +1195,7 @@ export async function ensureVisible(calc) {
   try {
     const pc = calc.graphpaperBounds?.pixelCoordinates
     if (pc) { pw = Math.abs(pc.right - pc.left); ph = Math.abs(pc.bottom - pc.top) }
-  } catch {}
+  } catch { /* not mounted — the element measurement below covers it */ }
   if (!pw || !ph) {
     pw = calc.elt?.clientWidth  || 800
     ph = calc.elt?.clientHeight || 600
@@ -1187,14 +1204,16 @@ export async function ensureVisible(calc) {
 
   // Pad 30% beyond the tight bounding box so placed points sit comfortably
   // inside the frame instead of right at its edge, then stretch whichever
-  // axis is cramped relative to the container's aspect ratio — never
-  // shrink the other axis, so nothing that already fit stops fitting.
-  let halfX = (spanX / 2) * 1.3
-  let halfY = (spanY / 2) * 1.3
+  // axis is cramped relative to the container's aspect ratio.
+  let halfX = ((maxX - minX) / 2) * 1.3
+  let halfY = ((maxY - minY) / 2) * 1.3
   if (halfX / halfY < aspect) halfX = halfY * aspect
   else halfY = halfX / aspect
+  // Never end up more zoomed in than we started: this call exists to reveal
+  // something, not to magnify the rest of the lesson away.
+  halfX = Math.max(halfX, w / 2)
+  halfY = Math.max(halfY, h / 2)
 
-  const from = { ..._vp }
   _vp = { left: cx - halfX, right: cx + halfX, bottom: cy - halfY, top: cy + halfY }
   await animateViewport(calc, from, _vp)
 }

@@ -97,19 +97,12 @@ FUNCTIONS [positional args]:
   ed:[divisor]                       — divide both sides by number
   em:[multiplier]                    — multiply both sides by number (clears x/2=4 style fractions)
   ef:[]                              — animated full solve (combine→send→divide) — use for any degree-1 eq
-  ev:[replacements]                  — substitute KNOWN values only, never the one being solved
-                                        for: to find b from a=5,c=13 write ev:"a=5,c=13" and let
-                                        er/ed/ef produce b. ev:"a=5,b=12,c=13" hands over the
-                                        answer and the lesson shows nothing. Same for tc content
-                                        ("$b^2=169-25=144$" is the answer pre-written) and for
-                                        S2l labels — the unknown side stays "?"/"b" until solved,
-                                        then S2l/tf/cu reveal it. Prefer
-                                        a live [id]token ref over a literal when the
-                                        value came from a shape/graph/table, e.g.
-                                        "a=[tri]0,r=[circ]r" (see [id]token refs above)
-  eS:[name]                          — stash the equation's current solved numeric result
-                                        under a name (no visual change), so a LATER eq/ev/tc/cu
-                                        step can pull it back via [name]v — use to chain solves
+  ev:[replacements]                  — substitute KNOWN values only, never the one being solved for
+                                        (see FIND-THE-MISSING-VALUE). Prefer a live [id]token over a
+                                        literal when the value came from a shape/graph/table:
+                                        "a=[tri]0,r=[circ]r"
+  eS:[name]                          — stash the current solved result under a name (no visual
+                                        change); a later eq/ev/tc/cu pulls it back via [name]v
   er:[equation]                      — show √ both sides (eq must be "x^2=N" form)
   ea:[trig]                          — apply inverse trig: sin|cos|tan
   ee:[equation,newDegree]            — change exponent (fade old, fade in new)
@@ -187,13 +180,13 @@ FUNCTIONS [positional args]:
   S3t:[labelId,text,x,y]       — floating text label at world position (y<0 = below shape)
   S3x:[id]                     — remove shape by id
   S3C:[]                       — clear all shapes and labels
-  S3m:[id,clr]                 — label exactly the dimensions needed for THIS shape's VOLUME formula (auto-detects by type — cube→a, sphere→r, cone/cylinder→r+h, rectangular-prism→l+w+h, pyramid→a+h, tetrahedron/octahedron→a, torus→R+r). Prefer this over manually writing S3t volume labels.
+  S3m:[id,clr]                 — label the dimensions THIS shape's VOLUME formula needs (auto by type: cube→a sphere→r cone/cylinder→r+h rect-prism→l+w+h pyramid→a+h tetra/octahedron→a torus→R+r). Prefer over hand-written S3t labels.
   S3mx:[id]                    — remove volume-measure labels
-  S2E:[id,edgeIndex,color]     — highlight one edge. On cube/rectangular-prism ("box"/"prism"/"rectangular-prism"), edgeIndex is 0-11 (one of the 12 box edges); doesn't work on curved solids (sphere/cone/cylinder/torus).
+  S2E:[id,edgeIndex,color]     — highlight one edge. Box solids only: edgeIndex 0-11 of the 12 box edges.
   S2Ex:[id,edgeIndex]          — remove one edge's highlight
   S2F:[id,faceIndex,color]     — highlight one FACE (translucent panel) — cube/rectangular-prism only. faceIndex: 0=+X 1=-X 2=top 3=bottom 4=+Z 5=-Z
   S2Fx:[id,faceIndex]          — remove one face's highlight
-  S2v:[zoom,panX,panY,distance,duration,preset]  — camera control. preset (3D only, optional): "front"|"back"|"top"|"bottom"|"side"|"corner" jumps to that viewing angle — use it to look straight at a highlighted face.
+  S2v:[zoom,panX,panY,distance,duration,preset]  — camera. preset (3D only): front|back|top|bottom|side|corner — look straight at a highlighted face.
 
 SHAPE TYPES & PARAMS:
   cube             a=side length
@@ -206,11 +199,8 @@ SHAPE TYPES & PARAMS:
   octahedron       a=size
   torus            a=outer radius
 
-color: numeric index (0–7)
-The shape auto-spins; no camera control needed.
-Use S3t for volume/surface-area formulas below the shape.
-Face/edge highlighting (S2E/S2F) only works on box-shaped solids (cube, prism,
-rectangular-prism) — curved and other polyhedra solids aren't supported yet.
+color: index 0-7. Auto-spins, no camera needed. S3t for volume/surface formulas below the shape.
+S2E/S2F work on box solids only (cube, prism, rectangular-prism), never curved ones.
 `,
   },
 
@@ -245,15 +235,11 @@ INDICES (same as geo2d):
   right-triangle : v0=BL  v1=BR=90°  v2=top  ·  e0=base  e1=vertical  e2=hyp
   rectangle/square: v0=BL CCW  ·  e0=bottom  e1=right  e2=top  e3=left
 
-gM shows exactly what's needed for the area formula, per type: square→s ; rectangle→l+h ;
-parallelogram→b+h(dashed) ; trapeze→B(bottom)+b(top)+h(dashed) ; triangle/right-triangle→b+h(dashed) ;
-circle→r ; other polygons→s (one side). Prefer gM over gr when teaching area — gr alone only gives height.
-gP always labels EVERY side (perimeter needs the full sum, not a subset) — use gP instead of manually
-chaining several gE+gl calls when teaching perimeter.
-
-RICH REFS in tc: [id]N=side  [id]h=height  [id]r=radius  [id]aN=angle°
-ANGLES: never guess — use {{ [id]aN }}°
-ga/gr/gM/gP clr: ""=light blue
+gM = exactly the area formula's measures: square→s · rectangle→l+h · parallelogram→b+h(dashed) ·
+trapeze→B+b+h(dashed) · triangle→b+h(dashed) · circle→r · other→s. Use it over gr for area (gr gives
+height only). gP labels EVERY side — use it for perimeter instead of chaining gE+gl.
+tc refs: [id]N=side [id]h=height [id]r=radius [id]aN=angle°. Never guess an angle: {{ [id]aN }}°.
+ga/gr/gM/gP clr "" = light blue.
 `,
   },
 
@@ -265,23 +251,21 @@ ga/gr/gM/gP clr: ""=light blue
     doc: `GRAPH LAYOUTS: sg=single-graph  tg=text-graph  ge=graph-equation
 
 FUNCTIONS [positional args]:
-  fp:[expr,id,hideLabel]        — plot f(x); id is required (e.g. "f", "g"). Auto-shows a "f(x) = expr" label near the curve unless hideLabel=1 — don't also call fn for the same curve unless you want a different x position or custom text.
+  fp:[expr,id,hideLabel]        — plot f(x); id required ("f","g"). Auto-labels "f(x) = expr" near the curve unless hideLabel=1 — no fn for the same curve unless you need another x or custom text.
   fx:[id]                       — remove function
   fs:[id,a,b]                   — shade area under curve from a to b
-  fi:[f1,f2,clr,hideLabel]        — mark intersection points of two functions (works on a general
-                                    equation like "-6x+3y=12" too, not just one solved for y);
-                                    shows (x,y) coords by default, hideLabel=1 to hide them
+  fi:[f1,f2,clr,hideLabel]      — intersection points of two functions (also general forms like
+                                    "-6x+3y=12"); shows (x,y) unless hideLabel=1
   fa:[x,y,id,funcId,label,showCoords]  — add point (funcId/label/showCoords optional)
   fap:[id]                      — remove point
-  fbf:[pointIds,id,clr]         — least-squares line through already-placed points (comma-separated
-                                    IDs from fa), dashed by default — the "trend line through a scatter"
-  fsc:[slope,intercept,coeff,count,xMin,xMax,clr,id]  — scatter plot: points scattered around y=slope·x+intercept; coeff=spread (0=all on the line). Use for correlation/regression lessons.
+  fbf:[pointIds,id,clr]         — least-squares trend line through placed points (comma-separated fa ids), dashed
+  fsc:[slope,intercept,coeff,count,xMin,xMax,clr,id]  — scatter around y=slope·x+intercept; coeff=spread (0=on the line). Correlation/regression.
   fscx:[id]                     — remove scatter plot
-  fsg:[x1,y1,x2,y2,clr,id]      — finite line SEGMENT between two points (NOT infinite like y=mx+b) — use for geometry constructions drawn on the graph
+  fsg:[x1,y1,x2,y2,clr,id]      — finite SEGMENT (not an infinite line) — geometry drawn on the graph
   fsgx:[id]                     — remove segment
-  fst:[id,ticks,clr]            — congruent-side tick mark(s) (1-3) at a segment's midpoint; different tick count = different equal-side pair
+  fst:[id,ticks,clr]            — congruent tick(s) 1-3 at a segment midpoint; different count = different equal pair
   fstx:[id]                     — remove segment tick
-  fsd:[id,parts,clr,showLabels] — mark the points de partage that split a segment into "parts" equal sections
+  fsd:[id,parts,clr,showLabels] — mark the points splitting a segment into "parts" equal sections
   fsdx:[id]                     — remove segment division points
   fv:[cx,cy,range]              — center view at (cx,cy) with given range
   fV:[xMin,xMax,yMin,yMax]      — set exact viewport bounds
@@ -299,11 +283,8 @@ FUNCTIONS [positional args]:
   fBP:[pointIds]                — batch show projections "id1|id2|..." (parallel)
   fTC:[]                        — draw complete unit circle (all 16 standard angles)
 
-NOTE: fp automatically shows a live-updating equation badge (bottom of the graph, curve's
-color) whenever its expr has |name| sliders — nothing to call for this, it just happens.
-
-ORDERING: fp must come before fV/fr/fn/fP/ft/fs/cf on the same function
-fP needs a non-root x value (not exactly on an axis intercept)
+fp with |name| sliders auto-shows a live equation badge — nothing to call.
+ORDERING: fp before fV/fr/fn/fP/ft/fs/cf on the same function. fP needs a non-root x.
 `,
   },
 
@@ -315,7 +296,7 @@ fP needs a non-root x value (not exactly on an axis intercept)
     doc: `TABLE LAYOUTS: sq=single-grid  tq=text-grid  qe=grid-equation (table + equation, no text — pair with Th to walk a per-row calculation next to its formula)
 
 FUNCTIONS [positional args]:
-  Tt:[data,hdr,gId,clr]          — EASIEST way to create a table: data is a literal 2D array, e.g. "[[2,2,3],[5,5,6],[4,4,4]]" — size is auto-detected, don't also pass cols/rows. Prefer this over Tc.
+  Tt:[data,hdr,gId,clr]          — PREFERRED way to create: data is a literal 2D array "[[2,2,3],[5,5,6]]", size auto-detected, no cols/rows.
   Tc:[gId,cols,rows,hdr,vals]    — create grid (hdr=0/1; vals: rows sep by |, cells by ,)
   Tx:[id]                        — erase grid (fade out)
   Ta:[id,vals]                   — append column (vals: top-to-bottom comma list)
@@ -324,9 +305,7 @@ FUNCTIONS [positional args]:
   TrR:[id,rowIndex]              — remove row (0=first, -1=last)
   Tv:[id,col,row,val]            — update single cell (col/row 0-based)
   TV:[id,changes]                — update multiple cells "col,row,val|col,row,val"
-  Th:[id,rowIndex,clr]           — highlight one row (0-based) — pair with an equation panel to
-                                    walk through a per-row calculation; calling again just slides
-                                    the same bar to the new row, no clear step needed between rows
+  Th:[id,rowIndex,clr]           — highlight one row (0-based); calling again slides the same bar, no clear step between rows
   Thx:[id]                       — fade out the row highlight
 `,
   },
@@ -349,8 +328,7 @@ content syntax: lines sep by | · $latex$ inline · **bold**
 isList: 0=paragraph  1=bullet list  "steps"=numbered list ("1. …", "2. …")
 color: "" always, unless user asks for a colored box
 
-IMPORTANT: layouts tg/tG/tq/te/ge/Ge/Gc have a text panel — include ≥1 tc or the panel is blank.
-Prefer tc for key formulas. Prefer the c* comment codes for brief point annotations.
+Layouts tg/tG/tq/te/ge/Ge/Gc have a text panel — ≥1 tc or it renders blank. tc = key formulas; c* codes = brief annotations.
 `,
   },
 
@@ -365,8 +343,7 @@ FUNCTIONS [positional args]:
   Cs:[latex]    — append one calculation line (LaTeX string)
   Cc:[]         — clear all lines
 
-One step per Cs call. LaTeX inside — double all backslashes.
-INTENT: PEMDAS / order-of-operations / arithmetic → sc+Cs | complex derivations → sc+Cs
+One step per Cs, LaTeX with doubled backslashes. PEMDAS / arithmetic / long derivations → sc+Cs.
 `,
   },
 
@@ -386,9 +363,7 @@ INTENT: PEMDAS / order-of-operations / arithmetic → sc+Cs | complex derivation
   cx:[]                              — clear all comments
   cu:[id,text,clr]                  — update existing comment text/color; use [eq-result] to pull eq answer
 
-Leave id="" when you don't need to update it later.
-Comments work on any layout — pair with any module.
-Prefer the c* comment codes over tc for brief labels on visual elements.
+id="" when no later update is needed. Works on any layout. Prefer c* over tc for brief labels on visuals.
 `,
   },
 }

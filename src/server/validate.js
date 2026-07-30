@@ -324,16 +324,12 @@ export function buildRepairPrompt(compact, issues, docFor) {
   const codes = [...new Set([...byStep.values()].flat().map(i => i.code).filter(Boolean))]
   const docs  = codes.map(c => docFor(c)).filter(Boolean)
 
-  return `You wrote a lesson in the compact format. Some steps are invalid.
-
-Fix ONLY the steps listed below. Keep every other step exactly as it is.
-Do not change the lesson's topic, its page titles, or its teaching order.
+  return `Your compact-format lesson has invalid steps. Fix ONLY these; keep every other step, the topic, the titles and the teaching order exactly as they are.
 
 ${blocks.join('\n\n')}
 
-Reference for the functions involved:
+DOCS for the functions involved:
 ${docs.join('\n')}
 
-Reply with the COMPLETE corrected lesson as raw JSON in the same compact format
-— the full array of pages, not just the fixed steps. No prose, no fences.`
+Reply with the COMPLETE corrected lesson (all pages, not just the fixed steps) as raw JSON, no prose, no fences.`
 }

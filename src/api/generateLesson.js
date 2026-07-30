@@ -3,7 +3,8 @@ import { authedFetch } from '../lib/supabase.js'
 const STATUS_FALLBACK = {
   'off-topic':    "I'm focused on math only — try a question about algebra, geometry, trigonometry, calculus…",
   'too-advanced': 'That one is past high-school level — the lessons here stop around intro calculus and statistics.',
-  clarify:        'Which math topic? (e.g. algebra, geometry, trigonometry…)',
+  // No "clarify" entry on purpose — the router no longer has that verdict.
+  // A vague prompt gets a lesson on the general concept, never a question back.
   trivial:        "That's already a one-line answer — try a topic worth a full lesson.",
 }
 

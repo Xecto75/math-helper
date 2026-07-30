@@ -8,7 +8,8 @@
  *     Input : user prompt
  *     Output: { status: "ok", modules: ["geo2d", "equation", ...] }
  *           | { status: "off-topic" }
- *           | { status: "too-advanced" | "clarify" | "trivial", message: "..." }
+ *           | { status: "too-advanced", message, alternatives: [exampleId] }
+ *           | { status: "trivial", message: "..." }
  *
  *   Request 2 — Generator (sonnet)
  *     System: BASE_RULES + per-module docs for selected modules only
@@ -388,8 +389,12 @@ STATUS:
 ok           — math, at or below high-school level. Any phrasing: question, how-to, comparison, exercise request, bare topic. A teacher would answer it → ok. Unsure → ok.
 too-advanced — real math, past high-school: research/graduate work (Mandelbrot set/fractals, complex analysis, IUT theory, schemes, measure theory, functional analysis, topology, abstract algebra past basics, analysis proofs). message = 2-3 short English sentences: what the topic is, and that it is past what these lessons cover. alternatives = 2-3 ids from REFERENCE LESSONS that are the nearest teachable stepping stones.
 off-topic    — the SUBJECT IS NOT MATHEMATICS (languages, history, coding, non-math science, advice). Nothing else is off-topic: a mathematical topic these modules cannot teach is too-advanced, never off-topic. Never off-topic for odd phrasing or a foreign language. No message.
-clarify      — math but NO topic named ("help me with my math homework"). Any named topic → ok, however vague the wording.
 trivial      — fully-specified arithmetic, one-line answer ("2+2", "15% of 80"). msg = that answer.
+
+NEVER ASK A QUESTION BACK. Vague, broad, garbled or half-typed prompts are "ok" — teach the general
+concept. "derivatives" → the concept lesson, not "which function?". "how do integral and derival work 6"
+→ a derivatives+integrals lesson; ignore the stray "6". Two topics at once → cover the main one. Even
+"help me with my maths" is "ok": pick a fundamental and teach it. There is no status for asking.
 
 LEVEL CEILING (high school): arithmetic, algebra, geometry, trigonometry, functions, intro calculus (standard derivatives/integrals), intro statistics/probability. Past that → too-advanced.
 
@@ -398,8 +403,7 @@ MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another
 OUTPUT: the JSON object ALONE — no fences, no prose, nothing after the closing brace. Prose is discarded unread; it only costs tokens.
 {"status":"ok","modules":[...],"exampleId":"<id|null>"}
 {"status":"too-advanced","message":"2-3 sentences","alternatives":["<reference lesson id>","..."]}
-{"status":"off-topic"}
-{"status":"clarify","message":"..."}  {"status":"trivial","message":"..."}
+{"status":"off-topic"}  {"status":"trivial","message":"..."}
 
 EXAMPLES (the non-English/misspelled ones are real past failures — treat as the bar):
 "solve 2x+5=11" · "2x-6+3x=8 ca fait quoi" · "donne moi des exercices sur les equation du 2eme degre" · "¿cómo se resuelve una ecuación de segundo grado?" · "9/11" → {"status":"ok","modules":["equation","text"]}
@@ -414,7 +418,8 @@ EXAMPLES (the non-English/misspelled ones are real past failures — treat as th
 "show me how The Mandelbrot Set works" → {"status":"too-advanced","message":"The Mandelbrot set is a fractal from complex analysis: it plots which complex numbers stay bounded when a formula is applied over and over. That needs complex arithmetic and iteration well past high-school level, so there is no lesson for it here.","alternatives":["exponential","parabola","unit-circle"]}
 "how does Inter-Universal Teichmüller Theory work" · "prove the Riemann hypothesis" → {"status":"too-advanced","message":"...","alternatives":["quadratic-eq","linear-functions"]}
 "how do I conjugate French verbs" · "write me a python script" → {"status":"off-topic"}
-"help me with my math problem" → {"status":"clarify","message":"Which math topic? (e.g. algebra, geometry, trigonometry…)"}
+"derivatives" · "How to integral adn derival work 6" → {"status":"ok","modules":["graph","text","calc"]}
+"help me with my math homework" · "j'ai besoin d'aide en maths" → {"status":"ok","modules":["equation","text"],"exampleId":"linear-eq"}
 "2+2" → {"status":"trivial","message":"2 + 2 = 4. Want a topic worth a full lesson?"}
 `
 

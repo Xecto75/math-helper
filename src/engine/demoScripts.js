@@ -84,6 +84,8 @@ export function demoReplaceVariable(eqText, replacementsRaw) {
   // 3D solid's dimensions, a graph point/segment/function, a table cell) —
   // so a lesson never needs the same number typed twice (once at creation,
   // once here, with the risk of the two silently drifting apart).
+  // Splitting on "," would cut an expression like "y=2x+3,z=..." correctly, but
+  // NOT one that contains a comma of its own — none of the accepted forms do.
   const replacements = String(replacementsRaw || 'a=2,b=-3,c=1')
     .split(',')
     .map(s => {
@@ -91,13 +93,19 @@ export function demoReplaceVariable(eqText, replacementsRaw) {
       if (eq < 0) return null
       const lbl = s.slice(0, eq).trim()
       const rhs = s.slice(eq + 1).trim()
+      if (!lbl || !rhs) return null
       const refM = rhs.match(VALUE_REF_RE)
       const val = refM ? (resolveValueRef(refM[1], refM[2]) ?? NaN) : Number(rhs)
-      return { label: lbl, value: val }
+      // A number (or a token that resolved to one) substitutes in place. Anything
+      // else is treated as an EXPRESSION — "y = -x+3" — and swapped in as a
+      // parenthesised group, so 3y becomes 3(-x+3) rather than being dropped
+      // for not being a number, which is what used to happen.
+      if (isFinite(val)) return { label: lbl, value: val }
+      return { label: lbl, exprText: rhs }
     })
-    .filter(r => r?.label && isFinite(r.value))
+    .filter(Boolean)
 
-  if (!replacements.length) throw new Error('Enter replacements like "a=2,b=-3,c=1"')
+  if (!replacements.length) throw new Error('Enter replacements like "a=2,b=-3,c=1" or "y=-x+3"')
 
   // When called from a lesson page the equation is already live — no snapshot needed.
   // When called standalone with an explicit eq string, set up the state first.

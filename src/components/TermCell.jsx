@@ -287,7 +287,10 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
     // exactly 1 AND there's a variable to stand on its own ("x", not "1x").
     const pgVar    = term.parenCoeffVariable ?? ''
     const pgDeg    = (term.parenCoeffDegree ?? 1) >= 2 ? supStr(term.parenCoeffDegree) : ''
-    const coeffStr = (term.parenCoeff === 1 && pgVar) ? '' : fmtNum(term.parenCoeff)
+    // A multiplier of exactly 1 is never written, with or without a variable:
+    // "x(x+4)" and "(x+4)", not "1x(x+4)" or "1(x+4)". Substituting an
+    // expression into a term whose coefficient was 1 produces exactly this.
+    const coeffStr = term.parenCoeff === 1 ? '' : fmtNum(term.parenCoeff)
     return (
       <div className="term-wrap" ref={ref}>
         {showOp && <span className="term-op">{term.sign === '-' ? '−' : '+'}</span>}

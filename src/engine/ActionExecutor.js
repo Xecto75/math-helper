@@ -11,6 +11,7 @@ import { resolveColor }  from './palette.js'
 import { generateScript } from './solveScript.js'
 import { isNum, findReady, applyReady, collectLabels, collectLabelNodeIds, substituteLabel, findPm, choosePmBranch, deepClone } from './exprTree.js'
 import { saveValue } from './valueRefs.js'
+import { parseRichEquation } from './parseEquation.js'
 
 const LANE_H = 72
 
@@ -1847,13 +1848,95 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     case 'replaceVariable': {
       if (!state) break
 
+      // ── Expression replacements ("y = -x+3") ────────────────────────────
+      // A number swaps into the term it labels. An expression cannot: 3y with
+      // y = -x+3 is 3(-x+3), a different KIND of term. Build that term with the
+      // same parser the rest of the engine uses — synthesising one by hand is
+      // how term shapes drift apart — then splice it in where the label was.
+      // A single-term expression needs no parentheses (3y with y = 2x is 6x),
+      // which is the one case that folds into the existing term instead.
+      // Which terms does "y" name? A bare |y| parses as a symbolic label, but
+      // 3|y| parses as an ordinary 3y term — the pipes only marked it
+      // replaceable. Matching symbolicLabel alone meant "replace y" silently
+      // did nothing on "-6x+3|y|=12", for expressions AND for plain numbers.
+      const namedBy = (label) => (t) =>
+        !t.expr && (t.symbolicLabel === label || t.variable === label)
+
+      const exprPlans = (action.replacements ?? []).filter(r => r.exprText)
+      let exprChanged = false
+
+      // Fade the labels being replaced before anything moves, so the swap reads
+      // as one motion rather than the new terms appearing over the old.
+      if (exprPlans.length) {
+        const labels = new Set(exprPlans.map(r => r.label))
+        const outEls = [...state.left, ...state.right]
+          .filter(t => [...labels].some(l => namedBy(l)(t)))
+          .map(t => getWrap(refs(), t.side, t.cellIndex))
+          .filter(Boolean)
+        if (outEls.length) {
+          outEls.forEach(el => { el.style.animation = 'none' })
+          await gsap.to(outEls, { opacity: 0, scale: 0.7, duration: 0.28, ease: 'power2.in' }).then()
+        }
+      }
+
+      for (const { label, exprText } of exprPlans) {
+        // Squared and higher labels would need (…)² around the group, which the
+        // paren term cannot carry — left alone rather than substituted wrongly.
+        const targets = [...state.left, ...state.right]
+          .filter(t => namedBy(label)(t) && (t.degree ?? 0) <= 1)
+        if (!targets.length) continue
+
+        let built
+        try { built = parseRichEquation(`1(${exprText})=0`).left[0] } catch { built = null }
+        if (!built?.isParenGroup || !built.innerTerms?.length) {
+          console.warn(`replaceVariable: could not read "${exprText}" as an expression`)
+          continue
+        }
+
+        for (const t of targets) {
+          const coeff = Math.abs(t.coefficient ?? 1)
+          const outerNeg = t.sign === '-'
+          const arr = t.side === 'left' ? state.left : state.right
+          const idx = arr.findIndex(x => x.id === t.id)
+          if (idx < 0) continue
+
+          let replacement
+          if (built.innerTerms.length === 1) {
+            // One term — multiply it out, no parentheses.
+            const inner = built.innerTerms[0]
+            const neg   = outerNeg !== (inner.sign === '-')
+            replacement = new MathObject({
+              sign: neg ? '-' : '+',
+              coefficient: coeff * Math.abs(inner.coefficient ?? 1),
+              variable: inner.variable ?? null,
+              degree: inner.variable ? (inner.degree ?? 1) : 0,
+              color: t.color ?? null,
+            })
+          } else {
+            const group = parseRichEquation(`${coeff}(${exprText})=0`).left[0]
+            if (!group?.isParenGroup) continue
+            replacement = new MathObject({ ...group, sign: outerNeg ? '-' : '+', color: t.color ?? null })
+          }
+          state.remove(t.id)
+          state.insertAt(replacement, t.side, idx)
+          exprChanged = true
+        }
+      }
+
+      if (exprChanged) {
+        // The new cells carry the standard term mount animation, so they pop in
+        // on their own once React has them.
+        flushSync(() => setState(state.snapshot()))
+        await wait(0.45)
+      }
+
       // Resolve each replacement against the current state — either a plain
       // symbolic term (t.symbolicLabel === label) or every leaf holding this
       // label inside a term's expr tree (see exprTree.js) — a label can
       // appear more than once in one tree, e.g. "2*|r| + |r|^2".
-      const plans = (action.replacements ?? []).map(({ label, value }) => {
+      const plans = (action.replacements ?? []).filter(r => !r.exprText).map(({ label, value }) => {
         const all   = [...state.left, ...state.right]
-        const terms = all.filter(t => !t.expr && t.symbolicLabel === label)
+        const terms = all.filter(namedBy(label))
         const exprHits = all
           .filter(t => t.expr && collectLabels(t.expr).has(label))
           .map(t => ({ t, nodeIds: collectLabelNodeIds(t.expr, label) }))
@@ -1902,11 +1985,16 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       // The existing sign is the OPERATOR (e.g. the "−" in "y₂ − y₁") — keep it,
       // only flipping when the substituted value itself is negative.
       for (const p of plans) {
-        const absV = Math.abs(p.value)
-        const flip = p.value < 0
         p.terms.forEach(t => {
-          t.sign = ((t.sign === '-') !== flip) ? '-' : '+'
-          t.coefficient = absV
+          // A labelled COEFFICIENT (|b|) is replaced outright; a labelled
+          // VARIABLE (the y in 3y) is multiplied out and disappears — 3y with
+          // y = 2 is 6, not 2. The exponent comes along: 3y² with y = 2 is 12.
+          const isVar  = t.variable === p.label
+          const deg    = isVar ? (t.degree ?? 1) : 1
+          const signed = (t.sign === '-' ? -1 : 1) * Math.abs(t.coefficient ?? 1) * Math.pow(p.value, deg)
+          t.sign = signed < 0 ? '-' : '+'
+          t.coefficient = Math.abs(signed)
+          if (isVar) { t.variable = null; t.degree = 0; t.varParts = null }
           t.symbolicLabel = undefined
         })
         p.exprHits.forEach(({ t }) => substituteLabel(t.expr, p.label, p.value))

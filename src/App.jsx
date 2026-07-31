@@ -72,7 +72,7 @@ import {
   demoTableHighlightRow, demoTableClearRowHighlight,
   demoAddCommentGraph, demoAddCommentGraphFunc, demoAddCommentGraphArea,
   demoAddCommentGrid, demoAddCommentGeo, demoAddCommentGeoEdge,
-  demoAddCommentEquation, demoAddCommentFree, demoClearComments, demoUpdateComment, demoNarrate,
+  demoAddCommentEquation, demoAddCommentFree, demoClearComments, demoRemoveComment, demoUpdateComment, demoNarrate,
   demoTextCreate, demoTextAddItem, demoTextRemoveItem,
   demoTextUpdateTitle, demoTextRemove, demoTextFadeContent,
   demoCalcStep, demoCalcClear,
@@ -627,6 +627,7 @@ export default function App() {
       case 'cmt-free':                return demoAddCommentFree(inputs.text, inputs.side, inputs.color, inputs.cmtId, inputs.title)
       case 'cmt-update':              return demoUpdateComment(inputs.cmtId, inputs.text, inputs.color)
       case 'cmt-clear':               return demoClearComments()
+      case 'cmt-remove':              return demoRemoveComment(inputs.cmtId)
       case 'narrate':                 return demoNarrate(inputs.text)
       case 'calc-step':               return demoCalcStep(inputs.latex)
       case 'calc-clear':              return demoCalcClear()

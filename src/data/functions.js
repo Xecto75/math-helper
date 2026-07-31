@@ -871,6 +871,14 @@ export const CATEGORIES = [
         inputs: [],
       },
       {
+        id: 'cmt-remove', label: 'Remove One Comment', status: 'ready',
+        useAll: true,
+        description: 'Fade out a single comment by its ID, leaving every other comment on screen — needs an ID set when the comment was created',
+        inputs: [
+          { id: 'cmtId', label: 'Comment ID', type: 'text', default: '', placeholder: 'ID set when created' },
+        ],
+      },
+      {
         id: 'cmt-update', label: 'Update Comment', status: 'ready',
         useAll: true,
         description: 'Change the text and/or color of an existing comment. Use [eq-result] in text to pull the current equation result (color auto-follows), or any [id]token value reference (same as Create Text Box / eq-replace-variable).',

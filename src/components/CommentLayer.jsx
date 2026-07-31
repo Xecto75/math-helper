@@ -63,13 +63,16 @@ const CommentBox = memo(function CommentBox({ c, smooth = true }) {
   const color = shown.color
   return (
     <div data-cmt-id={c.id} style={{
-      animation: 'cmtFadeIn 0.35s ease both',
+      // On the way out the entry animation has to be dropped, or it keeps
+      // asserting opacity:1 and the fade never shows.
+      animation: c.leaving ? 'none' : 'cmtFadeIn 0.35s ease both',
+      opacity: c.leaving ? 0 : undefined,
       // A comment re-anchors whenever another one appears next to it, the
       // layout changes, or its target moves — and it used to teleport to the
       // new spot. Slide instead. Suppressed while the user is dragging the
       // graph, where the position changes every frame and any easing would
       // just trail behind the cursor.
-      transition: smooth ? 'left 0.28s ease, top 0.28s ease' : 'none',
+      transition: `opacity 0.28s ease${smooth ? ', left 0.28s ease, top 0.28s ease' : ''}`,
       position: 'absolute', left: c.boxX, top: c.boxY,
       width: BOX_W, minHeight: BOX_H,
       background: 'rgba(10,10,20,0.90)',
@@ -352,7 +355,11 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
           const fadeForPan = graphInteractive && c.target?.type === 'graph'
 
           return (
-            <g key={c.id} style={{ animation: 'cmtFadeIn 0.35s ease both' }}>
+            <g key={c.id} style={{
+              animation: c.leaving ? 'none' : 'cmtFadeIn 0.35s ease both',
+              opacity: c.leaving ? 0 : undefined,
+              transition: 'opacity 0.28s ease',
+            }}>
               <g style={{ opacity: fadeForPan ? 0 : 1, transition: 'opacity 0.25s ease' }}>
                 {c.cellRects?.map((r, i) => (
                   <rect key={i}

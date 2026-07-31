@@ -1119,6 +1119,12 @@ export function demoClearComments() {
   return { snapshot: null, script: [{ type: 'clear-comments' }] }
 }
 
+export function demoRemoveComment(cmtIdRaw) {
+  const id = (cmtIdRaw || '').trim()
+  if (!id) throw new Error('Comment ID is required for cmt-remove.')
+  return { snapshot: null, script: [{ type: 'remove-comment', id }] }
+}
+
 export function demoUpdateComment(cmtIdRaw, textRaw, colorRaw) {
   const id    = (cmtIdRaw || '').trim()
   if (!id) throw new Error('Comment ID is required for cmt-update.')

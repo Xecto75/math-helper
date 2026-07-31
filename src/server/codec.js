@@ -92,7 +92,7 @@ const FUNCS = {
   cg: 'cmt-graph',       cf: 'cmt-graph-func',   cA: 'cmt-graph-area',
   cq: 'cmt-grid',        cG: 'cmt-geo',          cE: 'cmt-geo-edge',
   ce: 'cmt-equation',    cx: 'cmt-clear',         cu: 'cmt-update',
-  cF: 'cmt-free',
+  cF: 'cmt-free',        cd: 'cmt-remove',
   n:  'narrate',
 
   // ── Page flow ────────────────────────────────────────────────────────────────

@@ -371,6 +371,7 @@ One step per Cs, LaTeX with doubled backslashes. PEMDAS / arithmetic / long deri
   cG:[id,text,shapeId,vtx,clr]      — comment on a shape vertex
   cE:[id,text,shapeId,edge,clr]     — comment on a shape edge midpoint
   ce:[id,text,side,indices,clr]     — comment on equation (side=both|left|right; indices=blank or "0,1,2")
+  cd:[id]                            — fade out ONE comment by id, leaving the others
   cx:[]                              — clear all comments
   cu:[id,text,clr]                  — update existing comment text/color; use [eq-result] to pull eq answer
 

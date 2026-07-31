@@ -2154,8 +2154,11 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
 
     case 'remove-comment': {
       if (!setComments) break
-      setComments(prev => prev.filter(c => c.id !== action.id))
-      await wait(0.1)
+      // Fade out, then unmount — nothing on screen disappears between two
+      // frames. Same two-phase removal the text boxes use.
+      setComments(prev => prev.map(c => c.id === action.id ? { ...c, leaving: true } : c))
+      await wait(0.3)
+      setComments(prev => prev.filter(c => !(c.id === action.id && c.leaving)))
       break
     }
 

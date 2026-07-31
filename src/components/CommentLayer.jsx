@@ -181,7 +181,12 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
 
       const tx = client.x - cr.left
       const ty = client.y - cr.top
-      const forcedRight = layoutMode?.startsWith('text-')
+      // Every text-* layout puts its text panel down the left third
+      // (left: 70px, width: 35%), so a comment on that side would sit on top of
+      // it — right is the only free gutter. text-equation is the exception: it
+      // stacks text over equation with a 168px gutter reserved on BOTH sides,
+      // so there is nothing to avoid and the nearest side wins like anywhere else.
+      const forcedRight = layoutMode?.startsWith('text-') && layoutMode !== 'text-equation'
 
       let side
       if (forcedRight) {

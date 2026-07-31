@@ -171,7 +171,11 @@ export function generateScript(initialSnapshot, originalInput) {
   // reciprocal is itself a clean whole number; every other coefficient
   // (whole numbers, non-unit fractions) still divides exactly as before.
   const xTerm = state.findByDegree(1, varSide)[0]
-  const coeff = xTerm?.coefficient ?? 1
+  // SIGNED — `coefficient` is a magnitude, the sign lives beside it. Reading
+  // the magnitude alone divided -9x = 3 by 9 and stopped at "-x = 0.333", and
+  // skipped -x = 4 entirely (magnitude 1, "nothing to do"). Isolating x means
+  // ending on +1x, so the divisor is the coefficient WITH its sign.
+  const coeff = (xTerm?.sign === '-' ? -1 : 1) * (xTerm?.coefficient ?? 1)
   if (xTerm && Math.abs(coeff - 1) > 1e-9) {
     const reciprocal    = 1 / coeff
     const roundedRecip  = Math.round(reciprocal)

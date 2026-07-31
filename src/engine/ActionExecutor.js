@@ -2287,9 +2287,14 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         await gsap.to(contentEl, { opacity: 0, y: -10, duration: 0.22, ease: 'power2.in' }).then()
       }
 
+      // "|" separates lines here exactly as it does in text-create — passing
+      // the whole string as a single item made every | render as a literal
+      // pipe on one long line.
+      const items = resolved.split('|').map(s => s.trim()).filter(Boolean)
+
       // Swap content + color synchronously so React doesn't flicker between
       flushSync(() => {
-        textEngine.replaceItems(textRef, boxId, [resolved])
+        textEngine.replaceItems(textRef, boxId, items.length ? items : [resolved])
         if (resultColor) textEngine.updateBoxColor(textRef, boxId, resultColor)
       })
 

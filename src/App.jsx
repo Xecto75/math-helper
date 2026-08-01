@@ -124,31 +124,49 @@ function pagesFromJson(jsonStr) {
 // The break sits BEFORE the text step, so a click reveals "the text AND its
 // illustration" together — text first, visual on the next click, would split
 // the two things that belong to each other.
-// Steps that CHANGE or DESTROY text already on screen. These are the only ones
-// worth stopping for: whatever they overwrite has to be readable first.
-const REWRITES = new Set([
-  'text-fade-content', 'text-update-title', 'text-remove-item', 'text-remove',
-  'text-clear', 'cmt-update', 'cmt-remove', 'cmt-clear',
+// Steps that always take something away, whatever it held.
+const ERASES = new Set([
+  'text-remove-item', 'text-remove', 'text-clear', 'cmt-remove', 'cmt-clear',
 ])
 // Which box or comment a step writes to, so re-using an id can be spotted.
 const targetOf = (s) => s?.inputs?.boxId ?? s?.inputs?.cmtId ?? null
 
+// The readable fields a step writes, kept apart so changing only the title of a
+// box does not read as wiping its body.
+const fieldsOf = (s) => {
+  const f = {}
+  const inp = s?.inputs ?? {}
+  if (inp.title   !== undefined) f.title = String(inp.title ?? '')
+  if (inp.content !== undefined) f.body  = String(inp.content ?? '')
+  else if (inp.text !== undefined) f.body = String(inp.text ?? '')
+  return f
+}
+
+// Purely ADDING to what a box or comment already says costs the reader nothing —
+// "x = 1" becoming "x = 1|y = -1" is the same sentence plus one more. Replacing
+// it does: "x = 1" becoming "x = 3" wipes a value that may never have been read.
+const onlyAdds = (before, after) => Object.entries(after).every(([k, next]) => {
+  const prev = before?.[k]
+  return !prev || next.includes(prev)
+})
+
 function expandPageSegments(pg) {
   const steps  = pg.steps ?? []
   const breaks = []
-  const live   = new Set()   // boxes/comments already on screen
+  const live   = new Map()   // id → { title, body } currently on screen
 
   steps.forEach((s, i) => {
-    const id = targetOf(s)
-    // Writing to an id that already exists replaces it, whatever the function
-    // is called — text-create on a live box swaps its contents just as surely
-    // as text-fade-content does.
-    const rewrites = REWRITES.has(s.funcId) || (!!id && live.has(id))
+    const id     = targetOf(s)
+    const fields = fieldsOf(s)
+    const erases = ERASES.has(s.funcId) ||
+      (!!id && live.has(id) && !onlyAdds(live.get(id), fields))
 
     // A layout change always splits — the panels themselves rearrange.
-    if (i > 0 && (s.funcId === 'set-layout' || rewrites)) breaks.push(i)
+    if (i > 0 && (s.funcId === 'set-layout' || erases)) breaks.push(i)
 
-    if (id) live.add(id)
+    if (id) live.set(id, { ...(live.get(id) ?? {}), ...fields })
+    if (s.funcId === 'text-remove' && id) live.delete(id)
+    if (s.funcId === 'cmt-remove'  && id) live.delete(id)
     if (s.funcId === 'text-clear' || s.funcId === 'cmt-clear') live.clear()
   })
   if (!breaks.length) return [{ pg, stopStep: null }]

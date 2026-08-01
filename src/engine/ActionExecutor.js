@@ -196,7 +196,7 @@ function makeGhostForTerm(sign, term) {
 // this, get to the end" — NOT "skip whatever is left", which would leave the
 // next beat drawing on top of shapes that were never created. So every
 // remaining step still runs; it just runs at a speed nobody waits for.
-const HURRY_FACTOR = 40
+const HURRY_FACTOR = 10
 let _hurry = false
 export function setHurry(on) {
   _hurry = !!on

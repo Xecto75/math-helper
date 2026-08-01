@@ -972,6 +972,9 @@ export default function App() {
         // installed its own, and clearing unconditionally would strand it.
         setSubStepGate(null)
         setInSubStep(false)
+        // Back to normal speed the moment the beat lands — a hurry applies to
+        // the beat the viewer asked to skim, never to the next one.
+        setHurry(false)
         setRunning(false)
         setGraphFuncIds(graphEngine.getFunctionIds())
         setTableGridIds(tableEngine.getGridIds())

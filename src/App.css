@@ -771,21 +771,25 @@
   opacity: 1; pointer-events: auto;
 }
 
-/* ── Grid-Equation split ── */
+/* ── Grid + Equation stacked (table top 62%, equation bottom 38%) ──
+   Same convention as geo-equation and graph-equation: a table is wide and an
+   equation is wide, so side by side squeezed both. The divider moves from the
+   vertical centre to the horizontal one to match. ── */
 
 .lesson-layout--grid-equation .display-slot--table {
-  left: 140px; right: calc(50% + 2px); top: 0; bottom: 0;
+  left: 140px; right: 140px; top: 0; bottom: 38%;
   width: auto; height: auto;
   opacity: 1; pointer-events: auto;
 }
 .lesson-layout--grid-equation .display-slot--table::after {
-  content: ''; position: absolute; top: 24px; bottom: 24px; right: 0;
-  width: 3px; border-radius: 2px; background: var(--border);
+  content: ''; position: absolute; left: 24px; right: 24px; bottom: 0;
+  height: 3px; border-radius: 2px; background: var(--border);
 }
 .lesson-layout--grid-equation .display-slot--equation {
-  left: calc(50% + 2px); right: 140px; top: 0; bottom: 0;
+  left: 100px; right: 100px; top: 62%; bottom: 0;
   width: auto; height: auto;
   opacity: 1; pointer-events: auto;
+  align-items: center; justify-content: center;
 }
 
 /* ── Geo + Equation stacked ── */

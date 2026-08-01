@@ -131,22 +131,37 @@ const TEXT_STEPS = new Set([
 const isText    = (s) => TEXT_STEPS.has(s?.funcId)
 const isComment = (s) => !!s?.funcId?.startsWith('cmt-')
 
+// Which box or comment a step writes to, so a beat can tell "another box
+// appearing beside this one" from "this same box being rewritten".
+const targetOf = (s) => s?.inputs?.boxId ?? s?.inputs?.cmtId ?? null
+
 function expandPageSegments(pg) {
   const steps  = pg.steps ?? []
   const breaks = []
+  let touched  = new Set()   // boxes/comments written to since the last break
+
   steps.forEach((s, i) => {
-    if (i === 0) return
     const prev = steps[i - 1]
-    // A layout change always splits — the panels themselves rearrange.
-    if (s.funcId === 'set-layout') { breaks.push(i); return }
-    // A text box OPENS a beat: it announces what the visuals after it show, so
-    // the break goes before it. Consecutive ones stay together — three boxes
-    // appearing at once are one idea, one click.
-    if (isText(s) && !isText(prev) && !isComment(prev)) { breaks.push(i); return }
-    // A comment CLOSES one: it points at something already on screen, so the
-    // pause belongs after it, not before. Break on the first step that is not
-    // itself another comment — a run of them annotates one picture together.
-    if (isComment(prev) && !isComment(s)) breaks.push(i)
+    const id   = (isText(s) || isComment(s)) ? targetOf(s) : null
+    const cut  = (at) => { breaks.push(at); touched = new Set() }
+
+    if (i > 0) {
+      // A layout change always splits — the panels themselves rearrange.
+      if (s.funcId === 'set-layout') { cut(i); touched.add(id); return }
+      // Rewriting something already written in THIS beat — a fade-content, a
+      // new title, an updated comment. Without a break the two states would
+      // land in the same click and the first would never be read.
+      if (id && touched.has(id)) { cut(i); touched.add(id); return }
+      // A text box OPENS a beat: it announces what the visuals after it show,
+      // so the break goes before it. Several different boxes appearing at once
+      // stay together — that is one idea, one click.
+      if (isText(s) && !isText(prev) && !isComment(prev)) { cut(i); touched.add(id); return }
+      // A comment CLOSES one: it points at something already on screen, so the
+      // pause belongs after it. Break on the first step that is not itself
+      // another comment — a run of them annotates one picture together.
+      if (isComment(prev) && !isComment(s)) { cut(i); touched.add(id); return }
+    }
+    if (id) touched.add(id)
   })
   if (!breaks.length) return [{ pg, stopStep: null }]
   return [...breaks.map(stopStep => ({ pg, stopStep })), { pg, stopStep: null }]

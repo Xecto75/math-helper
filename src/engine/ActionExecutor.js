@@ -1185,6 +1185,16 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       // all preceding terms (like 2x) back-and-forth as the width changes.
       // Instead: opacity:0 the wrapper instantly (keeps its footprint in the
       // flex layout → zero reflow → zero bystander movement during the fly).
+      // They ALL set off together. One at a time — fly, land, pop, next — made
+      // 35+11+14+12 take three seconds of watching a queue; here every term is
+      // in the air at once and only the ARRIVALS are staggered, so the total
+      // still climbs 46 → 60 → 72 in order and it reads as a single motion.
+      const FLIGHT  = 0.5    // how long each term is in the air
+      const STAGGER = 0.16   // gap between arrivals — one tick of the total
+
+      // Lift them all first: every rect is measured before any wrapper collapses,
+      // so nothing shifts under a term that has not left yet.
+      const flights = []
       for (const sec of secondaryTerms) {
         const secWrap  = getWrap(r, sec.side, sec.cellIndex)
         const secInner = getCellInner(secWrap)
@@ -1209,32 +1219,35 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         // Now hide the empty wrapper — layout footprint unchanged
         gsap.set(secWrap, { opacity: 0 })
 
-        // Fly inner cell to anchor via GPU transform
-        const tx = anchorRect.left - secRect.left
-        const ty = anchorRect.top  - secRect.top
-        await gsap.to(secInner, {
-          x: tx, y: ty, opacity: 0,
-          duration: 0.50, ease: 'power3.in',
-        }).then()
-        secInner.remove()
+        flights.push({ sec, secInner, secRect })
+      }
 
-        // Update anchor running total in-place (use .term-coeff span with new sub-span structure)
-        runningValue += sec.value
-        const coeffEl = anchorInner?.querySelector('.term-coeff')
-        if (coeffEl) coeffEl.textContent = String(parseFloat(Math.abs(runningValue).toFixed(3)))
-        const opEl = anchorWrap?.querySelector('.term-op')
-        if (opEl) opEl.textContent = runningValue < 0 ? '−' : '+'
+      const coeffEl = anchorInner?.querySelector('.term-coeff')
+      const opEl    = anchorWrap?.querySelector('.term-op')
 
-        if (anchorInner) {
+      await Promise.all(flights.map(({ sec, secInner, secRect }, i) => gsap.to(secInner, {
+        x: anchorRect.left - secRect.left,
+        y: anchorRect.top  - secRect.top,
+        opacity: 0,
+        duration: FLIGHT,
+        delay: i * STAGGER,
+        ease: 'power3.in',
+        onComplete: () => {
+          secInner.remove()
+          // The total takes each term as it lands, in the order they were sent.
+          runningValue += sec.value
+          if (coeffEl) coeffEl.textContent = String(parseFloat(Math.abs(runningValue).toFixed(3)))
+          if (opEl)    opEl.textContent = runningValue < 0 ? '−' : '+'
           // Same decisive pop as every other number-change in the equation
           // (sendToOtherSide's merge, divideBothSides) — one shared rhythm,
-          // not a per-action variant.
-          await gsap.to(anchorInner, {
-            scale: 1.2, duration: 0.15, ease: 'back.out(2.5)', yoyo: true, repeat: 1,
-          }).then()
-        }
-        await wait(0.05)
-      }
+          // not a per-action variant. Short enough to finish before the next
+          // term lands, so the pops read as separate beats.
+          if (anchorInner) {
+            gsap.to(anchorInner, { scale: 1.2, duration: 0.12, ease: 'back.out(2.5)', yoyo: true, repeat: 1 })
+          }
+        },
+      }).then()))
+      await wait(0.12)
 
       // ── Record bystander positions BEFORE removing anything from the DOM ──
       // Bystanders = terms not being combined.  After the commit their positions

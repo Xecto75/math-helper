@@ -25,7 +25,7 @@ import CustomView           from './views/CustomView.jsx'
 import SettingsView         from './views/SettingsView.jsx'
 import ProfileView          from './views/ProfileView.jsx'
 import { CATEGORIES, defaultInputs } from './data/functions.js'
-import { executeScript, cancelAllAnimations, setSubStepGate } from './engine/ActionExecutor.js'
+import { executeScript, cancelAllAnimations, setSubStepGate, setHurry } from './engine/ActionExecutor.js'
 import * as graphEngine     from './engine/desmosEngine.js'
 import * as tableEngine     from './engine/tableEngine.js'
 import * as textEngine      from './engine/textEngine.js'
@@ -1082,10 +1082,15 @@ export default function App() {
 
   const handleLessonNav = useCallback((dir) => {
     if (!lessonPages) return
+    // Forward while the beat is still playing = "get to the end of it", not
+    // "jump past it". Jumping would start the next beat from a canvas missing
+    // everything the unfinished steps were about to draw. Every step still
+    // runs, just fast enough that nobody waits.
+    if (dir > 0 && running) { setHurry(true); return }
     const next = Math.max(0, Math.min(lessonPages.length - 1, lessonPageIdx + dir))
     if (next === lessonPageIdx) return
     navigateToSegment(lessonPageIdx, next)
-  }, [lessonPages, lessonPageIdx, navigateToSegment])
+  }, [lessonPages, lessonPageIdx, navigateToSegment, running])
 
   // ── Beat / page derivations for the toolbar ────────────────────────────────
   // lessonPages is the flat list of BEATS across every page; these map it back
@@ -1121,10 +1126,11 @@ export default function App() {
   // landed on the graph's explore button, an exercise choice, a slider or the
   // prompt box was meant for that control, not for the deck.
   const handleStageClick = useCallback((e) => {
-    if (!awaitingClick) return
+    // Works while a beat is playing too — there it hurries it along.
+    if (!lessonPages) return
     if (e.target.closest('button, input, textarea, select, a, [role="button"], .desmos-container, .slider-panel')) return
     handleLessonNav(1)
-  }, [awaitingClick, handleLessonNav])
+  }, [lessonPages, handleLessonNav])
 
   const handleReplay = useCallback(() => {
     const seg = lessonPages ? lessonPages[lessonPageIdx] : null

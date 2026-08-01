@@ -191,6 +191,19 @@ function makeGhostForTerm(sign, term) {
   return makeTermGhost(sign, cellLabel(Math.abs(term.coefficient), term.variable, term.degree))
 }
 
+// ── Hurry ─────────────────────────────────────────────────────────────────────
+// Clicking "next" while a beat is still playing means "I have seen enough of
+// this, get to the end" — NOT "skip whatever is left", which would leave the
+// next beat drawing on top of shapes that were never created. So every
+// remaining step still runs; it just runs at a speed nobody waits for.
+const HURRY_FACTOR = 40
+let _hurry = false
+export function setHurry(on) {
+  _hurry = !!on
+  gsap.globalTimeline.timeScale(on ? ANIM_SCALE * HURRY_FACTOR : ANIM_SCALE)
+}
+export function isHurrying() { return _hurry }
+
 // ── Tracked waits ─────────────────────────────────────────────────────────────
 // All animation delays go through waitMs() so cancelAllAnimations() can abort them.
 const _pendingWaits = new Set()
@@ -211,6 +224,8 @@ export function cancelAllAnimations() {
   _pendingWaits.forEach(id => clearTimeout(id))
   _pendingWaits.clear()
   gsap.globalTimeline.clear()
+  // Cancelling ends any hurry too — the next run starts at normal speed.
+  _hurry = false
   gsap.globalTimeline.timeScale(ANIM_SCALE)
   // Remove all body-overlay elements (ghosts, dividers, sqrt symbols, arrows)
   document.querySelectorAll('._anim-overlay, ._lifted-to-body').forEach(el => el.remove())
@@ -252,7 +267,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
   const refs    = () => equationRef.current?.cellRefs ?? { left: [], right: [] }
   const graphApi = () => graphRef?.current?.calculator ?? null
   // eslint-disable-next-line no-shadow
-  const wait = (s) => waitMs((s / speed) * 1000 / ANIM_SCALE)
+  const wait = (s) => waitMs((s / speed) * 1000 / ANIM_SCALE / (_hurry ? HURRY_FACTOR : 1))
 
   // Shared "spotlight, then resolve" reveal used by every numeric-collapse
   // phase inside full-solve-current (factor products, exponents, fraction

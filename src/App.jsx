@@ -155,14 +155,21 @@ function expandPageSegments(pg) {
   const breaks = []
   const live   = new Map()   // id → { title, body } currently on screen
 
+  let prevBroke = false     // did the step just before this one call for a break?
+
   steps.forEach((s, i) => {
     const id     = targetOf(s)
     const fields = fieldsOf(s)
     const erases = ERASES.has(s.funcId) ||
       (!!id && live.has(id) && !onlyAdds(live.get(id), fields))
-
     // A layout change always splits — the panels themselves rearrange.
-    if (i > 0 && (s.funcId === 'set-layout' || erases)) breaks.push(i)
+    const breaker = s.funcId === 'set-layout' || erases
+
+    // Erasing steps that sit side by side are ONE clearing-out, not several:
+    // removing a comment and then its text box asks the viewer to click twice
+    // for a single moment. Only the first of a run opens the new beat.
+    if (i > 0 && breaker && !prevBroke) breaks.push(i)
+    prevBroke = breaker
 
     if (id) live.set(id, { ...(live.get(id) ?? {}), ...fields })
     if (s.funcId === 'text-remove' && id) live.delete(id)

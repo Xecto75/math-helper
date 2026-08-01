@@ -760,12 +760,12 @@ export const CATEGORIES = [
       {
         id: 'cmt-graph', label: 'Comment → Exact Point', status: 'ready',
         useGraph: true,
-        description: 'Comment dot at an exact (x, y) coordinate',
+        description: 'Comment dot at an exact (x, y) coordinate — X and Y accept a live value too, e.g. [x]v for a saved result or [pA]x for a point, and {{ }} arithmetic on them',
         inputs: [
           { id: 'cmtId', label: 'Comment ID (optional)', type: 'text', default: '', placeholder: 'e.g. cmt1 — needed to edit later' },
           { id: 'text',  label: 'Text',  type: 'text',   default: 'f(0) = 1' },
-          { id: 'x',     label: 'X',     type: 'number', default: '0' },
-          { id: 'y',     label: 'Y',     type: 'number', default: '1' },
+          { id: 'x',     label: 'X',     type: 'text',   default: '0', placeholder: '0, [x]v, {{ [x]v + 1 }}' },
+          { id: 'y',     label: 'Y',     type: 'text',   default: '1', placeholder: '1, [y]v' },
           { id: 'color', label: 'Color', type: 'color-name',   default: '#60a5fa' },
         ],
       },

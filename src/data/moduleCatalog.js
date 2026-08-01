@@ -361,7 +361,9 @@ One step per Cs, LaTeX with doubled backslashes. PEMDAS / arithmetic / long deri
     description: 'Comment bubbles on points, curves, cells, vertices/edges, equation terms',
     layouts: [],
     doc: `COMMENT FUNCTIONS [positional args]:
-  cg:[id,text,x,y,clr]              — comment at exact graph point (x,y)
+  cg:[id,text,x,y,clr]              — comment at exact graph point (x,y). x/y take a live value too:
+                                      "[x]v" (saved result), "[pA]x", or {{ }} arithmetic on them —
+                                      never hand-type a coordinate the lesson already derived.
   cf:[id,text,funcId,x,clr]         — comment snapped onto curve f at x. funcId may instead be a
                                       SEGMENT id (from fsg): it anchors on the segment's midpoint in
                                       both x and y, x ignored — use this for "rise = 6" style labels

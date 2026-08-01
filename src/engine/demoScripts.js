@@ -1020,8 +1020,12 @@ export function demoTableClearRowHighlight(gridIdRaw) {
 // Exact point — user provides (x, y) directly
 export function demoAddCommentGraph(textRaw, xRaw, yRaw, colorRaw, cmtIdRaw) {
   const text  = (textRaw  || 'f(0) = 1').trim()
-  const x     = Number(xRaw) || 0
-  const y     = Number(yRaw) || 0
+  // The coordinates take a live value the same way the text does — [x]v for a
+  // saved result, [pA]x for a point's abscissa, {{ }} for arithmetic on them —
+  // so a comment can sit on a spot the lesson DERIVED instead of one typed in
+  // by hand next to it, which drifts the moment the numbers change.
+  const x     = Number(substituteValueRefs(String(xRaw ?? ''))) || 0
+  const y     = Number(substituteValueRefs(String(yRaw ?? ''))) || 0
   const color = (colorRaw || '#60a5fa').trim()
   const id    = (cmtIdRaw || '').trim() || crypto.randomUUID()
   return {

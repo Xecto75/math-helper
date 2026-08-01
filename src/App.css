@@ -379,8 +379,24 @@
 .pb-btn--play  { background: rgba(165,180,252,0.15); border-color: rgba(165,180,252,0.35); color: var(--accent-2); font-weight: 600; padding: 0 18px; }
 .pb-btn--restart { position: absolute; right: 0; }
 .page-dots { display: flex; align-items: center; gap: 6px; }
-.pb-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.2); border: none; cursor: pointer; padding: 0; transition: background 0.12s; }
+.pb-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.2); border: none; cursor: pointer; padding: 0; transition: background 0.12s, transform 0.12s; }
 .pb-dot:hover { background: rgba(255,255,255,0.45); }
+.pb-dot--active { background: var(--accent-2, #a5b4fc); transform: scale(1.25); }
+
+/* The forward arrow doubles as "continue" — it breathes once a beat has
+   finished so the viewer knows the lesson is waiting on them, not still
+   animating. Cursor on the stage says the same thing. */
+.pb-btn--waiting {
+  background: rgba(165,180,252,0.18);
+  border-color: var(--accent-2, #a5b4fc);
+  color: var(--accent-2, #a5b4fc);
+  animation: pbWaiting 1.6s ease-in-out infinite;
+}
+@keyframes pbWaiting {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(165,180,252,0.0); }
+  50%      { box-shadow: 0 0 0 5px rgba(165,180,252,0.18); }
+}
+.main-area--awaiting { cursor: pointer; }
 .pb-pause-dot { width: 28px; height: 28px; border-radius: 50%; background: rgba(165,180,252,0.2); border: 1px solid rgba(165,180,252,0.4); color: var(--accent-2); font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .pb-pause-dot:disabled { opacity: 0.4; cursor: default; }
 

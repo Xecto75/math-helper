@@ -113,9 +113,34 @@ function pagesFromJson(jsonStr) {
 // always replays its page from step 0 (never a lightweight continuation),
 // so jumping straight to a later segment — e.g. skipping page 1 entirely —
 // still renders correctly instead of assuming the prior segment already ran.
+// ── Where a page pauses for a click ──────────────────────────────────────────
+// A lesson plays like a slide deck, not a video: it stops wherever the viewer
+// has something new to READ, and resumes on their click. Everything that is
+// pure drawing — plot two curves, mark their intersection, label a shape —
+// stays in the beat it illustrates, so nobody clicks ten times to assemble one
+// picture. ef and the other multi-step solves are already ONE step here; they
+// play their internal mini-steps without interruption.
+//
+// The break sits BEFORE the text step, so a click reveals "the text AND its
+// illustration" together — text first, visual on the next click, would split
+// the two things that belong to each other.
+const TEXT_STEPS = new Set([
+  'text-create', 'text-fade-content', 'text-update-title',
+  'text-add-item', 'text-remove-item', 'text-remove',
+])
+const startsNewBeat = (s) => TEXT_STEPS.has(s.funcId) || s.funcId?.startsWith('cmt-')
+
 function expandPageSegments(pg) {
+  const steps  = pg.steps ?? []
   const breaks = []
-  pg.steps.forEach((s, i) => { if (s.funcId === 'set-layout') breaks.push(i) })
+  steps.forEach((s, i) => {
+    if (i === 0) return
+    // A layout change always splits — the panels themselves rearrange.
+    if (s.funcId === 'set-layout') { breaks.push(i); return }
+    // Text/comments that FOLLOW something else start a new beat. Consecutive
+    // ones do not: three boxes appearing together are one idea, one click.
+    if (startsNewBeat(s) && !startsNewBeat(steps[i - 1])) breaks.push(i)
+  })
   if (!breaks.length) return [{ pg, stopStep: null }]
   return [...breaks.map(stopStep => ({ pg, stopStep })), { pg, stopStep: null }]
 }
@@ -1027,22 +1052,54 @@ export default function App() {
     navigateToSegment(lessonPageIdx, next)
   }, [lessonPages, lessonPageIdx, navigateToSegment])
 
+  // ── Beat / page derivations for the toolbar ────────────────────────────────
+  // lessonPages is the flat list of BEATS across every page; these map it back
+  // to pages for the dots, and say whether a beat has finished playing and is
+  // waiting on the viewer.
+  const pageStarts = []
+  if (lessonPages) {
+    lessonPages.forEach((seg, i) => {
+      if (i === 0 || seg.pg !== lessonPages[i - 1].pg) pageStarts.push(i)
+    })
+  }
+  let currentPageDot = 0
+  for (let i = 0; i < pageStarts.length; i++) if (pageStarts[i] <= lessonPageIdx) currentPageDot = i
+
+  const awaitingClick = !!lessonPages && !running && !paused && !aiLoading &&
+                        lessonPageIdx < lessonPages.length - 1
+
+  // Space / → advance, ← goes back — the reflex in any slide deck. Ignored
+  // while typing in the prompt box or answering an input exercise.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!lessonPages) return
+      const el = e.target
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      if (e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); handleLessonNav(1) }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); handleLessonNav(-1) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lessonPages, handleLessonNav])
+
+  // Clicking the stage advances too, but only on empty space: a click that
+  // landed on the graph's explore button, an exercise choice, a slider or the
+  // prompt box was meant for that control, not for the deck.
+  const handleStageClick = useCallback((e) => {
+    if (!awaitingClick) return
+    if (e.target.closest('button, input, textarea, select, a, [role="button"], .desmos-container, .slider-panel')) return
+    handleLessonNav(1)
+  }, [awaitingClick, handleLessonNav])
+
   const handleReplay = useCallback(() => {
     const seg = lessonPages ? lessonPages[lessonPageIdx] : null
     if (seg) buildPage(seg.pg, animSpeedRef.current, { stopAtStep: seg.stopStep, pauseAtStop: false })
     else if (lastBuiltPage) buildPage(lastBuiltPage, animSpeedRef.current)
   }, [lessonPages, lessonPageIdx, lastBuiltPage, buildPage])
 
-  const handlePause = useCallback(() => {
-    // Two granularities, both needed: pausePending stops the page loop at the
-    // next STEP boundary, and a zero budget stops a running full-solve at its
-    // next MINI-step. Setting only the former let a solve keep animating to
-    // completion after the user pressed pause.
-    if (cancelRef.current) cancelRef.current.pausePending = true
-    subBudgetRef.current = 0
-    pausedRef.current = true
-    setPaused(true)
-  }, [])
+  // The pause button is gone: a lesson now stops on its own at every beat and
+  // waits for a click, so there is nothing left to pause. The paused STATE
+  // remains — the Lesson Builder still drives a page step by step through it.
 
   // Grant the solve `budget` more mini-steps (0 = it parks at the very next
   // boundary, Infinity = play the rest of the solve). Returns false only when
@@ -1219,7 +1276,10 @@ export default function App() {
       )}
 
       {/* ── MAIN AREA ────────────────────────────────────────────────────────── */}
-      <div className="main-area">
+      <div
+        className={`main-area${awaitingClick ? ' main-area--awaiting' : ''}`}
+        onClick={handleStageClick}
+      >
 
       {/* ── TOP BAR ──────────────────────────────────────────────────────────── */}
       <header className="top-bar">
@@ -1309,14 +1369,26 @@ export default function App() {
                 ) : (
                   <>
                     <button className="pb-btn" onClick={() => handleLessonNav(-1)} disabled={lessonPageIdx === 0}>‹</button>
+                    {/* One dot per PAGE, not per beat — a page can hold half a
+                        dozen beats now, and that many dots reads as noise.
+                        Clicking one jumps to that page's first beat. */}
                     <div className="page-dots">
-                      {lessonPages.map((_, i) => (
-                        i === lessonPageIdx
-                          ? <button key={i} className="pb-pause-dot" onClick={handlePause} disabled={!running} title="Pause">⏸</button>
-                          : <button key={i} className="pb-dot" onClick={() => navigateToSegment(lessonPageIdx, i)} />
+                      {pageStarts.map((segIdx, p) => (
+                        <button
+                          key={p}
+                          className={`pb-dot${p === currentPageDot ? ' pb-dot--active' : ''}`}
+                          onClick={() => navigateToSegment(lessonPageIdx, segIdx)}
+                          title={`Page ${p + 1}`}
+                        />
                       ))}
                     </div>
-                    <button className="pb-btn" onClick={() => handleLessonNav(1)} disabled={lessonPageIdx >= lessonPages.length - 1}>›</button>
+                    {/* Lit up the moment a beat finishes, so nobody sits there
+                        waiting for an animation that already ended. */}
+                    <button
+                      className={`pb-btn${awaitingClick ? ' pb-btn--waiting' : ''}`}
+                      onClick={() => handleLessonNav(1)}
+                      disabled={lessonPageIdx >= lessonPages.length - 1}
+                    >›</button>
                   </>
                 )
               )}

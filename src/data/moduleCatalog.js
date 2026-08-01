@@ -375,7 +375,9 @@ One step per Cs, LaTeX with doubled backslashes. PEMDAS / arithmetic / long deri
   cx:[]                              — clear all comments
   cu:[id,text,clr]                  — update existing comment text/color; use [eq-result] to pull eq answer
 
-id="" when no later update is needed. Works on any layout. Prefer c* over tc for brief labels on visuals.
+id="" when no later update is needed (cu/cd need one). Works on any layout. Prefer c* over tc for brief
+labels on visuals. text: same | line separator and $latex$/{{ }}/[id]token syntax as tc — "x = [x]v|y = [y]v"
+is two lines. A | inside $ $ stays an absolute value.
 `,
   },
 }

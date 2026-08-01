@@ -98,6 +98,24 @@ function FitKatex({ html, block }) {
   )
 }
 
+// Split on the "|" line separator, but NOT on a pipe inside $…$ — there it is
+// an absolute value ($|x|$) or a set-builder bar, not a line break. Callers
+// that render multi-line content (text boxes, comments) use this so both
+// meanings can live in the same string.
+export function splitLines(text) {
+  const s = String(text ?? '')
+  const out = []
+  let buf = '', inMath = false
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]
+    if (c === '$') { inMath = !inMath; buf += c; continue }
+    if (c === '|' && !inMath) { out.push(buf); buf = ''; continue }
+    buf += c
+  }
+  out.push(buf)
+  return out.map(l => l.trim()).filter(Boolean)
+}
+
 // A line/item whose ENTIRE content is one $...$ or $$...$$ block, with no
 // surrounding words — e.g. a text-box item that's nothing but the formula
 // itself. Callers use this to center that line instead of left-aligning it

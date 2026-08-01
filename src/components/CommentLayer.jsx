@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, memo, forwardRef, useImperativeHandle } from 'react'
-import MathText from './RichText.jsx'
+import MathText, { splitLines } from './RichText.jsx'
 import { getShapePoint3D } from '../engine/threeEngine.js'
 import { onGraphInteractiveChange, offGraphInteractiveChange } from '../engine/desmosEngine.js'
 
@@ -44,8 +44,15 @@ function findFreeSlot(idealY, fixedBoxes, crHeight) {
 
 // Comments render text exactly like a text box: $latex$, {color: x}, {{ compute }},
 // [id] geo refs, **bold**, ^sup — all via the shared MathText component.
+// "|" starts a new line here exactly as it does in a text box — a comment
+// showing "x = 1|y = 3" reads as two lines. A pipe inside $…$ is left alone,
+// since there it means absolute value.
 function renderCommentText(text) {
-  return <MathText text={text} />
+  const lines = splitLines(text)
+  if (lines.length <= 1) return <MathText text={text} />
+  return lines.map((line, i) => (
+    <span key={i} style={{ display: 'block' }}><MathText text={line} /></span>
+  ))
 }
 
 const CommentBox = memo(function CommentBox({ c, smooth = true }) {

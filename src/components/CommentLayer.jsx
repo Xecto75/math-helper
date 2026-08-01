@@ -25,21 +25,40 @@ function countEdgeCrossings(lx, ly, tx, ty, edges) {
 }
 
 // Find the nearest non-overlapping Y slot for a new box, given fixed same-side boxes.
-function findFreeSlot(idealY, fixedBoxes, crHeight) {
-  const clamp = y => Math.max(MARGIN, Math.min(crHeight - BOX_H - MARGIN, y))
-  const hits  = y => fixedBoxes.some(b => Math.abs(b.boxY - y) < BOX_H + BOX_GAP)
+// BOX_H is the MINIMUM height; a comment with several lines is far taller. The
+// overlap test therefore compares real spans — box A's bottom against box B's
+// top — rather than assuming every box is BOX_H tall, which let two 150px
+// comments sit 56px apart and print straight through each other.
+function findFreeSlot(idealY, fixedBoxes, crHeight, newH = BOX_H) {
+  const clamp = y => Math.max(MARGIN, Math.min(Math.max(MARGIN, crHeight - newH - MARGIN), y))
+  const hits  = y => fixedBoxes.some(b =>
+    y < b.boxY + (b.boxH ?? BOX_H) + BOX_GAP && b.boxY < y + newH + BOX_GAP)
 
   const clamped = clamp(idealY)
   if (!hits(clamped)) return clamped
 
   const candidates = fixedBoxes
-    .flatMap(b => [b.boxY - BOX_H - BOX_GAP, b.boxY + BOX_H + BOX_GAP])
+    .flatMap(b => [b.boxY - newH - BOX_GAP, b.boxY + (b.boxH ?? BOX_H) + BOX_GAP])
     .map(clamp)
     .filter(y => !hits(y))
 
   if (!candidates.length) return clamped
   return candidates.reduce((best, y) =>
     Math.abs(y - idealY) < Math.abs(best - idealY) ? y : best, candidates[0])
+}
+
+// How tall a comment will render. The mounted box is measured when it exists —
+// that is exact — and otherwise the height is estimated from the same rules
+// CommentBox styles itself with: font size by text length, one line per "|",
+// plus the title row and padding.
+function measureBox(panel, c) {
+  const el = panel?.querySelector(`[data-cmt-id="${CSS.escape(String(c.id))}"]`)
+  if (el?.offsetHeight) return el.offsetHeight
+  const text  = String(c.text ?? '')
+  const fs    = text.length <= 4 ? 22 : text.length <= 11 ? 16 : 13
+  const lines = splitLines(text).length || 1
+  const title = c.title ? 19 : 0
+  return Math.max(BOX_H, Math.round(lines * fs * 1.35) + title + 22)
 }
 
 // Comments render text exactly like a text box: $latex$, {color: x}, {{ compute }},
@@ -238,6 +257,7 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
       const { side } = item
       const boxX     = side === 'right' ? cr.width - BOX_W - MARGIN : MARGIN
       const lx       = side === 'right' ? boxX : boxX + BOX_W
+      const boxH     = measureBox(layerRef.current, item)
       const sameSide = result.filter(r => r.side === side)
 
       let bestScore = Infinity
@@ -246,15 +266,15 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
 
       for (const goUp of [true, false]) {
         const vOff      = Math.abs(lx - item.tx) * TAN10
-        const idealY    = (goUp ? item.ty - vOff : item.ty + vOff) - BOX_H / 2
-        const candidateY = findFreeSlot(idealY, sameSide, cr.height)
+        const idealY    = (goUp ? item.ty - vOff : item.ty + vOff) - boxH / 2
+        const candidateY = findFreeSlot(idealY, sameSide, cr.height, boxH)
 
         // Prefer direction that avoids crossing already-placed lines
         const lineLx = side === 'left' ? boxX + BOX_W : boxX
-        const lineLy = candidateY + BOX_H / 2
+        const lineLy = candidateY + boxH / 2
         const crossings = result.filter(r => {
           const rlx = r.side === 'left' ? r.boxX + BOX_W : r.boxX
-          const rly = r.boxY + BOX_H / 2
+          const rly = r.boxY + (r.boxH ?? BOX_H) / 2
           return segmentsIntersect(lineLx, lineLy, item.tx, item.ty, rlx, rly, r.tx, r.ty)
         }).length
 
@@ -263,11 +283,12 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
         if (score < bestScore) { bestScore = score; bestBoxY = candidateY; bestGoUp = goUp }
       }
 
-      const placed = { ...item, boxX, boxY: bestBoxY, goUp: bestGoUp }
+      const placed = { ...item, boxX, boxY: bestBoxY, boxH, goUp: bestGoUp }
       result.push(placed)
-      // Store tx/ty alongside box position so the fallback path (failed DOM lookup)
-      // can keep the comment visible at its last known connector target.
-      placedRef.current[item.id] = { boxX, boxY: bestBoxY, side, tx: item.tx, ty: item.ty }
+      // Store tx/ty and the height alongside the position: the fallback path
+      // (failed DOM lookup) keeps the comment at its last known target, and the
+      // height is what later boxes on this side avoid.
+      placedRef.current[item.id] = { boxX, boxY: bestBoxY, boxH, side, tx: item.tx, ty: item.ty }
     }
 
     setResolved(result)

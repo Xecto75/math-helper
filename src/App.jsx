@@ -128,18 +128,25 @@ const TEXT_STEPS = new Set([
   'text-create', 'text-fade-content', 'text-update-title',
   'text-add-item', 'text-remove-item', 'text-remove',
 ])
-const startsNewBeat = (s) => TEXT_STEPS.has(s.funcId) || s.funcId?.startsWith('cmt-')
+const isText    = (s) => TEXT_STEPS.has(s?.funcId)
+const isComment = (s) => !!s?.funcId?.startsWith('cmt-')
 
 function expandPageSegments(pg) {
   const steps  = pg.steps ?? []
   const breaks = []
   steps.forEach((s, i) => {
     if (i === 0) return
+    const prev = steps[i - 1]
     // A layout change always splits — the panels themselves rearrange.
     if (s.funcId === 'set-layout') { breaks.push(i); return }
-    // Text/comments that FOLLOW something else start a new beat. Consecutive
-    // ones do not: three boxes appearing together are one idea, one click.
-    if (startsNewBeat(s) && !startsNewBeat(steps[i - 1])) breaks.push(i)
+    // A text box OPENS a beat: it announces what the visuals after it show, so
+    // the break goes before it. Consecutive ones stay together — three boxes
+    // appearing at once are one idea, one click.
+    if (isText(s) && !isText(prev) && !isComment(prev)) { breaks.push(i); return }
+    // A comment CLOSES one: it points at something already on screen, so the
+    // pause belongs after it, not before. Break on the first step that is not
+    // itself another comment — a run of them annotates one picture together.
+    if (isComment(prev) && !isComment(s)) breaks.push(i)
   })
   if (!breaks.length) return [{ pg, stopStep: null }]
   return [...breaks.map(stopStep => ({ pg, stopStep })), { pg, stopStep: null }]

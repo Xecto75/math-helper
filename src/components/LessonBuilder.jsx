@@ -1057,20 +1057,28 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                 disabled> kills every nested control, which had made a locked
                 example impossible to even look through). Visual order is
                 unchanged. */}
-            <fieldset className="lb-builder-fieldset" disabled={isLocked}>
-
-            {/* Save / Load bar */}
+            {/* Save / Load bar — OUTSIDE the disabled fieldset. Loading another
+                lesson does not touch the locked one, it navigates away from it,
+                and having the only way out greyed out left you stuck inside a
+                locked example with no route back. Only the controls that would
+                WRITE to it (the name field and Save) are gated. */}
             <div className="lb-save-bar">
               <input
                 ref={saveInputRef}
                 className="lb-save-input"
                 type="text"
-                placeholder="Lesson name…"
+                placeholder={isLocked ? 'Locked — hold its card 2s to unlock' : 'Lesson name…'}
                 value={saveName}
+                disabled={isLocked}
                 onChange={e => setSaveName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSave()}
               />
-              <button className="lb-save-btn" onClick={handleSave} title="Save lesson">Save</button>
+              <button
+                className="lb-save-btn"
+                onClick={handleSave}
+                disabled={isLocked}
+                title={isLocked ? 'This example is locked — hold its card 2s to unlock' : 'Save lesson'}
+              >Save</button>
               <button
                 className={`lb-slots-btn${showSlots ? ' lb-slots-btn--active' : ''}`}
                 onClick={() => setShowSlots(v => !v)}
@@ -1125,8 +1133,6 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                 ))}
               </div>
             )}
-
-            </fieldset>
 
             {/* Page tabs — deliberately OUTSIDE both fieldsets so a locked
                 example can still be browsed page by page. Only the controls

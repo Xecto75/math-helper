@@ -1189,8 +1189,8 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       // 35+11+14+12 take three seconds of watching a queue; here every term is
       // in the air at once and only the ARRIVALS are staggered, so the total
       // still climbs 46 → 60 → 72 in order and it reads as a single motion.
-      const FLIGHT  = 0.5    // how long each term is in the air
-      const STAGGER = 0.16   // gap between arrivals — one tick of the total
+      const FLIGHT  = 0.62   // how long each term is in the air
+      const STAGGER = 0.22   // gap between arrivals — one tick of the total
 
       // Lift them all first: every rect is measured before any wrapper collapses,
       // so nothing shifts under a term that has not left yet.
@@ -1243,7 +1243,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
           // not a per-action variant. Short enough to finish before the next
           // term lands, so the pops read as separate beats.
           if (anchorInner) {
-            gsap.to(anchorInner, { scale: 1.2, duration: 0.12, ease: 'back.out(2.5)', yoyo: true, repeat: 1 })
+            gsap.to(anchorInner, { scale: 1.35, duration: 0.11, ease: 'back.out(2.5)', yoyo: true, repeat: 1 })
           }
         },
       }).then()))

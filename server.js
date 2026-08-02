@@ -158,7 +158,7 @@ const FALLBACK_BY_MODULE = {
   geo_canvas: 'pythagoras',
   geo3d:      'volumes',
   graph:      'linear-functions',
-  table:      'central-tendency',
+  table:      'correlation',
   equation:   'linear-eq',
   calc:       'linear-eq',
 }

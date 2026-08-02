@@ -414,7 +414,7 @@ fundamental and teach it. There is no status for asking. (Vague ≠ in scope: ju
 exampleId IS REQUIRED AND NEVER null. The generator copies it as a worked model, and without one it
 invents a lesson with nothing good in it. It does NOT have to be the same topic — it has to be built
 the way this lesson should be built. "types of angles in shapes" has no lesson of its own → areas or
-pythagoras (a shape, labelled and annotated). "reading a bar chart" → central-tendency. Always
+pythagoras (a shape, labelled and annotated). "reading a data table" → correlation. Always
 something. If two fit, take the one whose STRUCTURE matches, not the one sharing a keyword.
 
 COVERAGE — judged on the TOPIC, separately from which example fits:

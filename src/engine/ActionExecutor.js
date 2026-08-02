@@ -1224,6 +1224,13 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
 
       const coeffEl = anchorInner?.querySelector('.term-coeff')
       const opEl    = anchorWrap?.querySelector('.term-op')
+      // .term-cell permanently carries `animation: termEnter ... both`, and a
+      // CSS animation outranks an inline style for the properties it controls
+      // — including transform. Without clearing it the pop tween ran on
+      // schedule and was overridden every frame, so the number just changed
+      // with no pop at all. The secondaries already get this treatment before
+      // they fly; the anchor needs it before it can be scaled.
+      if (anchorInner) anchorInner.style.animation = 'none'
 
       await Promise.all(flights.map(({ sec, secInner, secRect }, i) => gsap.to(secInner, {
         x: anchorRect.left - secRect.left,

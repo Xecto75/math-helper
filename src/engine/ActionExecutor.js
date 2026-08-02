@@ -1216,6 +1216,16 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         const _gs = _ghostStyles()
         if (_gs) Object.assign(secInner.style, _gs.cell)
 
+        // The sign lives in the wrapper's own "+"/"−" span, and the wrapper is
+        // about to be hidden — so in 23+3-4+2 a bare "4" flew across and it
+        // looked like 4 was being ADDED. Carry the minus into the chip itself,
+        // so what travels is "−4": the same thing the viewer must add.
+        if (sec.sign === '-') {
+          const signEl = secInner.querySelector('.term-coeff') ?? secInner
+          const txt    = signEl.textContent ?? ''
+          if (!txt.startsWith('−') && !txt.startsWith('-')) signEl.textContent = `−${txt}`
+        }
+
         // Now hide the empty wrapper — layout footprint unchanged
         gsap.set(secWrap, { opacity: 0 })
 
@@ -1250,7 +1260,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
           // not a per-action variant. Short enough to finish before the next
           // term lands, so the pops read as separate beats.
           if (anchorInner) {
-            gsap.to(anchorInner, { scale: 1.35, duration: 0.11, ease: 'back.out(2.5)', yoyo: true, repeat: 1 })
+            gsap.to(anchorInner, { scale: 1.16, duration: 0.11, ease: 'back.out(2.5)', yoyo: true, repeat: 1 })
           }
         },
       }).then()))

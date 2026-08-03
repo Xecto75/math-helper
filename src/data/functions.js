@@ -482,24 +482,24 @@ export const CATEGORIES = [
       {
         id: 'graph-adjust-view',
         label: 'adjustView',
-        description: 'Center the graph on (cx, cy), visible range = range',
+        description: 'Center the graph on (cx, cy) — range is the VERTICAL span shown. Leave margin: pick about 1.5× the span you actually need, or whatever sits at the extreme (a vertex, a root, a point) lands flat against the edge of the panel. x follows from the panel shape so units stay square.',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'cx',    label: 'Center x', type: 'number', default: 0 },
           { id: 'cy',    label: 'Center y', type: 'number', default: 0 },
-          { id: 'range', label: 'Range',    type: 'number', default: 10, min: 0.1 },
+          { id: 'range', label: 'Range (vertical span — allow ~1.5× what you need)', type: 'number', default: 10, min: 0.1 },
         ],
       },
       {
         id: 'graph-set-viewport',
         label: 'setViewport',
-        description: 'Set the visible bounds of the graph',
+        description: 'Set the visible bounds of the graph — pad them past what must be seen (roughly a quarter of the span on each side), or the lowest/highest point sits flat against the edge. Bounds are widened automatically to keep one unit of x the same size as one unit of y, so a circle stays round.',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'xMin', label: 'xMin', type: 'number', default: -5 },
           { id: 'xMax', label: 'xMax', type: 'number', default:  5 },
-          { id: 'yMin', label: 'yMin', type: 'number', default: -4 },
-          { id: 'yMax', label: 'yMax', type: 'number', default:  4 },
+          { id: 'yMin', label: 'yMin (leave room below the lowest point)', type: 'number', default: -4 },
+          { id: 'yMax', label: 'yMax (leave room above the highest point)', type: 'number', default:  4 },
         ],
       },
       {

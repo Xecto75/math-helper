@@ -275,8 +275,11 @@ FUNCTIONS [positional args]:
   fstx:[id]                     — remove segment tick
   fsd:[id,parts,clr,showLabels] — mark the points splitting a segment into "parts" equal sections
   fsdx:[id]                     — remove segment division points
-  fv:[cx,cy,range]              — center view at (cx,cy) with given range
-  fV:[xMin,xMax,yMin,yMax]      — set exact viewport bounds
+  fv:[cx,cy,range]              — center view at (cx,cy); range = VERTICAL span. LEAVE MARGIN: ask for
+                                    ~1.5x the span you need, or the vertex/root/point at the extreme
+                                    sits flat on the edge of the panel. x follows the panel shape.
+  fV:[xMin,xMax,yMin,yMax]      — exact bounds, padded the same way (~a quarter of the span spare on
+                                    each side). Widened automatically to keep units square.
   fn:[id,lbl,x]                 — floating label on a curve at x position
   ft:[id,x,y]                   — draw tangent line at (x, y)
   fh:[y]                        — horizontal line y=c

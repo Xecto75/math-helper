@@ -221,17 +221,29 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
 
   // ── Fraction cell ──────────────────────────────────────────────────────────
   if (term.isFraction) {
+    // A minus on the term AND a minus on a lone numerator are the same minus
+    // written twice: −(−3)/2 came out as "− −3". Fold them into one effective
+    // sign — two negatives make a positive, and a positive term over a negative
+    // numerator reads as one negative fraction. Only for a SINGLE-term
+    // numerator; with several, the leading sign belongs to the expression.
+    const numer     = term.numeratorTerms ?? []
+    const loneNeg   = numer.length === 1 && numer[0]?.sign === '-'
+    const negative  = loneNeg ? term.sign !== '-' : term.sign === '-'
     return (
       <div className="term-wrap" ref={ref}>
         {showOp && (
-          <span className="term-op">{term.sign === '-' ? '−' : '+'}</span>
+          <span className="term-op">{negative ? '−' : '+'}</span>
         )}
         <div className="term-cell term-cell--fraction" data-id={term.id}>
           <div className="frac-num">
-            {(term.numeratorTerms ?? []).map((s, i) => (
+            {numer.map((s, i) => (
               <span key={i} className="frac-sub-wrap">
                 {i > 0 ? <span className="frac-op">{s.pmOperator ? ' ± ' : (s.sign === '-' ? ' − ' : ' + ')}</span>
-                       : (s.sign === '-' && <span className="frac-op">−</span>)}
+                       : (numer.length === 1
+                           // The fold moved this minus up to the operator slot;
+                           // with no operator shown it has to stay here.
+                           ? (!showOp && negative && <span className="frac-op">−</span>)
+                           : (s.sign === '-' && <span className="frac-op">−</span>))}
                 {s.factors ? <FactorProduct factors={s.factors} subIndex={i} /> : <FracSubTerm sub={s} pos={i} />}
               </span>
             ))}

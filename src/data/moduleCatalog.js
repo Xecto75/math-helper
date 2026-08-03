@@ -442,6 +442,9 @@ EXAMPLES (the non-English/misspelled ones are real past failures — treat as th
 "explain the area of a circle" → {"status":"ok","modules":["geo2d","text"]}
 "volume of a cylinder" → {"status":"ok","modules":["geo3d","text"]}
 "plot x² and find its roots" → {"status":"ok","modules":["graph","text","comments"]}
+"cest quoi une foncion linaire" · "what is a linear function" → {"status":"ok","modules":["graph","text","comments"],"exampleId":"linear-functions"}
+  ↑ a FUNCTION is drawn on a graph. linear-eq is not it: that one isolates x in an equation and never
+  plots anything. Read the descriptions, not the ids — "linear-eq" looks like a match and is not.
 "3 + 4 × 2 order of operations" → {"status":"ok","modules":["calc"],"exampleId":"linear-eq"}
 "types of angles in shapes" → {"status":"ok","modules":["geo2d","text","comments"],"exampleId":"pythagoras"}
 "compare student scores in a table" → {"status":"ok","modules":["table","text"]}

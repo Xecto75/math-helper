@@ -7,8 +7,8 @@ export const EXAMPLE_LESSONS = [
   {
     id: 'linear-eq',
     emoji: '⚖️',
-    title: 'Linear Equation',
-    desc: 'Isolate x step by step — send terms across, divide',
+    title: 'Solving an Equation',
+    desc: 'Isolate x in an equation — distribute, send terms across, divide. Equation panel only, no graph, no function',
     color: '#60a5fa',
     pages: [
       {
@@ -395,8 +395,8 @@ export const EXAMPLE_LESSONS = [
   {
     id: 'linear-functions',
     emoji: '📈',
-    title: 'Lines — Slope and Intercept',
-    desc: 'f(x) = mx + b — plotting, finding m and b from two points',
+    title: 'Linear Function — Slope and Intercept',
+    desc: 'What a linear function IS: f(x) = mx + b drawn on the graph, reading slope and intercept, finding m and b from two points',
     color: '#4ade80',
     pages: [
       {

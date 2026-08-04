@@ -1,29 +1,23 @@
 import { useState } from 'react'
-import { u } from '../i18n/uiText.js'
-import { GRADES, STATS, tr } from '../i18n/catalog.js'
-import { PencilIcon, CheckIcon, BookIcon, WrenchIcon, FlameIcon, StarIcon, UserIcon, GoogleIcon } from '../components/Icon.jsx'
+import { PencilIcon, CheckIcon, UserIcon } from '../components/Icon.jsx'
 
-// A small set of solid accent colors to pick the avatar background from —
-// same idea as Slack/Linear/GitHub's "pick a color" avatar, instead of a
-// grid of animal emoji standing in for a profile picture.
+// The account panel. What lived here before came from an earlier project: a
+// school-grade picker (grade 1…5) nothing ever read, four stat cards that only
+// ever showed "—" because no counter feeds them, and a "Connect with Google"
+// button with no handler at all. All of it is gone; what is left is the state
+// the server actually knows — who you are, your plan, and what remains of your
+// quota — plus the display name, which is yours to set.
 const AVATAR_COLORS = ['#818cf8', '#f472b6', '#fb923c', '#34d399', '#38bdf8', '#facc15', '#a78bfa', '#f87171']
-// Stored value is the stable key (g1…s5/other); the label is translated at render.
-const GRADE_KEYS = ['g1','g2','g3','g4','g5','g6','s1','s2','s3','s4','s5','other']
 
-export default function ProfileView({ profile, onSave, lang = 'en' }) {
+export default function ProfileView({ profile, onSave, me, onSignIn, onSignOut }) {
   const [editingName, setEditingName] = useState(false)
   const [nameInput,   setNameInput]   = useState(profile.name)
 
   const save = (patch) => onSave({ ...profile, ...patch })
   const avatarColor = profile.avatarColor || AVATAR_COLORS[0]
-  const initial = (profile.name || '').trim().charAt(0).toUpperCase()
-
-  const STAT_ROWS = [
-    { key: 'lessonsDone', value: '—', Icon: BookIcon },
-    { key: 'toolsUsed',   value: '—', Icon: WrenchIcon },
-    { key: 'dayStreak',   value: '—', Icon: FlameIcon },
-    { key: 'points',      value: '—', Icon: StarIcon },
-  ]
+  const displayName = me?.displayName || profile.name || 'Student'
+  const initial = displayName.trim().charAt(0).toUpperCase()
+  const isPro   = me?.plan === 'pro'
 
   return (
     <div className="section-view profile-view">
@@ -62,44 +56,53 @@ export default function ProfileView({ profile, onSave, lang = 'en' }) {
             </div>
           ) : (
             <div className="name-row">
-              <span className="profile-name">{profile.name || 'Student'}</span>
+              <span className="profile-name">{displayName}</span>
               <button className="name-edit-btn" onClick={() => { setNameInput(profile.name); setEditingName(true) }}>
                 <PencilIcon width={15} height={15} />
               </button>
             </div>
           )}
-          <p className="profile-grade-label">{u(lang, 'level')}</p>
-          <div className="grade-picker">
-            {GRADE_KEYS.map(g => (
-              <button key={g} className={`grade-chip${profile.grade === g ? ' grade-chip--active' : ''}`} onClick={() => save({ grade: g })}>{tr(lang, GRADES, g)}</button>
-            ))}
-          </div>
+          {me?.email && <p className="profile-grade-label">{me.email}</p>}
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Account — the server's numbers, never the browser's */}
       <div className="settings-block">
-        <h3 className="settings-block-title">{u(lang, 'statsTitle')}</h3>
-        <div className="stats-grid">
-          {STAT_ROWS.map(s => (
-            <div key={s.key} className="stat-card">
-              <s.Icon className="stat-icon" width={19} height={19} />
-              <span className="stat-value">{s.value}</span>
-              <span className="stat-label">{tr(lang, STATS, s.key)}</span>
+        <h3 className="settings-block-title">Account</h3>
+
+        {!me ? (
+          <>
+            <button className="account-btn account-btn--outline" onClick={onSignIn}>Sign in</button>
+            <p className="plan-note" style={{ marginTop: 10 }}>
+              An account is what holds your free lessons. Google or email, either takes a few seconds.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="stats-grid">
+              <div className="stat-card">
+                <span className="stat-value">{isPro ? 'Pro' : 'Free'}</span>
+                <span className="stat-label">Plan</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-value">{isPro ? '∞' : (me.lessonsLeft ?? 0)}</span>
+                <span className="stat-label">Lessons left</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-value">{me.lessonsUsed ?? 0}</span>
+                <span className="stat-label">Used this month</span>
+              </div>
             </div>
-          ))}
-        </div>
-        <p className="plan-note">{u(lang, 'statsNote')}</p>
-      </div>
-
-      {/* Account */}
-      <div className="settings-block">
-        <h3 className="settings-block-title">{u(lang, 'accountTitle')}</h3>
-        <button className="account-btn account-btn--outline">
-          <GoogleIcon />
-          {u(lang, 'connect')}
-        </button>
-        <p className="plan-note" style={{ marginTop: 10 }}>{u(lang, 'connectNote')}</p>
+            <p className="plan-note">
+              {isPro
+                ? 'Unlimited custom lessons on this account.'
+                : `${me.lessonsLeft ?? 0} of ${me.freeLimit ?? 0} left — the count resets each month.`}
+            </p>
+            <button className="account-btn account-btn--outline" style={{ marginTop: 10 }} onClick={onSignOut}>
+              Sign out
+            </button>
+          </>
+        )}
       </div>
 
     </div>

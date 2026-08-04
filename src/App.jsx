@@ -83,7 +83,9 @@ import {
   demoMdasExample,
   demoSetLayout,
 } from './engine/demoScripts.js'
-import { generateLesson } from './api/generateLesson.js'
+import { generateLesson, fetchMe } from './api/generateLesson.js'
+import { authConfigured, supabase, signOut } from './lib/supabase.js'
+import AuthModal from './components/AuthModal.jsx'
 import { EXAMPLE_LESSONS } from './data/exampleLessons.js'
 import './App.css'
 
@@ -292,6 +294,37 @@ export default function App() {
     setProfile(p)
     localStorage.setItem('math-profile', JSON.stringify(p))
   }
+
+  // ── Account ────────────────────────────────────────────────────────────────
+  // `me` is the server's word on who this is and what is left of their quota —
+  // never the browser's. It is re-fetched whenever the session changes and
+  // after every generation, so the counter on screen matches the one that
+  // actually gates the API.
+  const [me, setMe] = useState(null)
+  const [authOpen, setAuthOpen] = useState(false)
+  const [authReason, setAuthReason] = useState('')
+
+  const refreshMe = useCallback(async () => {
+    setMe(await fetchMe())
+  }, [])
+
+  useEffect(() => {
+    if (!authConfigured) return
+    refreshMe()
+    const { data } = supabase.auth.onAuthStateChange(() => { refreshMe() })
+    return () => data?.subscription?.unsubscribe?.()
+  }, [refreshMe])
+
+  const handleSignOut = useCallback(async () => {
+    await signOut()
+    setMe(null)
+    refreshMe()
+  }, [refreshMe])
+
+  const openAuth = useCallback((reason = '') => {
+    setAuthReason(reason)
+    setAuthOpen(true)
+  }, [])
 
   const handleAdminMode = (on) => {
     setAdminMode(on)
@@ -1022,6 +1055,11 @@ export default function App() {
       handleBuilderBuildAll(loaded, 1)
     } catch (err) {
       const msg = err.message ?? 'Generation failed'
+      // Not signed in, or out of credits: both are things the user can DO
+      // something about, so put the sign-in sheet in front of them instead of
+      // a line of red text under the box they just typed in.
+      if (err.code === 'auth_required') { openAuth('Sign in to generate a lesson — it takes a few seconds.'); return }
+      if (err.code === 'quota_exceeded') openAuth(msg)
       setAiError(msg)
       setAiSuggestions(
         (err.alternatives ?? [])
@@ -1034,8 +1072,11 @@ export default function App() {
       }
     } finally {
       setAiLoading(false)
+      // The credit was just spent (or refunded) — ask the server what is left
+      // rather than counting locally, which would drift on any refund.
+      refreshMe()
     }
-  }, [promptVal, aiLoading, handleBuilderBuildAll])
+  }, [promptVal, aiLoading, handleBuilderBuildAll, openAuth, refreshMe])
 
   // Load one of the suggested reference lessons. Author edits live in the
   // overrides file, same as the Examples gallery reads — the bundled pages are
@@ -1304,7 +1345,13 @@ export default function App() {
               </div>
             )}
 {activePanel === 'profile' && (
-              <ProfileView profile={profile} onSave={handleProfile} lang={lang} />
+              <ProfileView
+                profile={profile}
+                onSave={handleProfile}
+                me={me}
+                onSignIn={() => openAuth('')}
+                onSignOut={handleSignOut}
+              />
             )}
             {activePanel === 'settings' && (
               <SettingsView
@@ -1526,6 +1573,13 @@ export default function App() {
       )}
 
       {/* ── Raw output error modal ────────────────────────────────────────────── */}
+      <AuthModal
+        open={authOpen}
+        reason={authReason}
+        onClose={() => setAuthOpen(false)}
+        onDone={refreshMe}
+      />
+
       {aiRawOutput && (
         <div className="ai-raw-overlay" onClick={() => setAiRawOutput(null)}>
           <div className="ai-raw-modal" onClick={e => e.stopPropagation()}>

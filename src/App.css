@@ -6252,12 +6252,12 @@
 @keyframes authFadeIn { from { opacity: 0 } to { opacity: 1 } }
 .auth-modal {
   position: relative;
-  width: min(420px, 100%);
+  width: min(440px, 100%);
   max-height: 90vh; overflow-y: auto;
   background: var(--bg-1, #12121c);
   border: 1px solid var(--border, rgba(255,255,255,0.12));
   border-radius: 14px;
-  padding: 22px;
+  padding: 28px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.55);
   animation: authRise 0.22s cubic-bezier(0.34,1.4,0.64,1) both;
 }
@@ -6274,3 +6274,98 @@
   font-size: 0.85rem; line-height: 1.45;
   color: var(--text-dim, #94a3b8);
 }
+
+/* ── Sign-in form ───────────────────────────────────────────────────────────
+   These class names existed since the view was written; the rules never did,
+   so every field rendered as a raw browser widget. Shaped like the sheets
+   people already know — one column, full-width controls, one obvious primary
+   action — in this app's dark palette rather than a borrowed white one. */
+.auth-view { padding: 0; }
+.auth-view .auth-title {
+  margin: 0 0 6px;
+  font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--text, #e8ebf5);
+}
+.auth-view .section-sub {
+  margin: 0 0 20px;
+  font-size: 0.87rem; line-height: 1.45;
+  color: var(--text-dim, #94a3b8);
+}
+
+.auth-form { display: flex; flex-direction: column; gap: 10px; }
+
+.auth-input {
+  width: 100%; box-sizing: border-box;
+  padding: 13px 15px;
+  font-size: 0.95rem; font-family: inherit;
+  color: var(--text, #e8ebf5);
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid var(--border, rgba(255,255,255,0.14));
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.auth-input::placeholder { color: rgba(148,163,184,0.75); }
+.auth-input:focus {
+  border-color: var(--accent-2, #a5b4fc);
+  background: rgba(255,255,255,0.06);
+}
+
+.auth-submit-btn {
+  width: 100%; margin-top: 4px;
+  padding: 13px 16px;
+  font-size: 0.95rem; font-weight: 700; font-family: inherit;
+  color: #0f1220;
+  background: var(--accent-2, #a5b4fc);
+  border: none; border-radius: 12px;
+  cursor: pointer;
+  transition: filter 0.15s, opacity 0.15s;
+}
+.auth-submit-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.auth-submit-btn:disabled { opacity: 0.45; cursor: default; }
+
+.auth-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 18px 0;
+  color: var(--text-dim, #94a3b8);
+  font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--border, rgba(255,255,255,0.14));
+}
+
+.auth-google-btn {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 12px 16px;
+  font-size: 0.92rem; font-weight: 600; font-family: inherit;
+  color: var(--text, #e8ebf5);
+  background: rgba(255,255,255,0.05);
+  border: 1.5px solid var(--border, rgba(255,255,255,0.16));
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.auth-google-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.28);
+}
+.auth-google-btn:disabled { opacity: 0.5; cursor: default; }
+
+.auth-error, .auth-notice {
+  margin: 14px 0 0; font-size: 0.83rem; line-height: 1.45;
+}
+.auth-error  { color: #f87171; }
+.auth-notice { color: #4ade80; }
+
+.auth-switch {
+  display: block; width: 100%;
+  margin-top: 18px; padding: 0;
+  background: none; border: none;
+  font-size: 0.85rem; font-family: inherit;
+  color: var(--accent-2, #a5b4fc);
+  text-decoration: underline; text-underline-offset: 3px;
+  cursor: pointer;
+}
+.auth-switch:hover { filter: brightness(1.15); }

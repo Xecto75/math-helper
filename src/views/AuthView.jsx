@@ -62,13 +62,6 @@ export default function AuthView({ onDone }) {
           : 'Sign in to keep your lessons and progress.'}
       </p>
 
-      <button className="auth-google-btn" onClick={google} disabled={busy}>
-        <GoogleIcon width={17} height={17} />
-        Continue with Google
-      </button>
-
-      <div className="auth-divider"><span>or</span></div>
-
       <form className="auth-form" onSubmit={submit}>
         {mode === 'signup' && (
           <input
@@ -89,6 +82,15 @@ export default function AuthView({ onDone }) {
           {busy ? '…' : mode === 'signup' ? 'Create account' : 'Sign in'}
         </button>
       </form>
+
+      {/* Email first, Google under the divider — the order every sign-in sheet
+          uses, and the one the user pointed at. */}
+      <div className="auth-divider"><span>or</span></div>
+
+      <button className="auth-google-btn" onClick={google} disabled={busy}>
+        <GoogleIcon width={18} height={18} />
+        Continue with Google
+      </button>
 
       {error  && <p className="auth-error">{error}</p>}
       {notice && <p className="auth-notice">{notice}</p>}

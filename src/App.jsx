@@ -303,6 +303,7 @@ export default function App() {
   const [me, setMe] = useState(null)
   const [authOpen, setAuthOpen] = useState(false)
   const [authReason, setAuthReason] = useState('')
+  const [authMode, setAuthMode] = useState('signin')
 
   const refreshMe = useCallback(async () => {
     setMe(await fetchMe())
@@ -311,7 +312,18 @@ export default function App() {
   useEffect(() => {
     if (!authConfigured) return
     refreshMe()
-    const { data } = supabase.auth.onAuthStateChange(() => { refreshMe() })
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      refreshMe()
+      // Arriving from the link in a reset email. Supabase has already signed
+      // them in with a one-time token, so the only thing left is to take a new
+      // password — open the sheet on that step rather than dropping them on a
+      // normal signed-in screen with no idea what happened.
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthMode('recover')
+        setAuthReason('')
+        setAuthOpen(true)
+      }
+    })
     return () => data?.subscription?.unsubscribe?.()
   }, [refreshMe])
 
@@ -323,6 +335,7 @@ export default function App() {
 
   const openAuth = useCallback((reason = '') => {
     setAuthReason(reason)
+    setAuthMode('signin')
     setAuthOpen(true)
   }, [])
 
@@ -1576,6 +1589,7 @@ export default function App() {
       <AuthModal
         open={authOpen}
         reason={authReason}
+        mode={authMode}
         onClose={() => setAuthOpen(false)}
         onDone={refreshMe}
       />

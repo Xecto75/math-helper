@@ -52,3 +52,13 @@ export const signUpWithEmail = (email, password, displayName) =>
   })
 
 export const signOut = () => supabase.auth.signOut()
+
+// Password reset, in two halves. First: mail a one-time link back to this app.
+// The link carries a recovery token, so opening it signs the user in JUST long
+// enough to set a new password — that is why the second half is a plain
+// updateUser and needs no old password.
+export const sendPasswordReset = (email) =>
+  supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+
+export const updatePassword = (password) =>
+  supabase.auth.updateUser({ password })

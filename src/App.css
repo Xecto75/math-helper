@@ -6369,3 +6369,15 @@
   cursor: pointer;
 }
 .auth-switch:hover { filter: brightness(1.15); }
+
+/* "Forgot your password?" — a quiet link inside the form, right where the
+   password field is, not a button competing with the primary action. */
+.auth-forgot {
+  align-self: flex-start;
+  margin: -2px 0 2px; padding: 0;
+  background: none; border: none;
+  font-size: 0.82rem; font-family: inherit;
+  color: var(--accent-2, #a5b4fc);
+  cursor: pointer;
+}
+.auth-forgot:hover { text-decoration: underline; text-underline-offset: 3px; }

@@ -245,6 +245,20 @@ async function repairWithAI(compact, issues, trace) {
   return message.content[0]?.text ?? ''
 }
 
+// ── Health check ─────────────────────────────────────────────────────────────
+// The API serves no pages — the site is hosted separately — so hitting the root
+// used to return Express's bare "Cannot GET /", which reads as a broken deploy
+// when it is really a healthy server with nothing to show at that address. This
+// says so, and doubles as the thing a host or an uptime check can poll.
+app.get('/', (req, res) => {
+  res.json({
+    service: 'math-engine API',
+    status:  'ok',
+    auth:    authConfigured ? 'configured' : 'NOT CONFIGURED',
+    hint:    'This is the API. The site is hosted separately. Try /api/me.',
+  })
+})
+
 // ── Who am I / what's left ────────────────────────────────────────────────────
 // The client renders from this, but never decides from it — the generate
 // endpoint re-checks everything server-side on each call.

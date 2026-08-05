@@ -1,21 +1,97 @@
 {
   "linear-eq": [
     {
-      "title": "Résolution automatique : 4(x + 2) − 3 = 2x + 9",
-      "id": "lb13",
-      "layout": "single-equation",
+      "title": "Auto-solve: parentheses and a fraction",
+      "id": "lb318",
+      "layout": "text-equation",
+      "background": "default",
       "steps": [
         {
-          "id": "lb14",
-          "funcId": "eq-create",
+          "id": "lb319",
+          "funcId": "text-create",
           "inputs": {
-            "eq": "4(x + 2) - 3 = 2x + 9"
+            "boxId": "goal",
+            "title": "One equation, every rule at once",
+            "content": "Parentheses to distribute, a fraction on $x$, and $x$ on both sides.|Watch it come apart one step at a time.",
+            "isList": "false",
+            "color": ""
           }
         },
         {
-          "id": "lb15",
+          "id": "lb320",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "4(x + 2) - x/2 = 2x + 9"
+          }
+        },
+        {
+          "id": "lb321",
           "funcId": "eq-full-solve",
           "inputs": {}
+        },
+        {
+          "id": "lb322",
+          "funcId": "text-fade-content",
+          "inputs": {
+            "boxId": "goal",
+            "content": "$x = $[eq-result]|Every step above was one rule: distribute, combine, move across, divide."
+          }
+        }
+      ]
+    },
+    {
+      "title": "The same equation with letters",
+      "id": "lb323",
+      "layout": "text-equation",
+      "background": "default",
+      "steps": [
+        {
+          "id": "lb324",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "why",
+            "title": "Why letters first",
+            "content": "Solve the shape once with $a$, $b$, $c$ — then any numbers can drop in.",
+            "isList": "false",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb325",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|a|x + |b| = |c|"
+          }
+        },
+        {
+          "id": "lb326",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "replacements": "a=2,b=-3,c=1",
+            "var_a": "3",
+            "var_b": "-5",
+            "var_c": "10"
+          }
+        },
+        {
+          "id": "lb327",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        },
+        {
+          "id": "lb328",
+          "funcId": "eq-save-result",
+          "inputs": {
+            "name": "sol"
+          }
+        },
+        {
+          "id": "lb329",
+          "funcId": "text-fade-content",
+          "inputs": {
+            "boxId": "why",
+            "content": "$a = 3$, $b = -5$, $c = 10$ gives $x = {{ [sol]v }}$.|Change the three numbers and the same steps run again."
+          }
         }
       ]
     }
@@ -747,12 +823,12 @@
   "substitution": [
     {
       "title": "What is Substitution",
-      "id": "lb562",
+      "id": "lb236",
       "layout": "text-graph",
       "background": "default",
       "steps": [
         {
-          "id": "lb563",
+          "id": "lb237",
           "funcId": "graph-plot-function",
           "inputs": {
             "expr": "y=-x+3",
@@ -761,7 +837,7 @@
           }
         },
         {
-          "id": "lb564",
+          "id": "lb238",
           "funcId": "graph-plot-function",
           "inputs": {
             "expr": "-6x+3y=12",
@@ -770,7 +846,7 @@
           }
         },
         {
-          "id": "lb565",
+          "id": "lb239",
           "funcId": "text-create",
           "inputs": {
             "boxId": "box0",
@@ -781,7 +857,7 @@
           }
         },
         {
-          "id": "lb566",
+          "id": "lb240",
           "funcId": "text-create",
           "inputs": {
             "boxId": "box1",
@@ -795,12 +871,12 @@
     },
     {
       "title": "Example of Substitution",
-      "id": "lb567",
+      "id": "lb241",
       "layout": "text-equation",
       "background": "default",
       "steps": [
         {
-          "id": "lb568",
+          "id": "lb242",
           "funcId": "text-create",
           "inputs": {
             "boxId": "box0",
@@ -811,7 +887,7 @@
           }
         },
         {
-          "id": "lb569",
+          "id": "lb243",
           "funcId": "text-create",
           "inputs": {
             "boxId": "box1",
@@ -822,17 +898,17 @@
           }
         },
         {
-          "id": "lb570",
+          "id": "lb244",
           "funcId": "eq-create",
           "inputs": {
             "eq": "y=-x+3"
           }
         },
         {
-          "id": "lb571",
+          "id": "lb245",
           "funcId": "cmt-equation",
           "inputs": {
-            "cmtId": "",
+            "cmtId": "1",
             "text": "y already isolated",
             "side": "both",
             "indices": "",
@@ -840,7 +916,7 @@
           }
         },
         {
-          "id": "lb572",
+          "id": "lb246",
           "funcId": "text-create",
           "inputs": {
             "boxId": "box1",
@@ -851,14 +927,29 @@
           }
         },
         {
-          "id": "lb573",
-          "funcId": "eq-create",
+          "id": "lb247",
+          "funcId": "cmt-remove",
           "inputs": {
-            "eq": "-6x+3(-x+3)=12"
+            "cmtId": "1"
           }
         },
         {
-          "id": "lb574",
+          "id": "lb248",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "-6x+3|y|=12"
+          }
+        },
+        {
+          "id": "lb249",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "replacements": "a=2,b=-3,c=1",
+            "var_y": "-x+3"
+          }
+        },
+        {
+          "id": "lb250",
           "funcId": "text-create",
           "inputs": {
             "boxId": "box1",
@@ -869,30 +960,30 @@
           }
         },
         {
-          "id": "lb575",
+          "id": "lb251",
           "funcId": "eq-full-solve",
           "inputs": {}
         },
         {
-          "id": "lb576",
+          "id": "lb252",
           "funcId": "eq-save-result",
           "inputs": {
             "name": "x"
           }
         },
         {
-          "id": "lb577",
-          "funcId": "cmt-equation",
+          "id": "lb360",
+          "funcId": "cmt-free",
           "inputs": {
             "cmtId": "1",
+            "title": "",
             "text": "x = [x]v",
-            "side": "left",
-            "indices": "",
-            "color": "red"
+            "side": "right",
+            "color": "#60a5fa"
           }
         },
         {
-          "id": "lb578",
+          "id": "lb254",
           "funcId": "text-create",
           "inputs": {
             "boxId": "box1",
@@ -903,14 +994,14 @@
           }
         },
         {
-          "id": "lb579",
+          "id": "lb256",
           "funcId": "eq-create",
           "inputs": {
             "eq": "|y|=-|x|+3"
           }
         },
         {
-          "id": "lb580",
+          "id": "lb257",
           "funcId": "eq-replace-variable",
           "inputs": {
             "replacements": "a=2,b=-3,c=1",
@@ -918,33 +1009,73 @@
           }
         },
         {
-          "id": "lb581",
+          "id": "lb258",
           "funcId": "eq-full-solve",
           "inputs": {}
         },
         {
-          "id": "lb582",
+          "id": "lb259",
           "funcId": "eq-save-result",
           "inputs": {
             "name": "y"
           }
         },
         {
-          "id": "lb583",
-          "funcId": "cmt-equation",
+          "id": "lb361",
+          "funcId": "cmt-update",
           "inputs": {
-            "cmtId": "2",
-            "text": "y = [y]v",
-            "side": "left",
-            "indices": "",
-            "color": "red"
+            "cmtId": "1",
+            "text": "x = [x]v|y = [y]v",
+            "color": ""
           }
         },
         {
-          "id": "lb584",
+          "id": "lb261",
+          "funcId": "text-remove",
+          "inputs": {
+            "boxId": "box1"
+          }
+        },
+        {
+          "id": "lb262",
+          "funcId": "cmt-remove",
+          "inputs": {
+            "cmtId": "1"
+          }
+        },
+        {
+          "id": "lb263",
           "funcId": "set-layout",
           "inputs": {
             "mode": "single-graph"
+          }
+        },
+        {
+          "id": "lb264",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "y=-x+3",
+            "id": "f",
+            "hideLabel": "0"
+          }
+        },
+        {
+          "id": "lb265",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "-6x+3y=12",
+            "id": "g",
+            "hideLabel": "0"
+          }
+        },
+        {
+          "id": "lb266",
+          "funcId": "graph-find-intersections",
+          "inputs": {
+            "f1": "f",
+            "f2": "g",
+            "color": "",
+            "hideLabel": "0"
           }
         }
       ]
@@ -1121,27 +1252,29 @@
   "line-types": [
     {
       "title": "Droites parallèles — même pente",
-      "id": "lb1101",
+      "id": "lb1",
       "layout": "single-graph",
       "steps": [
         {
-          "id": "lb1102",
+          "id": "lb2",
           "funcId": "graph-plot-function",
           "inputs": {
             "expr": "2*x + 1",
-            "id": "f1"
+            "id": "f1",
+            "hideLabel": "1"
           }
         },
         {
-          "id": "lb1103",
+          "id": "lb3",
           "funcId": "graph-plot-function",
           "inputs": {
             "expr": "2*x - 2",
-            "id": "f2"
+            "id": "f2",
+            "hideLabel": "1"
           }
         },
         {
-          "id": "lb1104",
+          "id": "lb4",
           "funcId": "graph-name-func",
           "inputs": {
             "funcId": "f1",
@@ -1151,7 +1284,7 @@
           }
         },
         {
-          "id": "lb1105",
+          "id": "lb5",
           "funcId": "graph-name-func",
           "inputs": {
             "funcId": "f2",
@@ -1161,7 +1294,7 @@
           }
         },
         {
-          "id": "lb1106",
+          "id": "lb6",
           "funcId": "cmt-free",
           "inputs": {
             "cmtId": "",
@@ -1172,7 +1305,7 @@
           }
         },
         {
-          "id": "lb1107",
+          "id": "lb7",
           "funcId": "cmt-graph-func",
           "inputs": {
             "cmtId": "",
@@ -1183,7 +1316,7 @@
           }
         },
         {
-          "id": "lb1108",
+          "id": "lb8",
           "funcId": "cmt-graph-func",
           "inputs": {
             "cmtId": "",
@@ -1197,11 +1330,11 @@
     },
     {
       "title": "Droites sécantes — trouver l'intersection",
-      "id": "lb1109",
+      "id": "lb9",
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "lb1110",
+          "id": "lb10",
           "funcId": "graph-plot-function",
           "inputs": {
             "expr": "2*x + 1",
@@ -1209,7 +1342,7 @@
           }
         },
         {
-          "id": "lb1111",
+          "id": "lb11",
           "funcId": "graph-plot-function",
           "inputs": {
             "expr": "-x + 4",
@@ -1217,44 +1350,98 @@
           }
         },
         {
-          "id": "lb1112",
-          "funcId": "graph-find-intersections",
-          "inputs": {
-            "f1": "f1",
-            "f2": "f2"
-          }
-        },
-        {
-          "id": "lb1113",
+          "id": "lb12",
           "funcId": "eq-create",
           "inputs": {
-            "eq": "2x + 1 = -x + 4"
+            "eq": "2|x| + 1 = -|x| + 4"
           }
         },
         {
-          "id": "lb1114",
-          "funcId": "eq-send-other-side",
-          "inputs": {
-            "term": "+1"
-          }
-        },
-        {
-          "id": "lb1115",
-          "funcId": "eq-send-other-side",
-          "inputs": {
-            "term": "-x"
-          }
-        },
-        {
-          "id": "lb1116",
-          "funcId": "eq-combine",
+          "id": "lb13",
+          "funcId": "eq-full-solve",
           "inputs": {}
         },
         {
-          "id": "lb1117",
-          "funcId": "eq-divide",
+          "id": "lb14",
+          "funcId": "eq-save-result",
           "inputs": {
-            "divisor": "3"
+            "name": "x"
+          }
+        },
+        {
+          "id": "lb15",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "1",
+            "title": "",
+            "text": "x = [x]v",
+            "side": "right",
+            "color": "#60a5fa"
+          }
+        },
+        {
+          "id": "lb16",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|y| = 2|x|+1"
+          }
+        },
+        {
+          "id": "lb89",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "replacements": "a=2,b=-3,c=1",
+            "var_y": "",
+            "var_x": "[x]v"
+          }
+        },
+        {
+          "id": "lb17",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        },
+        {
+          "id": "lb18",
+          "funcId": "eq-save-result",
+          "inputs": {
+            "name": "y"
+          }
+        },
+        {
+          "id": "lb19",
+          "funcId": "cmt-update",
+          "inputs": {
+            "cmtId": "1",
+            "text": "x = [x]v|y = [y]v",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb20",
+          "funcId": "set-layout",
+          "inputs": {
+            "mode": "single-graph"
+          }
+        },
+        {
+          "id": "lb21",
+          "funcId": "graph-find-intersections",
+          "inputs": {
+            "f1": "f1",
+            "f2": "f2",
+            "color": "",
+            "hideLabel": "0"
+          }
+        },
+        {
+          "id": "lb22",
+          "funcId": "cmt-graph",
+          "inputs": {
+            "cmtId": "",
+            "text": "Intersection point",
+            "x": "[x]v",
+            "y": "[y]v",
+            "color": "#60a5fa"
           }
         }
       ]
@@ -1342,65 +1529,61 @@
   ],
   "correlation": [
     {
+      "id": "lb984",
       "title": "What is Correlation?",
-      "id": "lb125",
       "layout": "text-grid",
+      "background": "default",
       "steps": [
         {
-          "id": "lb126",
+          "id": "lb985",
           "funcId": "text-create",
           "inputs": {
             "boxId": "intro",
             "title": "Correlation",
             "content": "Correlation measures the link between two variables.|Positive correlation: as $x$ increases, $y$ increases too.|Negative correlation: as $x$ increases, $y$ decreases.|No correlation: no clear link between the two.",
-            "isList": "true"
+            "isList": "true",
+            "color": ""
           }
         },
         {
-          "id": "lb127",
+          "id": "lb986",
           "funcId": "table-create",
           "inputs": {
             "data": "[[\"x (study hours)\",\"y (score %)\"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]",
             "headerRow": "true",
-            "gridId": "etude1"
+            "gridId": "etude1",
+            "color": ""
           }
         }
       ]
     },
     {
+      "id": "lb987",
       "title": "Scatter Plot — Positive Trend",
-      "id": "lb128",
       "layout": "grid-graph",
+      "background": "default",
       "steps": [
         {
-          "id": "lb129",
+          "id": "lb988",
           "funcId": "table-create",
           "inputs": {
             "data": "[[\"x (study hours)\",\"y (score %)\"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]",
             "headerRow": "true",
-            "gridId": "etude2"
+            "gridId": "etude2",
+            "color": ""
           }
         },
         {
-          "id": "lb130",
-          "funcId": "graph-set-viewport",
-          "inputs": {
-            "xMin": "0",
-            "xMax": "8",
-            "yMin": "0",
-            "yMax": "100"
-          }
-        },
-        {
-          "id": "lb131",
+          "id": "lb989",
           "funcId": "graph-batch-add-points",
           "inputs": {
             "points": "p0:1:55|p1:2:62|p2:3:68|p3:4:75|p4:5:82|p5:6:90",
-            "showCoords": "true"
+            "showCoords": "true",
+            "color": ""
           }
         },
         {
-          "id": "lb249",
+          "id": "lb990",
           "funcId": "graph-best-fit-line",
           "inputs": {
             "pointIds": "",
@@ -1409,7 +1592,7 @@
           }
         },
         {
-          "id": "lb250",
+          "id": "lb991",
           "funcId": "cmt-graph-func",
           "inputs": {
             "cmtId": "",
@@ -1422,189 +1605,240 @@
       ]
     },
     {
+      "id": "lb992",
       "title": "The Correlation Coefficient r",
-      "id": "lb132",
       "layout": "text-grid",
+      "background": "default",
       "steps": [
         {
-          "id": "lb133",
+          "id": "lb993",
           "funcId": "text-create",
           "inputs": {
             "boxId": "formula",
             "title": "Coefficient r",
             "content": "$r = \\dfrac{\\sum (x_i-\\bar{x})(y_i-\\bar{y})}{\\sqrt{\\sum(x_i-\\bar{x})^2 \\sum (y_i-\\bar{y})^2}}$|$r$ is always between $-1$ and $1$.",
-            "isList": "true"
+            "isList": "true",
+            "color": ""
           }
         },
         {
-          "id": "lb134",
+          "id": "lb994",
           "funcId": "text-create",
           "inputs": {
             "boxId": "interp",
             "title": "Interpretation",
             "content": "$r$ close to $1$: strong positive correlation|$r$ close to $-1$: strong negative correlation|$r$ close to $0$: no correlation",
-            "isList": "true"
+            "isList": "true",
+            "color": ""
           }
         },
         {
-          "id": "lb135",
+          "id": "lb995",
           "funcId": "table-create",
           "inputs": {
             "data": "[[\"x (study hours)\",\"y (score %)\"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]",
             "headerRow": "true",
-            "gridId": "etude3"
+            "gridId": "etude3",
+            "color": ""
           }
         },
         {
-          "id": "lb136",
+          "id": "lb996",
           "funcId": "set-layout",
           "inputs": {
             "mode": "grid-equation"
           }
         },
         {
-          "id": "lb137",
+          "id": "lb997",
           "funcId": "eq-create",
           "inputs": {
-            "eq": "(1+2+3+4+5+6)/6 = 3.5"
+            "eq": "|r| = |Sxy| / |D|"
           }
         },
         {
-          "id": "lb138",
-          "funcId": "eq-create",
+          "id": "lb998",
+          "funcId": "cmt-free",
           "inputs": {
-            "eq": "(55+62+68+75+82+90)/6 = 72"
+            "cmtId": "legend",
+            "title": "The two pieces",
+            "text": "$S_{xy}$ = sum of $(x-\\bar{x})(y-\\bar{y})$ over every row|$D = \\sqrt{S_{xx} \\cdot S_{yy}}$, the spread of each column",
+            "side": "left",
+            "color": ""
           }
         },
         {
-          "id": "lb139",
+          "id": "lb999",
+          "funcId": "cmt-free",
+          "inputs": {
+            "cmtId": "row",
+            "title": "Row by row",
+            "text": "Averages first: $\\bar{x} = 3.5$, $\\bar{y} = 72$|Each row contributes $(x-3.5)(y-72)$",
+            "side": "right",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb1000",
+          "funcId": "cmt-update",
+          "inputs": {
+            "cmtId": "row",
+            "text": "Row 1: $(1-3.5)(55-72) = 42.5$|Below average in both, so the product is positive.",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb1001",
           "funcId": "tab-highlight-row",
           "inputs": {
             "gridId": "etude3",
-            "rowIndex": "1"
+            "rowIndex": "1",
+            "color": ""
           }
         },
         {
-          "id": "lb140",
-          "funcId": "eq-create",
+          "id": "lb1002",
+          "funcId": "cmt-update",
           "inputs": {
-            "eq": "(1-3.5)*(55-72) = 42.5"
+            "cmtId": "row",
+            "text": "Row 2: $(2-3.5)(62-72) = 15$",
+            "color": ""
           }
         },
         {
-          "id": "lb141",
+          "id": "lb1003",
           "funcId": "tab-highlight-row",
           "inputs": {
             "gridId": "etude3",
-            "rowIndex": "2"
+            "rowIndex": "2",
+            "color": ""
           }
         },
         {
-          "id": "lb142",
-          "funcId": "eq-create",
+          "id": "lb1004",
+          "funcId": "cmt-update",
           "inputs": {
-            "eq": "(2-3.5)*(62-72) = 15"
+            "cmtId": "row",
+            "text": "Row 3: $(3-3.5)(68-72) = 2$|Close to both averages, so it barely counts.",
+            "color": ""
           }
         },
         {
-          "id": "lb143",
+          "id": "lb1005",
           "funcId": "tab-highlight-row",
           "inputs": {
             "gridId": "etude3",
-            "rowIndex": "3"
+            "rowIndex": "3",
+            "color": ""
           }
         },
         {
-          "id": "lb144",
-          "funcId": "eq-create",
+          "id": "lb1006",
+          "funcId": "cmt-update",
           "inputs": {
-            "eq": "(3-3.5)*(68-72) = 2"
+            "cmtId": "row",
+            "text": "Row 4: $(4-3.5)(75-72) = 1.5$",
+            "color": ""
           }
         },
         {
-          "id": "lb145",
+          "id": "lb1007",
           "funcId": "tab-highlight-row",
           "inputs": {
             "gridId": "etude3",
-            "rowIndex": "4"
+            "rowIndex": "4",
+            "color": ""
           }
         },
         {
-          "id": "lb146",
-          "funcId": "eq-create",
+          "id": "lb1008",
+          "funcId": "cmt-update",
           "inputs": {
-            "eq": "(4-3.5)*(75-72) = 1.5"
+            "cmtId": "row",
+            "text": "Row 5: $(5-3.5)(82-72) = 15$",
+            "color": ""
           }
         },
         {
-          "id": "lb147",
+          "id": "lb1009",
           "funcId": "tab-highlight-row",
           "inputs": {
             "gridId": "etude3",
-            "rowIndex": "5"
+            "rowIndex": "5",
+            "color": ""
           }
         },
         {
-          "id": "lb148",
-          "funcId": "eq-create",
+          "id": "lb1010",
+          "funcId": "cmt-update",
           "inputs": {
-            "eq": "(5-3.5)*(82-72) = 15"
+            "cmtId": "row",
+            "text": "Row 6: $(6-3.5)(90-72) = 45$|Above average in both — positive again.",
+            "color": ""
           }
         },
         {
-          "id": "lb149",
+          "id": "lb1011",
           "funcId": "tab-highlight-row",
           "inputs": {
             "gridId": "etude3",
-            "rowIndex": "6"
+            "rowIndex": "6",
+            "color": ""
           }
         },
         {
-          "id": "lb150",
-          "funcId": "eq-create",
+          "id": "lb1012",
+          "funcId": "cmt-update",
           "inputs": {
-            "eq": "(6-3.5)*(90-72) = 45"
+            "cmtId": "row",
+            "text": "$S_{xy} = 42.5+15+2+1.5+15+45$|$S_{xy} = 121$ — every row pushed the same way.",
+            "color": ""
           }
         },
         {
-          "id": "lb151",
-          "funcId": "eq-create",
-          "inputs": {
-            "eq": "42.5+15+2+1.5+15+45 = 121"
-          }
-        },
-        {
-          "id": "lb152",
+          "id": "lb1013",
           "funcId": "tab-clear-row-highlight",
           "inputs": {
             "gridId": "etude3"
           }
         },
         {
-          "id": "lb153",
-          "funcId": "cmt-free",
+          "id": "lb1014",
+          "funcId": "cmt-update",
           "inputs": {
-            "cmtId": "",
-            "title": "",
-            "text": "$\\sum(x_i-\\bar{x})^2 = 17.5, \\ \\sum(y_i-\\bar{y})^2 = 838$",
-            "side": "left",
+            "cmtId": "legend",
+            "text": "$S_{xx} = 17.5$ and $S_{yy} = 838$|$D = \\sqrt{17.5 \\times 838} = 121.099$",
             "color": ""
           }
         },
         {
-          "id": "lb154",
-          "funcId": "eq-create",
+          "id": "lb1015",
+          "funcId": "eq-replace-variable",
           "inputs": {
-            "eq": "r = 121/121.099"
+            "replacements": "a=2,b=-3,c=1",
+            "var_Sxy": "121",
+            "var_D": "121.099"
           }
         },
         {
-          "id": "lb155",
+          "id": "lb1016",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        },
+        {
+          "id": "lb1017",
+          "funcId": "eq-save-result",
+          "inputs": {
+            "name": "r"
+          }
+        },
+        {
+          "id": "lb1018",
           "funcId": "cmt-free",
           "inputs": {
-            "cmtId": "",
-            "title": "",
-            "text": "r ≈ 0.999 → very strong positive correlation",
+            "cmtId": "verdict",
+            "title": "Reading r",
+            "text": "$r = {{ [r]v }}$, almost exactly $1$|Very strong positive correlation: more study hours, higher score.",
             "side": "right",
             "color": "green"
           }
@@ -1744,11 +1978,11 @@
   "unit-circle": [
     {
       "title": "The Unit Circle",
-      "id": "lb65",
+      "id": "lb547",
       "layout": "text-graph",
       "steps": [
         {
-          "id": "lb66",
+          "id": "lb548",
           "funcId": "text-create",
           "inputs": {
             "boxId": "intro",
@@ -1758,7 +1992,7 @@
           }
         },
         {
-          "id": "lb67",
+          "id": "lb549",
           "funcId": "graph-set-viewport",
           "inputs": {
             "xMin": "-1.8",
@@ -1768,23 +2002,16 @@
           }
         },
         {
-          "id": "lb68",
+          "id": "lb550",
           "funcId": "graph-plot-function",
           "inputs": {
-            "expr": "sqrt(1-x^2)",
-            "id": "top"
+            "expr": "x^2+y^2=1",
+            "id": "top",
+            "hideLabel": "1"
           }
         },
         {
-          "id": "lb69",
-          "funcId": "graph-plot-function",
-          "inputs": {
-            "expr": "-sqrt(1-x^2)",
-            "id": "bot"
-          }
-        },
-        {
-          "id": "lb70",
+          "id": "lb551",
           "funcId": "graph-add-point",
           "inputs": {
             "x": "1",
@@ -1794,7 +2021,7 @@
           }
         },
         {
-          "id": "lb71",
+          "id": "lb552",
           "funcId": "graph-add-point",
           "inputs": {
             "x": "0",
@@ -1804,7 +2031,7 @@
           }
         },
         {
-          "id": "lb72",
+          "id": "lb553",
           "funcId": "graph-add-point",
           "inputs": {
             "x": "-1",
@@ -1814,7 +2041,7 @@
           }
         },
         {
-          "id": "lb73",
+          "id": "lb554",
           "funcId": "graph-add-point",
           "inputs": {
             "x": "0",
@@ -1827,11 +2054,11 @@
     },
     {
       "title": "Special Angles — 30°, 45°, 60°",
-      "id": "lb74",
+      "id": "lb555",
       "layout": "text-graph",
       "steps": [
         {
-          "id": "lb75",
+          "id": "lb556",
           "funcId": "text-create",
           "inputs": {
             "boxId": "vals",
@@ -1841,7 +2068,7 @@
           }
         },
         {
-          "id": "lb76",
+          "id": "lb557",
           "funcId": "graph-set-viewport",
           "inputs": {
             "xMin": "-1.8",
@@ -1851,23 +2078,16 @@
           }
         },
         {
-          "id": "lb77",
+          "id": "lb558",
           "funcId": "graph-plot-function",
           "inputs": {
-            "expr": "sqrt(1-x^2)",
-            "id": "top"
+            "expr": "x^2+y^2=1",
+            "id": "circle",
+            "hideLabel": "0"
           }
         },
         {
-          "id": "lb78",
-          "funcId": "graph-plot-function",
-          "inputs": {
-            "expr": "-sqrt(1-x^2)",
-            "id": "bot"
-          }
-        },
-        {
-          "id": "lb79",
+          "id": "lb559",
           "funcId": "graph-add-point",
           "inputs": {
             "x": "0.866",
@@ -1877,7 +2097,15 @@
           }
         },
         {
-          "id": "lb80",
+          "id": "lb560",
+          "funcId": "graph-show-projection",
+          "inputs": {
+            "pointId": "p30",
+            "showValues": "false"
+          }
+        },
+        {
+          "id": "lb561",
           "funcId": "graph-add-point",
           "inputs": {
             "x": "0.707",
@@ -1887,7 +2115,15 @@
           }
         },
         {
-          "id": "lb81",
+          "id": "lb562",
+          "funcId": "graph-show-projection",
+          "inputs": {
+            "pointId": "p45",
+            "showValues": "false"
+          }
+        },
+        {
+          "id": "lb563",
           "funcId": "graph-add-point",
           "inputs": {
             "x": "0.5",
@@ -1895,25 +2131,13 @@
             "id": "p60",
             "label": "60°"
           }
-        }
-      ]
-    },
-    {
-      "id": "lb83",
-      "layout": "single-grid",
-      "background": "default",
-      "title": "",
-      "notes": "",
-      "steps": [
+        },
         {
-          "id": "lb84",
-          "funcId": "cmt-free",
+          "id": "lb564",
+          "funcId": "graph-show-projection",
           "inputs": {
-            "cmtId": "",
-            "title": "",
-            "text": "Chaotic card",
-            "side": "right",
-            "color": "#60a5fa"
+            "pointId": "p60",
+            "showValues": "false"
           }
         }
       ]
@@ -2016,6 +2240,318 @@
             "id": "yint",
             "label": "Y-intercept|(0, −2)",
             "showCoords": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "linear-functions": [
+    {
+      "title": "What the slope means — rise over run",
+      "id": "lb2019",
+      "layout": "text-graph",
+      "background": "default",
+      "steps": [
+        {
+          "id": "lb2020",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "riserun",
+            "title": "Slope = rise ÷ run",
+            "content": "Pick any two points on the line.|**Run** — how far you move across in $x$.|**Rise** — how far you move up in $y$.|The slope is $m = \\dfrac{\\text{rise}}{\\text{run}}$ — and it is the same wherever you measure it.",
+            "isList": "true",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb2021",
+          "funcId": "graph-set-viewport",
+          "inputs": {
+            "xMin": "-1",
+            "xMax": "6",
+            "yMin": "-1",
+            "yMax": "11"
+          }
+        },
+        {
+          "id": "lb2022",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "2*x + 1",
+            "id": "f1",
+            "hideLabel": "1"
+          }
+        },
+        {
+          "id": "lb2023",
+          "funcId": "graph-name-func",
+          "inputs": {
+            "funcId": "f1",
+            "label": "y = ax + b",
+            "x0": ""
+          }
+        },
+        {
+          "id": "lb2024",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "1",
+            "y": "3",
+            "id": "pA",
+            "funcId": "",
+            "label": "A(1, 3)",
+            "showCoords": "false"
+          }
+        },
+        {
+          "id": "lb2025",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "4",
+            "y": "9",
+            "id": "pB",
+            "funcId": "",
+            "label": "B(4, 9)",
+            "showCoords": "false"
+          }
+        },
+        {
+          "id": "lb2026",
+          "funcId": "graph-add-segment",
+          "inputs": {
+            "x1": "1",
+            "y1": "3",
+            "x2": "4",
+            "y2": "3",
+            "color": "orange",
+            "id": "run"
+          }
+        },
+        {
+          "id": "lb2027",
+          "funcId": "cmt-graph-func",
+          "inputs": {
+            "cmtId": "",
+            "text": "run = [run]len",
+            "funcId": "run",
+            "x": "",
+            "color": "orange"
+          }
+        },
+        {
+          "id": "lb2028",
+          "funcId": "graph-add-segment",
+          "inputs": {
+            "x1": "4",
+            "y1": "3",
+            "x2": "4",
+            "y2": "9",
+            "color": "green",
+            "id": "rise"
+          }
+        },
+        {
+          "id": "lb2029",
+          "funcId": "cmt-graph-func",
+          "inputs": {
+            "cmtId": "",
+            "text": "rise = [rise]len",
+            "funcId": "rise",
+            "x": "",
+            "color": "green"
+          }
+        },
+        {
+          "id": "lb2030",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "riseruncalc",
+            "title": "Here",
+            "content": "$m = \\dfrac{[rise]len}{[run]len} = {{ [rise]len / [run]len }}$ — the line climbs ${{ [rise]len / [run]len }}$ for every $1$ across.",
+            "isList": "false",
+            "color": ""
+          }
+        }
+      ]
+    },
+    {
+      "title": "Find the equation from two points",
+      "id": "lb2031",
+      "layout": "text-equation",
+      "background": "default",
+      "steps": [
+        {
+          "id": "lb2032",
+          "funcId": "graph-set-viewport",
+          "inputs": {
+            "xMin": "-1",
+            "xMax": "6",
+            "yMin": "-1",
+            "yMax": "11"
+          }
+        },
+        {
+          "id": "lb2033",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "1",
+            "y": "3",
+            "id": "pA",
+            "funcId": "",
+            "label": "A(1, 3)",
+            "showCoords": "false"
+          }
+        },
+        {
+          "id": "lb2034",
+          "funcId": "graph-add-point",
+          "inputs": {
+            "x": "4",
+            "y": "9",
+            "id": "pB",
+            "funcId": "",
+            "label": "B(4, 9)",
+            "showCoords": "false"
+          }
+        },
+        {
+          "id": "lb2035",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "given",
+            "title": "Given two points",
+            "content": "$A([pA]x,\\ [pA]y)$ and $B([pB]x,\\ [pB]y)$|Goal: find $y = mx + b$ passing through both.",
+            "isList": "false",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb2036",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "method",
+            "title": "The method",
+            "content": "Find the slope $m = \\dfrac{y_2 - y_1}{x_2 - x_1}$|Write $y = mx + b$ and put $m$ in|Substitute one known point for $x$ and $y$|Solve — the only unknown left is $b$",
+            "isList": "steps",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb2037",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|m| = (|y2| - |y1|) / (|x2| - |x1|)"
+          }
+        },
+        {
+          "id": "lb2038",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "replacements": "a=2,b=-3,c=1",
+            "var_y2": "[pB]y",
+            "var_y1": "[pA]y",
+            "var_x2": "[pB]x",
+            "var_x1": "[pA]x"
+          }
+        },
+        {
+          "id": "lb2039",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        },
+        {
+          "id": "lb2040",
+          "funcId": "eq-save-result",
+          "inputs": {
+            "name": "m"
+          }
+        },
+        {
+          "id": "lb2041",
+          "funcId": "eq-create",
+          "inputs": {
+            "eq": "|y| = |m| * |x| + |b|"
+          }
+        },
+        {
+          "id": "lb2042",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "replacements": "a=2,b=-3,c=1",
+            "var_m": "[m]v"
+          }
+        },
+        {
+          "id": "lb2043",
+          "funcId": "text-remove",
+          "inputs": {
+            "boxId": "given"
+          }
+        },
+        {
+          "id": "lb2044",
+          "funcId": "eq-replace-variable",
+          "inputs": {
+            "replacements": "a=2,b=-3,c=1",
+            "var_y": "[pA]y",
+            "var_x": "[pA]x"
+          }
+        },
+        {
+          "id": "lb2045",
+          "funcId": "eq-full-solve",
+          "inputs": {}
+        },
+        {
+          "id": "lb2046",
+          "funcId": "eq-save-result",
+          "inputs": {
+            "name": "b"
+          }
+        },
+        {
+          "id": "lb2047",
+          "funcId": "set-layout",
+          "inputs": {
+            "mode": "text-graph"
+          }
+        },
+        {
+          "id": "lb2048",
+          "funcId": "text-create",
+          "inputs": {
+            "boxId": "result",
+            "title": "The equation",
+            "content": "$m = {{ [m]v }}$ and $b = {{ [b]v }}$, so $y = {{ [m]v }}x + {{ [b]v }}$.",
+            "isList": "false",
+            "color": ""
+          }
+        },
+        {
+          "id": "lb2049",
+          "funcId": "graph-plot-function",
+          "inputs": {
+            "expr": "2*x + 1",
+            "id": "line",
+            "hideLabel": "1"
+          }
+        },
+        {
+          "id": "lb2050",
+          "funcId": "graph-adjust-view",
+          "inputs": {
+            "cx": "0",
+            "cy": "0",
+            "range": "10"
+          }
+        },
+        {
+          "id": "lb2051",
+          "funcId": "graph-name-func",
+          "inputs": {
+            "funcId": "line",
+            "label": "y = 2x + 1",
+            "x0": ""
           }
         }
       ]

@@ -13,7 +13,10 @@ import {
 } from './src/server/auth.js'
 
 const app  = express()
-const port = 3001
+// A host decides which port it wants the process to listen on and passes it in;
+// 3001 is only the local default. Without this the deployed service binds a
+// port nothing is routed to and the platform reports it as unhealthy.
+const port = process.env.PORT ?? 3001
 app.use(cors())
 app.use(express.json())
 

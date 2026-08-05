@@ -90,7 +90,7 @@ import {
   demoSetLayout,
 } from './engine/demoScripts.js'
 import { generateLesson, fetchMe } from './api/generateLesson.js'
-import { authConfigured, supabase, signOut } from './lib/supabase.js'
+import { authConfigured, supabase, signOut, apiUrl } from './lib/supabase.js'
 import AuthModal from './components/AuthModal.jsx'
 import { EXAMPLE_LESSONS } from './data/exampleLessons.js'
 import './App.css'
@@ -1111,7 +1111,7 @@ export default function App() {
     if (!ex) return
     let pages = ex.pages
     try {
-      const res = await fetch('/api/example-overrides')
+      const res = await fetch(apiUrl('/api/example-overrides'))
       if (res.ok) {
         const all = await res.json()
         if (Array.isArray(all?.[id])) pages = all[id]

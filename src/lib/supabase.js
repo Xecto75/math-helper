@@ -25,6 +25,13 @@ export const supabase = authConfigured
 // Attach the caller's access token to a request to our own API. The server
 // verifies it; we never send the user id or plan from here, because anything
 // the client asserts about itself is worthless.
+// Where our own API lives. Empty in development: Vite proxies /api to the local
+// server, so a relative path works. In production the site and the API sit on
+// different hosts (static hosting cannot run Express), so the deployed site is
+// built with VITE_API_URL pointing at the API's own address.
+export const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+export const apiUrl = (path) => API_BASE + path
+
 export async function authedFetch(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers ?? {}) }
   if (supabase) {
@@ -32,7 +39,7 @@ export async function authedFetch(path, options = {}) {
     const token = data?.session?.access_token
     if (token) headers.Authorization = `Bearer ${token}`
   }
-  return fetch(path, { ...options, headers })
+  return fetch(apiUrl(path), { ...options, headers })
 }
 
 export const signInWithGoogle = () =>

@@ -9,6 +9,7 @@ import { ROUTER_SYSTEM_PROMPT, buildGeneratorPrompt, docForCode } from './src/da
 import { EXAMPLE_LESSONS } from './src/data/exampleLessons.js'
 import {
   authConfigured, getUser, getProfile, consumeCredit, refundCredit, FREE_LESSON_LIMIT,
+  isAdminEmail,
 } from './src/server/auth.js'
 
 const app  = express()
@@ -261,6 +262,9 @@ app.get('/api/me', async (req, res) => {
     lessonsUsed: used,
     freeLimit: FREE_LESSON_LIMIT,
     lessonsLeft: profile.plan === 'pro' ? null : Math.max(0, FREE_LESSON_LIMIT - used),
+    // Authoring rights, decided here and nowhere else. The client only ever
+    // reads this to decide what to draw.
+    admin: isAdminEmail(profile.email),
   })
 })
 

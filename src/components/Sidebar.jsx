@@ -37,11 +37,16 @@ const ICONS = {
   ),
 }
 
+// The Lesson Builder is an authoring tool, not a feature: it edits the shipped
+// examples and writes to files on the server. It exists only while running from
+// source (npm run dev). In a production build import.meta.env.DEV is false, this
+// entry is never created, and the drawer is never rendered — the visitor cannot
+// reach it because it is not there.
 const TOP_ITEMS = [
-  { id: 'home',    label: 'Canvas'         },
-  { id: 'library', label: 'Library'        },
-  { id: 'saved',   label: 'Saved Lessons'  },
-  { id: 'build',   label: 'Lesson Builder' },
+  { id: 'home',    label: 'Canvas'        },
+  { id: 'library', label: 'Library'       },
+  { id: 'saved',   label: 'Saved Lessons' },
+  ...(import.meta.env.DEV ? [{ id: 'build', label: 'Lesson Builder' }] : []),
 ]
 
 const BOTTOM_ITEMS = [

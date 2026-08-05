@@ -26,6 +26,17 @@ const PREMIUM_EMAILS = new Set(
 
 export const FREE_LESSON_LIMIT = Number(process.env.FREE_LESSON_LIMIT ?? 3)
 
+// Who may open the Lesson Builder — the tool that writes the shipped examples.
+// Separate from PREMIUM_EMAILS on purpose: a paying customer is 'pro', not an
+// author, and the two lists must be able to diverge the day someone pays.
+// Falls back to PREMIUM_EMAILS so a single-author setup needs no second entry.
+const ADMIN_EMAILS = new Set(
+  (process.env.ADMIN_EMAILS ?? process.env.PREMIUM_EMAILS ?? '')
+    .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+)
+
+export const isAdminEmail = (email) => ADMIN_EMAILS.has((email ?? '').toLowerCase())
+
 // Resolve the caller from the Authorization header.
 // Returns { user } on success, or { error, status } — never throws, so route
 // handlers can branch without try/catch noise.

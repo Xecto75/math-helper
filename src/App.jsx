@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, lazy, Suspense } from 'react'
 import EquationDisplay      from './components/EquationDisplay.jsx'
 import CalcDisplay          from './components/CalcDisplay.jsx'
 import ArithmeticDisplay    from './components/ArithmeticDisplay.jsx'
@@ -16,7 +16,13 @@ import ThreeDisplay         from './components/ThreeDisplay.jsx'
 import TableDisplay         from './components/TableDisplay.jsx'
 import TextBoxDisplay       from './components/TextBoxDisplay.jsx'
 import CommentLayer         from './components/CommentLayer.jsx'
-import LessonBuilder        from './components/LessonBuilder.jsx'
+// Loaded only when running from source. import.meta.env.DEV is replaced by a
+// literal at build time, so in production this whole branch is dead code and
+// the Builder — every tab, every endpoint it calls — is dropped from the
+// bundle rather than merely hidden.
+const LessonBuilder = import.meta.env.DEV
+  ? lazy(() => import('./components/LessonBuilder.jsx'))
+  : null
 import { ExerciseQuestionBar, ExerciseQuestionHero, ExerciseAnswerBar } from './components/ExercisePanel.jsx'
 import Sidebar             from './components/Sidebar.jsx'
 import MathText             from './components/RichText.jsx'
@@ -260,8 +266,13 @@ export default function App() {
   const [activeTool,    setActiveTool]    = useState(null)
   const [activePanel,   setActivePanel]   = useState(null)
 
+  // Authoring only exists while running from source. In a production build this
+  // is false, the sidebar entry is never created and the drawer below is never
+  // rendered — so there is nothing to reach, by button, by state or by accident.
+  const AUTHORING = import.meta.env.DEV
+
   const togglePanel = (id) => {
-    if (id === 'build') { setBuilderOpen(true); return }
+    if (id === 'build') { if (AUTHORING) setBuilderOpen(true); return }
     if (id === 'home')  { setActivePanel(null); return }
     setActivePanel(p => p === id ? null : id)
   }
@@ -351,6 +362,7 @@ export default function App() {
   }
 
   const handleEditLesson = (lesson) => {
+    if (!AUTHORING) return
     const overriddenPages = lessonOverrides[lesson.id] ?? lesson.pages
     setEditingLesson({ ...lesson, pages: overriddenPages })
     setBuilderOpen(true)
@@ -1348,7 +1360,7 @@ export default function App() {
                 lang={lang}
                 adminMode={adminMode}
                 onPlay={lesson => { setActivePanel(null); handlePlayLesson(lesson) }}
-                onEditLesson={lesson => { setActivePanel(null); setEditingLesson(lesson); setBuilderOpen(true) }}
+                onEditLesson={AUTHORING ? (lesson => { setActivePanel(null); setEditingLesson(lesson); setBuilderOpen(true) }) : undefined}
               />
             )}
             {activePanel === 'saved' && (
@@ -1619,8 +1631,8 @@ export default function App() {
       )}
 
       {/* ── Lesson Builder drawer ─────────────────────────────────────────────── */}
-      {builderOpen && (
-        <>
+      {AUTHORING && builderOpen && (
+        <Suspense fallback={null}>
           <div className="dev-overlay" onClick={() => { setBuilderOpen(false); setEditingLesson(null) }} />
           <LessonBuilder
             key={editingLesson?.id ?? 'default'}
@@ -1630,7 +1642,7 @@ export default function App() {
             editingLesson={editingLesson}
             onSaveLesson={handleSaveLesson}
           />
-        </>
+        </Suspense>
       )}
 
     </div>

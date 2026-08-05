@@ -197,6 +197,58 @@ function repairBackslashes(raw) {
   return s.split(PH).join('\\\\')
 }
 
+// Close brackets the model left open. Counted outside strings, so a "[" inside
+// a text box's content is not mistaken for structure. Models drop trailing
+// brackets on long outputs — one lesson came back three short — and throwing
+// away a whole lesson over three characters helps nobody.
+function balanceBrackets(s) {
+  let open = 0, close = 0, inStr = false, esc = false
+  for (const c of s) {
+    if (esc) { esc = false; continue }
+    if (c === '\\') { esc = true; continue }
+    if (c === '"') { inStr = !inStr; continue }
+    if (inStr) continue
+    if (c === '[') open++
+    else if (c === ']') close++
+  }
+  return open > close ? s + ']'.repeat(open - close) : s
+}
+
+// A page is exactly ["title", "LC", [ …steps ]]. Rather than guess which wrapper
+// the model added this time, go and FIND the pages: walk the tree, collect every
+// node with that exact shape, in the order written. One real lesson arrived with
+// its page wrapped in a second array AND — because three closing brackets were
+// missing — pages 2 to 5 nested inside page 1. Both come out right by looking
+// for the shape instead of trusting the nesting.
+// Title first, then a layout code — or null, which is what an exercise page
+// carries — then a list of steps, possibly empty: a quiz question is a real
+// page with nothing to animate, and an earlier version of this check dropped
+// those on the floor.
+const looksLikePage = (n) =>
+  Array.isArray(n) && n.length >= 3 &&
+  typeof n[0] === 'string' &&
+  (typeof n[1] === 'string' || n[1] === null) &&
+  Array.isArray(n[2]) &&
+  (n[2].length === 0 || Array.isArray(n[2][0]))
+
+function normalizePages(parsed) {
+  if (!Array.isArray(parsed)) return parsed
+  const pages = []
+  const walk = (node) => {
+    if (!Array.isArray(node)) return
+    if (looksLikePage(node)) {
+      // ["title","LC",[…steps], ["S2a",…]] — anything past the steps array is a
+      // step that escaped it, and belongs on the end in the order written.
+      const strays = node.slice(3).filter(s => Array.isArray(s) && typeof s[0] === 'string')
+      pages.push([node[0], node[1], strays.length ? [...node[2], ...strays] : node[2]])
+      return   // its steps are steps, not more pages
+    }
+    node.forEach(walk)
+  }
+  parsed.forEach(walk)
+  return pages.length ? pages : parsed
+}
+
 function parseCompact(rawText) {
   let raw = rawText.trim()
   raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
@@ -204,7 +256,8 @@ function parseCompact(rawText) {
   const end   = raw.lastIndexOf(']')
   if (start === -1 || end === -1 || end < start)
     throw new Error('Response contained no JSON array')
-  return JSON.parse(repairBackslashes(raw.slice(start, end + 1)))
+  const body = balanceBrackets(repairBackslashes(raw.slice(start, end + 1)))
+  return normalizePages(JSON.parse(body))
 }
 
 // ── Which module docs does a lesson actually need? ───────────────────────────

@@ -410,6 +410,17 @@ export default function App() {
   const [toolHLRow,  setToolHLRow]  = useState(3)
   const [toolHLCol,  setToolHLCol]  = useState(4)
 
+  // Whether the icon rail is showing its labels. Remembered like the other
+  // shell preferences — someone who opened it once meant it, and having it snap
+  // shut on every reload is the reason people stop opening it at all.
+  const [railOpen, setRailOpen] = useState(() => localStorage.getItem('math-rail') === '1')
+  const toggleRail = useCallback(() => {
+    setRailOpen(prev => {
+      localStorage.setItem('math-rail', prev ? '0' : '1')
+      return !prev
+    })
+  }, [])
+
   // ── Lesson UI state ────────────────────────────────────────────────────────
   const [muted,           setMuted]           = useState(false)
   const [lang,            setLang]            = useState(() => localStorage.getItem('math-lang') ?? 'en')
@@ -1377,10 +1388,14 @@ export default function App() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="app">
+    <div className={`app${railOpen ? ' app--rail-open' : ''}`}>
 
       {/* ── SIDEBAR ──────────────────────────────────────────────────────────── */}
-      <Sidebar active={activePanel} onToggle={togglePanel} />
+      <Sidebar
+        active={activePanel} onToggle={togglePanel}
+        expanded={railOpen} onExpandToggle={toggleRail}
+        lang={lang}
+      />
 
       {/* ── SIDE PANEL ───────────────────────────────────────────────────────── */}
       {activePanel && activePanel !== 'build' && (

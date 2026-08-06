@@ -10,11 +10,22 @@
   flex-direction: row;
   background: var(--bg);
   position: relative;
+
+  /* How wide the icon rail is right now. One number, because everything that
+     sits against the rail has to move with it — before this there were two
+     copies of "76px" that could drift apart. */
+  --rail-w: 76px;
+}
+.app--rail-open {
+  --rail-w: 232px;
 }
 
 /* ── Sidebar (icon rail) ─────────────────────────────────────────────────── */
+/* Icons alone is the resting state. Opening it widens the rail and lets each
+   label out to the right of its icon — nothing appears at once: the width and
+   the labels animate together, so the panel beside it slides rather than jumps. */
 .sidebar {
-  width: 76px;
+  width: var(--rail-w);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -24,18 +35,53 @@
   padding: 12px 0;
   gap: 0;
   z-index: 30;
+  overflow: hidden;          /* a label mid-animation is clipped, never wrapped */
+  transition: width 0.22s ease;
 }
+/* Doubles as the collapse/expand control: the ∑ swaps for a panel icon under
+   the cursor, so the rail says it opens without carrying a second button. */
 .sidebar-brand {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--accent-1);
-  line-height: 1;
+  position: relative;
+  width: 56px;
   height: 48px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 12px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, margin-left 0.22s ease;
 }
+.sidebar-brand:hover {
+  background: rgba(165,180,252,0.1);
+}
+.sidebar-brand-mark {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent-1);
+  line-height: 1;
+  transition: opacity 0.15s;
+}
+.sidebar-brand-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.sidebar-brand-panel svg {
+  width: 22px;
+  height: 22px;
+}
+.sidebar-brand:hover .sidebar-brand-mark  { opacity: 0; }
+.sidebar-brand:hover .sidebar-brand-panel { opacity: 1; }
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -48,10 +94,10 @@
   margin-top: auto;
 }
 .sidebar-btn {
-  width: 56px;
+  width: 100%;               /* 56px while collapsed — the rail minus its padding */
   height: 56px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   border: none;
@@ -59,7 +105,7 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, padding-left 0.22s ease;
   position: relative;
 }
 .sidebar-btn:hover {
@@ -73,6 +119,7 @@
 .sidebar-icon {
   width: 26px;
   height: 26px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -81,14 +128,39 @@
   width: 100%;
   height: 100%;
 }
+/* Kept in the DOM at zero width rather than display:none, so it can fade in and
+   out with the rail instead of blinking into place at the end of the slide. */
 .sidebar-label {
-  display: none;
+  font-size: 0.86rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  transition: opacity 0.16s ease, max-width 0.22s ease, margin-left 0.22s ease;
+}
+
+/* ── Sidebar, opened ─────────────────────────────────────────────────────── */
+.app--rail-open .sidebar-brand {
+  align-self: flex-start;
+  margin-left: 10px;
+}
+.app--rail-open .sidebar-btn {
+  justify-content: flex-start;
+  padding-left: 15px;
+}
+.app--rail-open .sidebar-label {
+  max-width: 170px;
+  margin-left: 12px;
+  opacity: 1;
 }
 
 /* ── Side panel (full-area overlay) ─────────────────────────────────────── */
 .side-panel {
   position: absolute;
-  left: 76px; /* flush with sidebar */
+  left: var(--rail-w); /* flush with the rail, at whatever width it is */
+  transition: left 0.22s ease;
   top: 0;
   right: 0;
   bottom: 0;

@@ -12,7 +12,7 @@
       "name": "math-engine-ui-only",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev:ui"],
-      "port": 5175,
+      "port": 5173,
       "autoPort": true
     }
   ]

@@ -2,6 +2,10 @@
 export const UI = {
   en: {
     sections:   { library: 'Lessons', tools: 'Tools', custom: 'Create', settings: 'Settings', profile: 'Profile' },
+    // the icon rail — hidden until it is expanded, then read as plain labels
+    nav:        { home: 'Canvas', library: 'Library', saved: 'Saved Lessons', build: 'Lesson Builder', profile: 'Profile', settings: 'Settings' },
+    navExpand:   'Expand menu',
+    navCollapse: 'Collapse menu',
     back:       '← Back',
     librarySub: 'Choose your level and start a lesson!',
     toolsSub:   'Play with math tools!',
@@ -58,6 +62,9 @@ export const UI = {
   },
   fr: {
     sections:   { library: 'Leçons', tools: 'Outils', custom: 'Créer', settings: 'Paramètres', profile: 'Profil' },
+    nav:        { home: 'Tableau', library: 'Bibliothèque', saved: 'Leçons enregistrées', build: 'Éditeur de leçons', profile: 'Profil', settings: 'Paramètres' },
+    navExpand:   'Ouvrir le menu',
+    navCollapse: 'Réduire le menu',
     back:       '← Retour',
     librarySub: 'Choisis ton niveau et commence une leçon !',
     toolsSub:   'Joue avec les outils mathématiques !',
@@ -108,6 +115,9 @@ export const UI = {
   },
   de: {
     sections:   { library: 'Lektionen', tools: 'Werkzeuge', custom: 'Erstellen', settings: 'Einstellungen', profile: 'Profil' },
+    nav:        { home: 'Arbeitsfläche', library: 'Bibliothek', saved: 'Gespeicherte Lektionen', build: 'Lektions-Editor', profile: 'Profil', settings: 'Einstellungen' },
+    navExpand:   'Menü ausklappen',
+    navCollapse: 'Menü einklappen',
     back:       '← Zurück',
     librarySub: 'Wähle dein Niveau und starte eine Lektion!',
     toolsSub:   'Spiele mit den Mathe-Werkzeugen!',
@@ -158,6 +168,9 @@ export const UI = {
   },
   es: {
     sections:   { library: 'Lecciones', tools: 'Herramientas', custom: 'Crear', settings: 'Ajustes', profile: 'Perfil' },
+    nav:        { home: 'Lienzo', library: 'Biblioteca', saved: 'Lecciones guardadas', build: 'Editor de lecciones', profile: 'Perfil', settings: 'Ajustes' },
+    navExpand:   'Abrir el menú',
+    navCollapse: 'Contraer el menú',
     back:       '← Volver',
     librarySub: '¡Elige tu nivel y empieza una lección!',
     toolsSub:   '¡Juega con las herramientas de matemáticas!',
@@ -208,6 +221,9 @@ export const UI = {
   },
   it: {
     sections:   { library: 'Lezioni', tools: 'Strumenti', custom: 'Crea', settings: 'Impostazioni', profile: 'Profilo' },
+    nav:        { home: 'Tela', library: 'Libreria', saved: 'Lezioni salvate', build: 'Editor di lezioni', profile: 'Profilo', settings: 'Impostazioni' },
+    navExpand:   'Apri il menu',
+    navCollapse: 'Riduci il menu',
     back:       '← Indietro',
     librarySub: 'Scegli il tuo livello e inizia una lezione!',
     toolsSub:   'Gioca con gli strumenti di matematica!',
@@ -258,6 +274,9 @@ export const UI = {
   },
   pt: {
     sections:   { library: 'Lições', tools: 'Ferramentas', custom: 'Criar', settings: 'Definições', profile: 'Perfil' },
+    nav:        { home: 'Tela', library: 'Biblioteca', saved: 'Lições guardadas', build: 'Editor de lições', profile: 'Perfil', settings: 'Definições' },
+    navExpand:   'Abrir o menu',
+    navCollapse: 'Recolher o menu',
     back:       '← Voltar',
     librarySub: 'Escolhe o teu nível e começa uma lição!',
     toolsSub:   'Brinca com as ferramentas de matemática!',

@@ -11,6 +11,7 @@ import {
   authConfigured, getUser, getProfile, consumeCredit, refundCredit, FREE_LESSON_LIMIT,
   isAdminEmail,
 } from './src/server/auth.js'
+import { clientIp, consumeAnon, refundAnon } from './src/server/anonQuota.js'
 
 const app  = express()
 // A host decides which port it wants the process to listen on and passes it in;
@@ -296,22 +297,46 @@ app.post('/api/generate-lesson', async (req, res) => {
   // client also hides the button when a user is out of credits, but that is
   // cosmetic: anyone can POST straight to this endpoint, and each call spends
   // real money on the Anthropic API.
-  let auth = null
+  let auth   = null
+  let anonIp = null
   if (authConfigured) {
-    const { user, error, status } = await getUser(req)
-    if (error) return res.status(status).json({ error })
+    // No Authorization header at all = someone who has not signed up yet.
+    // They get the anonymous allowance instead of a wall (see anonQuota.js).
+    //
+    // A header that IS present but invalid or expired is NOT this case: it
+    // falls through to getUser() and still comes back 401, so a session that
+    // died says so rather than quietly looking like a brand-new visitor and
+    // spending the free lesson meant for one.
+    const hasToken = String(req.headers.authorization ?? '').startsWith('Bearer ')
 
-    const { result, error: qErr, status: qStatus } = await consumeCredit(user.id)
-    if (qErr) return res.status(qStatus).json({ error: qErr })
-    if (!result?.allowed) {
-      return res.status(402).json({
-        error: 'quota_exceeded',
-        plan:  result?.plan ?? 'free',
-        used:  result?.lessons_used ?? 0,
-        limit: result?.free_limit ?? FREE_LESSON_LIMIT,
-      })
+    if (!hasToken) {
+      const ip = clientIp(req)
+      const { allowed, reason } = consumeAnon(ip)
+      if (!allowed) return res.status(401).json({ error: 'Not signed in', reason })
+      anonIp = ip
+    } else {
+      const { user, error, status } = await getUser(req)
+      if (error) return res.status(status).json({ error })
+
+      const { result, error: qErr, status: qStatus } = await consumeCredit(user.id)
+      if (qErr) return res.status(qStatus).json({ error: qErr })
+      if (!result?.allowed) {
+        return res.status(402).json({
+          error: 'quota_exceeded',
+          plan:  result?.plan ?? 'free',
+          used:  result?.lessons_used ?? 0,
+          limit: result?.free_limit ?? FREE_LESSON_LIMIT,
+        })
+      }
+      auth = { user, quota: result }
     }
-    auth = { user, quota: result }
+  }
+
+  // One credit was taken above — from an account or from the anonymous pool.
+  // Every path that ends without a lesson has to give it back through here.
+  const refund = async () => {
+    if (auth) await refundCredit(auth.user.id)
+    else if (anonIp) refundAnon(anonIp)
   }
 
   let rawApiText = null
@@ -322,7 +347,7 @@ app.post('/api/generate-lesson', async (req, res) => {
 
     if (route.status !== 'ok') {
       // No lesson was produced, so the credit should not be spent.
-      if (auth) await refundCredit(auth.user.id)
+      await refund()
       trace.section('REFUSED', `status: ${route.status}\n${route.message ?? ''}\n` +
         `alternatives: ${route.alternatives?.join(', ') || '—'}`)
       trace.finish()
@@ -411,7 +436,7 @@ app.post('/api/generate-lesson', async (req, res) => {
   } catch (err) {
     // The user asked for a lesson and did not get one — that is on us, not on
     // their monthly allowance.
-    if (auth) await refundCredit(auth.user.id)
+    await refund()
     // The raw output that caused it is in the transcript file, under ERROR.
     console.error('generate-lesson error:', err.message)
     trace.section('ERROR', `${err.stack ?? err.message}\n\nraw API output:\n${rawApiText ?? '(none)'}`)

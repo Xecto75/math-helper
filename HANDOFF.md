@@ -16,6 +16,18 @@ L'utilisateur a explicitement dit que c'est **la chose la plus importante** à c
 
 **Ça a re-arrivé dans la MÊME session, sous une forme différente** : en redessinant le placement du label diviseur/multiplicateur (le fix ci-dessus), j'ai aussi changé son ANCRAGE (bord extérieur au lieu de centré) sans re-tester le cas le plus courant (un seul terme par côté, ex. "2x = 4") — ça donnait un résultat visuellement faux ("le 2 est absolument pas à la bonne place"). Pas un crash cette fois, un jugement de design pas vérifié contre le cas le plus fréquent. Même leçon, angle différent : après avoir changé le COMPORTEMENT VISUEL de quelque chose d'existant (pas juste sa robustesse), retester explicitement le cas le plus commun/simple, pas seulement le nouveau cas qui a motivé le changement.
 
+## 🔴 RÈGLE #2 — NE JAMAIS DÉCLENCHER UN APPEL À L'API ANTHROPIC SANS DEMANDER
+
+La clé dans `.env` est la clé personnelle de l'utilisateur, payée de sa poche. **Aucune** génération de leçon, aucun test de prompt, aucun "juste un appel pour vérifier" — ni via l'app, ni via `curl`, ni via un script qui importe le SDK. Demander d'abord, à chaque fois.
+
+Cette règle existait en mémoire mais PAS dans ce fichier, et elle a été enfreinte deux fois pour cette raison (~24 appels le 2026-07-29, puis 1 le 2026-08-05). Elle est ici maintenant pour qu'elle survive à un agent sans mémoire.
+
+**Comment tester le générateur sans dépenser** :
+- Le gate est vérifiable sans jamais atteindre Anthropic : `ANON_LESSON_LIMIT=0` refuse tout visiteur anonyme, `ANON_DAILY_TOTAL=0` vide le pool du jour, un `Authorization: Bearer faux-token` donne 401 — aucun de ces chemins n'appelle l'API.
+- Côté navigateur, remplacer `window.fetch` par un espion qui rejette toute URL contenant `generate-lesson` AVANT de cliquer quoi que ce soit. C'est ce qui a servi à valider le mur de connexion.
+- **Ne jamais supposer qu'un garde-fou bloque avant d'avoir vu le refus.** L'appel du 2026-08-05 est parti précisément parce que `ANON_LESSON_LIMIT=0` était censé refuser et ne refusait pas (le plafond n'était testé que pour une adresse déjà vue). Vérifier le refus sur une requête inoffensive d'abord, puis seulement lancer le vrai scénario.
+- `logs/lesson-*.txt` = un fichier par génération réellement partie. C'est la preuve après coup de ce qui a été dépensé.
+
 *Remplace le HANDOFF précédent (traduction, `valueRefs.js`, exercices, pagination set-layout — toujours vrai, voir section dédiée en bas). Cette session a été une longue suite d'allers-retours en direct avec l'utilisateur sur le générateur IA, le Lesson Builder, et surtout le moteur graphique (Desmos) — beaucoup de bugs sournois trouvés en testant réellement, pas en devinant.*
 
 ## ⚠️ État git — tout est commité ET poussé, à jour

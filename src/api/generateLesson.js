@@ -22,6 +22,11 @@ export async function generateLesson(prompt, lang = 'en') {
     if (res.status === 401) {
       const err = new Error('Sign in to generate a lesson.')
       err.code = 'auth_required'
+      // Why the wall appeared: 'anon_used' (this visitor already had the free
+      // one), 'anon_daily_cap' (the free pool is empty today, nothing to do
+      // with them), or absent (a real session that expired). Three different
+      // things to say, so the caller needs to tell them apart.
+      err.reason = data.reason ?? null
       throw err
     }
     if (res.status === 402) {

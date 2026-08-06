@@ -97,6 +97,17 @@ import './App.css'
 
 const ALL_READY_APP = CATEGORIES.flatMap(c => c.functions).filter(f => f.status === 'ready')
 
+// This browser has already had the one lesson that needs no account. A hint for
+// the UI only — the server keeps its own count and is the one that decides.
+const ANON_USED_KEY = 'math-engine-anon-used'
+
+// Why the sign-in sheet opened → which line it puts at the top. Unknown or
+// missing reasons fall back to the plain 'authRequired' wording.
+const AUTH_REASON_KEY = {
+  anon_used:      'authAfterFree',
+  anon_daily_cap: 'authBusy',
+}
+
 let _appUid = 0
 const appUid = () => `a${++_appUid}`
 
@@ -316,8 +327,16 @@ export default function App() {
   const [authReason, setAuthReason] = useState('')
   const [authMode, setAuthMode] = useState('signin')
 
+  // False until the server has answered once. `me` is null both for "signed
+  // out" and for "we have not asked yet", and treating the second as the first
+  // would show a signed-in user the sign-in sheet if they hit Enter during the
+  // first few hundred ms after load.
+  const meLoadedRef = useRef(false)
+
   const refreshMe = useCallback(async () => {
-    setMe(await fetchMe())
+    const next = await fetchMe()
+    meLoadedRef.current = true
+    setMe(next)
   }, [])
 
   useEffect(() => {
@@ -1062,6 +1081,19 @@ export default function App() {
   const handleSendPrompt = useCallback(async (text) => {
     const trimmed = (text ?? promptVal).trim()
     if (!trimmed || aiLoading) return
+
+    // Ask for the account BEFORE spending a round trip on a request that
+    // cannot succeed. The server is still the gate that counts — this only
+    // moves the sheet to the moment they pressed Enter, instead of after a
+    // spinner that was always going to come back "sign in". (Anonymous
+    // visitors get one free lesson; ANON_USED_KEY is set once they have had
+    // it. Cleared storage just means one wasted round trip, not a free extra:
+    // the server refuses it either way.)
+    if (authConfigured && meLoadedRef.current && !me && localStorage.getItem(ANON_USED_KEY)) {
+      openAuth(u(langRef.current, 'authAfterFree'))
+      return
+    }
+
     setPromptVal(trimmed)
     promptSnapRef.current = trimmed
     setAiLoading(true)
@@ -1076,6 +1108,9 @@ export default function App() {
         steps: p.steps.map(s => ({ funcId: s.funcId, inputs: s.inputs })),
       }))
       localStorage.setItem('math-engine-draft', JSON.stringify(draft))
+      // That was the free one. Remember it, so the next prompt meets the sheet
+      // on Enter rather than after another pointless round trip.
+      if (authConfigured && meLoadedRef.current && !me) localStorage.setItem(ANON_USED_KEY, '1')
       setPromptVal('')
       handleBuilderBuildAll(loaded, 1)
     } catch (err) {
@@ -1083,7 +1118,14 @@ export default function App() {
       // Not signed in, or out of credits: both are things the user can DO
       // something about, so put the sign-in sheet in front of them instead of
       // a line of red text under the box they just typed in.
-      if (err.code === 'auth_required') { openAuth('Sign in to generate a lesson — it takes a few seconds.'); return }
+      if (err.code === 'auth_required') {
+        // Only 'anon_used' means this visitor has spent their free lesson. A
+        // full daily pool or an expired session must NOT set the flag, or they
+        // would be locked out locally without ever having had one.
+        if (err.reason === 'anon_used') localStorage.setItem(ANON_USED_KEY, '1')
+        openAuth(u(langRef.current, AUTH_REASON_KEY[err.reason] ?? 'authRequired'))
+        return
+      }
       if (err.code === 'quota_exceeded') openAuth(msg)
       setAiError(msg)
       setAiSuggestions(
@@ -1101,7 +1143,7 @@ export default function App() {
       // rather than counting locally, which would drift on any refund.
       refreshMe()
     }
-  }, [promptVal, aiLoading, handleBuilderBuildAll, openAuth, refreshMe])
+  }, [promptVal, aiLoading, me, handleBuilderBuildAll, openAuth, refreshMe])
 
   // Load one of the suggested reference lessons. Author edits live in the
   // overrides file, same as the Examples gallery reads — the bundled pages are

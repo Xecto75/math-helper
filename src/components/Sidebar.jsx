@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { u } from '../i18n/uiText.js'
 
 const ICONS = {
@@ -65,17 +66,33 @@ const BOTTOM_ITEMS = [
   { id: 'settings' },
 ]
 
-export default function Sidebar({ active, onToggle, expanded, onExpandToggle, lang = 'en' }) {
+export default function Sidebar({ active, onToggle, expanded, onSetExpanded, lang = 'en' }) {
   // Labels live in the translations rather than next to the icons: they used to
   // be invisible, so English was harmless — now that the rail opens, a French
   // visitor would be reading "Saved Lessons".
   const names = u(lang, 'nav')
+  const railRef = useRef(null)
+
+  // Anywhere outside the rail puts it away again. On pointerdown rather than
+  // click so it closes as the user reaches for whatever they are going for,
+  // instead of a beat later — and only while it is open, so the listener costs
+  // nothing the rest of the time.
+  useEffect(() => {
+    if (!expanded) return
+    const onDown = (e) => {
+      if (!railRef.current?.contains(e.target)) onSetExpanded(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [expanded, onSetExpanded])
 
   const item = (it) => (
     <button
       key={it.id}
       className={`sidebar-btn${active === it.id ? ' sidebar-btn--active' : ''}`}
-      onClick={() => onToggle(it.id)}
+      // Stops the rail's own handler below: these icons go somewhere, and
+      // opening the rail on the way there would move the thing being clicked.
+      onClick={(e) => { e.stopPropagation(); onToggle(it.id) }}
       title={names[it.id]}
     >
       <span className="sidebar-icon">{ICONS[it.id]}</span>
@@ -84,10 +101,12 @@ export default function Sidebar({ active, onToggle, expanded, onExpandToggle, la
   )
 
   return (
-    <aside className="sidebar">
+    // Any dead space in the rail opens it — the whole column is the target, not
+    // one small button. The section icons opt out above.
+    <aside className="sidebar" ref={railRef} onClick={() => onSetExpanded(true)}>
       <button
         className="sidebar-brand"
-        onClick={onExpandToggle}
+        onClick={(e) => { e.stopPropagation(); onSetExpanded(!expanded) }}
         title={u(lang, expanded ? 'navCollapse' : 'navExpand')}
         aria-expanded={expanded}
       >

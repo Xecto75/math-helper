@@ -414,10 +414,11 @@ export default function App() {
   // shell preferences — someone who opened it once meant it, and having it snap
   // shut on every reload is the reason people stop opening it at all.
   const [railOpen, setRailOpen] = useState(() => localStorage.getItem('math-rail') === '1')
-  const toggleRail = useCallback(() => {
+  const setRail = useCallback((next) => {
     setRailOpen(prev => {
-      localStorage.setItem('math-rail', prev ? '0' : '1')
-      return !prev
+      if (prev === next) return prev
+      localStorage.setItem('math-rail', next ? '1' : '0')
+      return next
     })
   }, [])
 
@@ -1393,7 +1394,7 @@ export default function App() {
       {/* ── SIDEBAR ──────────────────────────────────────────────────────────── */}
       <Sidebar
         active={activePanel} onToggle={togglePanel}
-        expanded={railOpen} onExpandToggle={toggleRail}
+        expanded={railOpen} onSetExpanded={setRail}
         lang={lang}
       />
 

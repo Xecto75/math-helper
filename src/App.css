@@ -15,6 +15,9 @@
      sits against the rail has to move with it — before this there were two
      copies of "76px" that could drift apart. */
   --rail-w: 76px;
+  /* The closed width, which stays put while --rail-w moves. The icon column is
+     measured from this, so opening the rail cannot shift the icons sideways. */
+  --rail-w-min: 76px;
 }
 .app--rail-open {
   --rail-w: 232px;
@@ -45,6 +48,10 @@
   width: 56px;
   height: 48px;
   flex-shrink: 0;
+  align-self: flex-start;
+  /* Anchored, not centred: centring inside a rail whose width is animating
+     would drag the ∑ along with it. Same left edge open or closed. */
+  margin-left: calc((var(--rail-w-min) - 1px - 56px) / 2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -54,7 +61,7 @@
   border-radius: 12px;
   background: transparent;
   cursor: pointer;
-  transition: background 0.15s, margin-left 0.22s ease;
+  transition: background 0.15s;
 }
 .sidebar-brand:hover {
   background: rgba(165,180,252,0.1);
@@ -94,18 +101,24 @@
   margin-top: auto;
 }
 .sidebar-btn {
-  width: 100%;               /* 56px while collapsed — the rail minus its padding */
+  width: 100%;               /* 55px while collapsed — the rail minus its padding */
   height: 56px;
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
+  /* Left-aligned in BOTH states, at exactly the offset that centres the icon in
+     the collapsed button. justify-content cannot be animated: it used to snap
+     to flex-start the instant the rail opened while the padding was still
+     sliding in, so every icon jumped left and drifted back — the jiggle. With a
+     fixed inset the icons do not move at all while the rail grows. */
+  justify-content: flex-start;
+  padding-left: calc((var(--rail-w-min) - 1px - 20px - 26px) / 2);
   border: none;
   border-radius: 12px;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, padding-left 0.22s ease;
+  transition: background 0.15s, color 0.15s;
   position: relative;
 }
 .sidebar-btn:hover {
@@ -142,14 +155,8 @@
 }
 
 /* ── Sidebar, opened ─────────────────────────────────────────────────────── */
-.app--rail-open .sidebar-brand {
-  align-self: flex-start;
-  margin-left: 10px;
-}
-.app--rail-open .sidebar-btn {
-  justify-content: flex-start;
-  padding-left: 15px;
-}
+/* The rail widens around icons that stay exactly where they were: only its
+   width and the labels change, never anything that positions an icon. */
 .app--rail-open .sidebar-label {
   max-width: 170px;
   margin-left: 12px;

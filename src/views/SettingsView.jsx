@@ -30,8 +30,6 @@ const PLANS = [
 export default function SettingsView({ lang, onLang, theme, onTheme, textSize, onTextSize, muted, onMuted, plan, onPlan, adminMode, onAdminMode }) {
   return (
     <div className="section-view settings-view">
-      <p className="section-sub">{u(lang, 'settingsSub')}</p>
-
       {/* Language */}
       <div className="settings-block">
         <h3 className="settings-block-title"><GlobeIcon width={16} height={16} />{u(lang, 'langTitle')}</h3>

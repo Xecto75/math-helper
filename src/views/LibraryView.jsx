@@ -57,16 +57,22 @@ function LessonCard({ lesson, catLabel, onPlay, adminMode, onEditLesson, lang })
   )
 }
 
-// One category = one shelf you drag sideways. Dots below say how many lessons
-// are on it and which one you are looking at; clicking one jumps there.
+// A long soft landing: most of the distance is covered early, then it eases
+// down to nothing. The browser's own 'smooth' is quicker and stops harder,
+// which is what made an arrow press feel like a snap rather than a glide.
+const easeOut = (t) => 1 - Math.pow(1 - t, 4)
+
+// One category = one shelf you drag sideways. The bar underneath says how far
+// along it you are, and can be scrubbed like any scrollbar.
 function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
   const trackRef = useRef(null)
-  const [active, setActive]     = useState(0)
   const [overflows, setOverflow] = useState(false)
   const [dragging, setDragging]  = useState(false)
   // Which sides still have shelf left on them — the edge that can be scrolled
   // to is the edge that fades, so the fade means "there is more this way".
   const [more, setMore] = useState({ left: false, right: false })
+  // Where the scrub bar's thumb sits, as fractions of the whole shelf.
+  const [bar, setBar] = useState({ size: 1, pos: 0 })
   const count = cat.lessons.length
 
   const stepOf = (el) => {
@@ -74,24 +80,22 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
     return card ? card.offsetWidth + 16 : 1              // 16 = the gap
   }
 
-  // Which card is at the left edge, which sides have more, and whether there is
+  // Which sides have more shelf, how far along the bar is, and whether there is
   // anything to drag to at all.
   const sync = useCallback(() => {
     const el = trackRef.current
     if (!el) return
     const max = el.scrollWidth - el.clientWidth
-    // At the far right the shelf stops with the last card flush to the edge,
-    // which leaves the left edge sitting on some middle card — so the last dots
-    // could never light up. Once there is no more shelf, it IS the last one.
-    setActive(max > 0 && el.scrollLeft >= max - 4
-      ? count - 1
-      : Math.round(el.scrollLeft / stepOf(el)))
     setOverflow(max > 4)
     setMore(prev => {
       const next = { left: el.scrollLeft > 4, right: el.scrollLeft < max - 4 }
       return prev.left === next.left && prev.right === next.right ? prev : next
     })
-  }, [count])
+    setBar({
+      size: el.clientWidth / el.scrollWidth,
+      pos:  max > 0 ? (el.scrollLeft / max) : 0,
+    })
+  }, [])
 
   useEffect(() => {
     sync()
@@ -103,13 +107,49 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
     return () => { el.removeEventListener('scroll', sync); ro.disconnect() }
   }, [sync])
 
-  const scrollTo = (i) => {
+  // Our own glide instead of scrollTo({behavior:'smooth'}). The duration grows
+  // with the distance, so a one-card nudge and a jump across the shelf both
+  // feel like the same movement rather than one being a blur.
+  const anim = useRef(0)
+  const stopGlide = () => cancelAnimationFrame(anim.current)
+  useEffect(() => stopGlide, [])
+
+  const glideTo = (target) => {
     const el = trackRef.current
     if (!el) return
-    el.scrollTo({ left: Math.max(0, i) * stepOf(el), behavior: 'smooth' })
+    stopGlide()
+    const max  = el.scrollWidth - el.clientWidth
+    const to   = Math.max(0, Math.min(max, target))
+    const from = el.scrollLeft
+    const dist = to - from
+    if (Math.abs(dist) < 1) return
+    const ms = Math.min(760, 300 + Math.abs(dist) * 0.42)
+    const t0 = performance.now()
+    const tick = (now) => {
+      const t = Math.min(1, (now - t0) / ms)
+      el.scrollLeft = from + dist * easeOut(t)
+      if (t < 1) anim.current = requestAnimationFrame(tick)
+    }
+    anim.current = requestAnimationFrame(tick)
   }
 
-  const nudge = (dir) => scrollTo(Math.max(0, Math.min(count - 1, active + dir)))
+  const glideToCard = (i) => {
+    const el = trackRef.current
+    if (el) glideTo(Math.max(0, Math.min(count - 1, i)) * stepOf(el))
+  }
+
+  // Move one card from where the shelf actually is, then land on a boundary.
+  // Working from a rounded index instead was what made the back arrow look
+  // dead at the far right: the last card sits flush to the edge, so the left
+  // edge is parked partway across a card, and stepping back from the rounded
+  // index only re-aligned it by the leftover — a few dozen pixels, no visible
+  // travel. One card from the true position always moves a full card.
+  const nudge = (dir) => {
+    const el = trackRef.current
+    if (!el) return
+    const step = stepOf(el)
+    glideToCard(Math.round((el.scrollLeft + dir * step) / step))
+  }
 
   // Drag to swipe, for anyone without a touchscreen or a sideways trackpad.
   // A press that never moves more than a few pixels is still a click on the
@@ -126,6 +166,7 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
   const swallowClick = useRef(false)
   const onPointerDown = (e) => {
     if (e.pointerType === 'touch') return              // the browser does this one better
+    stopGlide()                                        // grabbing mid-glide takes over
     swallowClick.current = false
     drag.current = { x: e.clientX, left: trackRef.current.scrollLeft, moved: false, vx: 0, lastX: e.clientX, lastT: performance.now() }
   }
@@ -151,13 +192,13 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
     swallowClick.current = true
     const el = trackRef.current
     if (el) {
-      // Land on a card rather than halfway across one. A quick flick carries to
-      // the next card even if it barely moved; a slow drag just rounds to
-      // whichever card it is closest to.
-      const step = stepOf(el)
-      const here = el.scrollLeft / step
-      const flick = Math.abs(d.vx) > 0.45 ? -Math.sign(d.vx) : 0
-      scrollTo(Math.max(0, Math.min(count - 1, flick ? (flick > 0 ? Math.ceil(here) : Math.floor(here)) : Math.round(here))))
+      // Let the flick carry before deciding where it lands: the shelf keeps
+      // going roughly as far as the throw was fast, then settles on whichever
+      // card that puts it nearest. Rounding at the exact moment of release
+      // ignored the throw entirely, which is why it stopped dead.
+      const step  = stepOf(el)
+      const carry = -d.vx * 190                        // px of glide per px/ms of throw
+      glideToCard(Math.round((el.scrollLeft + carry) / step))
     }
     return true
   }
@@ -198,30 +239,72 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
 
         {overflows && (
           <>
+            {/* Enabled by whether the shelf can still travel that way, not by a
+                card index. At the far right the left edge sits partway across a
+                card, and an index-based test called that "the last one" and
+                greyed the back arrow out with shelf still behind it. */}
             <button
               className="lib-arrow lib-arrow--prev" onClick={() => nudge(-1)}
-              disabled={active === 0} aria-label="Previous"
+              disabled={!more.left} aria-label="Previous"
             ><ChevronIcon /></button>
             <button
               className="lib-arrow lib-arrow--next" onClick={() => nudge(1)}
-              disabled={active >= count - 1} aria-label="Next"
+              disabled={!more.right} aria-label="Next"
             ><ChevronIcon /></button>
           </>
         )}
       </div>
 
-      <div className="lib-dots">
-        {cat.lessons.map((lesson, i) => (
-          <button
-            key={lesson.id}
-            className={`lib-dot${i === active ? ' lib-dot--on' : ''}`}
-            style={i === active ? { background: cat.color } : undefined}
-            onClick={() => scrollTo(i)}
-            aria-label={lesson.title}
-          />
-        ))}
-      </div>
+      {overflows && (
+        <ScrubBar bar={bar} color={cat.color} trackRef={trackRef} onGrab={stopGlide} />
+      )}
     </section>
+  )
+}
+
+// How far along the shelf you are, and a handle to drag it by. A row of dots
+// could only ever say "card 3 of 6"; this says how much of the shelf is on
+// screen and moves continuously with it, which is what a shelf that scrolls
+// freely actually does.
+function ScrubBar({ bar, color, trackRef, onGrab }) {
+  const railRef = useRef(null)
+  const [scrubbing, setScrubbing] = useState(false)
+
+  const scrubTo = (clientX) => {
+    const el = trackRef.current
+    const rail = railRef.current
+    if (!el || !rail) return
+    const r = rail.getBoundingClientRect()
+    const thumbW = r.width * bar.size
+    // Grab the middle of the thumb, so the shelf does not jump on first touch.
+    const t = (clientX - r.left - thumbW / 2) / Math.max(1, r.width - thumbW)
+    el.scrollLeft = Math.max(0, Math.min(1, t)) * (el.scrollWidth - el.clientWidth)
+  }
+
+  return (
+    <div
+      className={`lib-scrub${scrubbing ? ' is-scrubbing' : ''}`}
+      onPointerDown={e => {
+        onGrab?.()
+        setScrubbing(true)
+        e.currentTarget.setPointerCapture(e.pointerId)
+        scrubTo(e.clientX)
+      }}
+      onPointerMove={e => { if (scrubbing) scrubTo(e.clientX) }}
+      onPointerUp={e => { setScrubbing(false); e.currentTarget.releasePointerCapture(e.pointerId) }}
+      onPointerCancel={() => setScrubbing(false)}
+    >
+      <div className="lib-scrub-rail" ref={railRef}>
+        <div
+          className="lib-scrub-thumb"
+          style={{
+            width: `${Math.max(12, bar.size * 100)}%`,
+            left:  `${bar.pos * (100 - Math.max(12, bar.size * 100))}%`,
+            background: color,
+          }}
+        />
+      </div>
+    </div>
   )
 }
 

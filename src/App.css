@@ -4480,29 +4480,59 @@
 
 .lib-shelf-body { position: relative; }
 
+/* No CSS scroll-snap here, deliberately. It fought the drag: the browser
+   re-snapped on every frame while the pointer was writing scrollLeft, then let
+   go with a hard jump on release — which is what read as jerky. The shelf runs
+   free and the component glides it onto a card itself when the drag ends. */
 .lib-track {
   display: flex;
   gap: 16px;
   overflow-x: auto;
-  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;   /* a shelf that ends does not scroll the panel */
   /* room for the cards' lift on hover, which would otherwise be clipped */
   padding: 6px 2px 10px;
   scrollbar-width: none;
+  cursor: grab;
 }
 .lib-track::-webkit-scrollbar { display: none; }
+.lib-track.is-dragging { cursor: grabbing; }
+/* While the shelf is moving, cards must not also be reacting to the pointer
+   sliding across them — the lift firing card after card is half the jerk. */
+.lib-track.is-dragging .lib-card { transition: none; }
+.lib-track.is-dragging .lib-card:hover { transform: none; box-shadow: 0 4px 18px rgba(0,0,0,0.32); }
+.lib-track.is-dragging .lib-card::before { background: rgba(255,255,255,0) !important; }
 .lib-card-wrap {
   position: relative;
   flex: 0 0 228px;
-  scroll-snap-align: start;
 }
 
+/* ── Edges ────────────────────────────────────────────────────────────────── */
+/* The shelf should look like it continues past the panel rather than stopping
+   at a hard cut. Only the side that has more lessons on it fades, and the fade
+   itself eases in and out as you reach either end. */
+.lib-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 64px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.28s ease;
+  z-index: 1;
+}
+.lib-fade.is-on { opacity: 1; }
+.lib-fade--l { left: 0;  background: linear-gradient(to right, var(--bg) 12%, transparent); }
+.lib-fade--r { right: 0; background: linear-gradient(to left,  var(--bg) 12%, transparent); }
+
 /* ── Arrows (mouse users — a shelf is swiped on touch) ────────────────────── */
+/* Out in the panel's own gutter, clear of the cards. -28px is as far as they go:
+   .section-view has 28px of side padding and .side-panel-body clips anything
+   past it, so one more pixel and they would be shaved. */
 .lib-arrow {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4513,14 +4543,15 @@
   color: var(--text-h);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
-  z-index: 2;
+  transform: translateY(-50%) scale(0.88);
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s, border-color 0.15s;
+  z-index: 3;
 }
-.lib-shelf-body:hover .lib-arrow { opacity: 1; }
+.lib-shelf-body:hover .lib-arrow { opacity: 1; transform: translateY(-50%) scale(1); }
 .lib-arrow:hover { background: var(--bg-3); border-color: var(--accent-2); }
 .lib-arrow:disabled { opacity: 0 !important; pointer-events: none; }
-.lib-arrow--prev { left: -14px; }
-.lib-arrow--next { right: -14px; }
+.lib-arrow--prev { left: -28px; }
+.lib-arrow--next { right: -28px; }
 .lib-arrow--prev svg { transform: rotate(180deg); }
 
 /* ── Dots — how many lessons, and where you are ───────────────────────────── */

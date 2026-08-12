@@ -63,22 +63,34 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
   const trackRef = useRef(null)
   const [active, setActive]     = useState(0)
   const [overflows, setOverflow] = useState(false)
+  const [dragging, setDragging]  = useState(false)
+  // Which sides still have shelf left on them — the edge that can be scrolled
+  // to is the edge that fades, so the fade means "there is more this way".
+  const [more, setMore] = useState({ left: false, right: false })
   const count = cat.lessons.length
 
-  // Which card is at the left edge, and whether there is anything to drag to.
+  const stepOf = (el) => {
+    const card = el.querySelector('.lib-card-wrap')
+    return card ? card.offsetWidth + 16 : 1              // 16 = the gap
+  }
+
+  // Which card is at the left edge, which sides have more, and whether there is
+  // anything to drag to at all.
   const sync = useCallback(() => {
     const el = trackRef.current
     if (!el) return
-    const card = el.querySelector('.lib-card-wrap')
-    const step = card ? card.offsetWidth + 16 : 1        // 16 = the gap
-    const max  = el.scrollWidth - el.clientWidth
+    const max = el.scrollWidth - el.clientWidth
     // At the far right the shelf stops with the last card flush to the edge,
     // which leaves the left edge sitting on some middle card — so the last dots
     // could never light up. Once there is no more shelf, it IS the last one.
-    setActive(max > 0 && el.scrollLeft >= max - 2
+    setActive(max > 0 && el.scrollLeft >= max - 4
       ? count - 1
-      : Math.round(el.scrollLeft / step))
+      : Math.round(el.scrollLeft / stepOf(el)))
     setOverflow(max > 4)
+    setMore(prev => {
+      const next = { left: el.scrollLeft > 4, right: el.scrollLeft < max - 4 }
+      return prev.left === next.left && prev.right === next.right ? prev : next
+    })
   }, [count])
 
   useEffect(() => {
@@ -93,32 +105,61 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
 
   const scrollTo = (i) => {
     const el = trackRef.current
-    const card = el?.querySelector('.lib-card-wrap')
-    if (!el || !card) return
-    el.scrollTo({ left: i * (card.offsetWidth + 16), behavior: 'smooth' })
+    if (!el) return
+    el.scrollTo({ left: Math.max(0, i) * stepOf(el), behavior: 'smooth' })
   }
 
-  const nudge = (dir) => scrollTo(Math.max(0, Math.min(cat.lessons.length - 1, active + dir)))
+  const nudge = (dir) => scrollTo(Math.max(0, Math.min(count - 1, active + dir)))
 
   // Drag to swipe, for anyone without a touchscreen or a sideways trackpad.
   // A press that never moves more than a few pixels is still a click on the
   // card underneath — only a real drag suppresses it.
+  //
+  // There is no CSS scroll-snap here on purpose. It used to fight this: the
+  // browser re-snapped on every frame while the drag was writing scrollLeft,
+  // and let go with a hard jump at the end. Dragging is free-running now, and
+  // the settle below is one smooth glide we control.
   const drag = useRef(null)
+  // Set when a drag ends, read by the click that the browser fires straight
+  // after it, so releasing on top of a card does not also open that lesson.
+  // Cleared on the next press as well, in case the release landed on nothing.
+  const swallowClick = useRef(false)
   const onPointerDown = (e) => {
     if (e.pointerType === 'touch') return              // the browser does this one better
-    drag.current = { x: e.clientX, left: trackRef.current.scrollLeft, moved: false }
+    swallowClick.current = false
+    drag.current = { x: e.clientX, left: trackRef.current.scrollLeft, moved: false, vx: 0, lastX: e.clientX, lastT: performance.now() }
   }
   const onPointerMove = (e) => {
     const d = drag.current
     if (!d) return
     const dx = e.clientX - d.x
-    if (Math.abs(dx) > 4) d.moved = true
-    if (d.moved) trackRef.current.scrollLeft = d.left - dx
+    if (!d.moved && Math.abs(dx) > 4) { d.moved = true; setDragging(true) }
+    if (!d.moved) return
+    // Speed of the last hop, for deciding where a flick was aimed.
+    const now = performance.now()
+    const dt  = now - d.lastT
+    if (dt > 0) d.vx = (e.clientX - d.lastX) / dt
+    d.lastX = e.clientX
+    d.lastT = now
+    trackRef.current.scrollLeft = d.left - dx
   }
   const endDrag = () => {
-    const moved = drag.current?.moved
+    const d = drag.current
     drag.current = null
-    return moved
+    if (!d?.moved) return false
+    setDragging(false)
+    swallowClick.current = true
+    const el = trackRef.current
+    if (el) {
+      // Land on a card rather than halfway across one. A quick flick carries to
+      // the next card even if it barely moved; a slow drag just rounds to
+      // whichever card it is closest to.
+      const step = stepOf(el)
+      const here = el.scrollLeft / step
+      const flick = Math.abs(d.vx) > 0.45 ? -Math.sign(d.vx) : 0
+      scrollTo(Math.max(0, Math.min(count - 1, flick ? (flick > 0 ? Math.ceil(here) : Math.floor(here)) : Math.round(here))))
+    }
+    return true
   }
 
   return (
@@ -132,13 +173,15 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
 
       <div className="lib-shelf-body">
         <div
-          className="lib-track"
+          className={`lib-track${dragging ? ' is-dragging' : ''}`}
           ref={trackRef}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerLeave={endDrag}
-          onClickCapture={e => { if (drag.current?.moved) { e.preventDefault(); e.stopPropagation() } }}
+          onClickCapture={e => {
+            if (swallowClick.current) { swallowClick.current = false; e.preventDefault(); e.stopPropagation() }
+          }}
         >
           {cat.lessons.map(lesson => (
             <LessonCard
@@ -148,6 +191,11 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
           ))}
         </div>
 
+        {/* The shelf runs off the edge rather than stopping at it — the side
+            that fades is the side with more lessons on it. */}
+        <span className={`lib-fade lib-fade--l${more.left  ? ' is-on' : ''}`} aria-hidden="true" />
+        <span className={`lib-fade lib-fade--r${more.right ? ' is-on' : ''}`} aria-hidden="true" />
+
         {overflows && (
           <>
             <button
@@ -156,7 +204,7 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
             ><ChevronIcon /></button>
             <button
               className="lib-arrow lib-arrow--next" onClick={() => nudge(1)}
-              disabled={active >= cat.lessons.length - 1} aria-label="Next"
+              disabled={active >= count - 1} aria-label="Next"
             ><ChevronIcon /></button>
           </>
         )}

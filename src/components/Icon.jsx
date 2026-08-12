@@ -16,6 +16,31 @@ export function PencilIcon(props) {
   )
 }
 
+export function SearchIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.5-3.5" />
+    </svg>
+  )
+}
+
+export function CloseIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  )
+}
+
+export function ChevronIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <polyline points="9 5 16 12 9 19" />
+    </svg>
+  )
+}
+
 export function CheckIcon(props) {
   return (
     <svg {...base} {...props}>

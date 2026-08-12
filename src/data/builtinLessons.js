@@ -1,7 +1,43 @@
 let _u = 0
 const u = () => `bl${++_u}`
 
+// A lesson that exists in the list but has no pages yet. It shows in the Library
+// as "coming soon" and cannot be opened — the shelf is the plan for what the
+// secondary curriculum needs, and each one gets built by hand later. The
+// difficulty is what the card shows in its corner; the comment beside it is the
+// Quebec secondary year it belongs to, for whoever fills it in.
+const soon = (id, emoji, title, desc, difficulty, color, bg) =>
+  ({ id, emoji, title, desc, difficulty, color, bg, comingSoon: true, pages: [] })
+
+// Two card looks per category so a shelf does not read as one solid block.
+const BG = {
+  amber:  ['linear-gradient(135deg, #451a03 0%, #b45309 100%)', 'linear-gradient(135deg, #422006 0%, #a16207 100%)'],
+  blue:   ['linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)', 'linear-gradient(135deg, #172554 0%, #1e40af 100%)'],
+  red:    ['linear-gradient(135deg, #450a0a 0%, #991b1b 100%)', 'linear-gradient(135deg, #4c0519 0%, #9f1239 100%)'],
+  green:  ['linear-gradient(135deg, #022c22 0%, #14532d 100%)', 'linear-gradient(135deg, #052e16 0%, #15803d 100%)'],
+  sky:    ['linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%)', 'linear-gradient(135deg, #082f49 0%, #0284c7 100%)'],
+  purple: ['linear-gradient(135deg, #3b0764 0%, #6d28d9 100%)', 'linear-gradient(135deg, #2e1065 0%, #7c3aed 100%)'],
+}
+
 export const LESSON_GRADES = [
+  /* ── Arithmetic ───────────────────────────────────────────────────────────── */
+  {
+    id: 'arithmetic',
+    label: 'Numbers & Arithmetic',
+    sublabel: 'Integers, fractions, ratios & percent',
+    color: '#fbbf24',
+    lessons: [
+      soon('integers-operations', '➕', 'Integers & Order of Operations',
+        'Negative numbers, and which operation goes first', 'beginner', '#fbbf24', BG.amber[0]),   // sec 1
+      soon('fractions-decimals', '½', 'Fractions & Decimals',
+        'Add, compare and convert between the two forms', 'beginner', '#f59e0b', BG.amber[1]),     // sec 1-2
+      soon('ratios-proportions', '🔗', 'Ratios, Rates & Proportions',
+        'Equivalent ratios, unit rates, and solving a proportion', 'beginner', '#fbbf24', BG.amber[0]), // sec 2
+      soon('percentages', '％', 'Percentages',
+        'Percent of a number, increase, decrease and discounts', 'beginner', '#f59e0b', BG.amber[1]),   // sec 2
+    ],
+  },
+
   /* ── Algebra ──────────────────────────────────────────────────────────────── */
   {
     id: 'algebra',
@@ -10,7 +46,7 @@ export const LESSON_GRADES = [
     color: '#60a5fa',
     lessons: [
       {
-        id: 'linear-equations',
+        id: 'linear-equations', difficulty: 'beginner',
         emoji: '⚖️', title: 'Solving Linear Equations',
         color: '#60a5fa', bg: 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)',
         desc: 'Isolate x step by step — send terms across, divide both sides',
@@ -48,7 +84,7 @@ export const LESSON_GRADES = [
         ],
       },
       {
-        id: 'quadratic-equations',
+        id: 'quadratic-equations', difficulty: 'advanced',
         emoji: '🔬', title: 'Quadratic Equations',
         color: '#a78bfa', bg: 'linear-gradient(135deg, #3b0764 0%, #6d28d9 100%)',
         desc: 'Discriminant Δ, real roots, factored form — ax² + bx + c = 0',
@@ -93,7 +129,7 @@ export const LESSON_GRADES = [
         ],
       },
       {
-        id: 'factoring',
+        id: 'factoring', difficulty: 'intermediate',
         emoji: '🔣', title: 'Expanding & Factoring',
         color: '#e879f9', bg: 'linear-gradient(135deg, #3b0764 0%, #7e22ce 100%)',
         desc: 'Distributivity, notable identities, and factoring expressions',
@@ -119,7 +155,7 @@ export const LESSON_GRADES = [
         ],
       },
       {
-        id: 'systems-equations',
+        id: 'systems-equations', difficulty: 'intermediate',
         emoji: '🔀', title: 'Systems of Equations',
         color: '#f472b6', bg: 'linear-gradient(135deg, #831843 0%, #9d174d 100%)',
         desc: 'Solve 2×2 linear systems — substitution and elimination',
@@ -136,6 +172,10 @@ export const LESSON_GRADES = [
           },
         ],
       },
+      soon('algebraic-expressions', '🔤', 'Algebraic Expressions',
+        'Building expressions, substituting a value, collecting like terms', 'beginner', '#60a5fa', BG.blue[1]),  // sec 1-2
+      soon('inequalities', '≤', 'Inequalities',
+        'Solving them, and why dividing by a negative flips the sign', 'intermediate', '#3b82f6', BG.blue[0]),    // sec 3-4
     ],
   },
 
@@ -147,7 +187,7 @@ export const LESSON_GRADES = [
     color: '#f87171',
     lessons: [
       {
-        id: 'trig-ratios',
+        id: 'trig-ratios', difficulty: 'intermediate',
         emoji: '📐', title: 'Trig Ratios — SOH CAH TOA',
         color: '#f87171', bg: 'linear-gradient(135deg, #450a0a 0%, #991b1b 100%)',
         desc: 'sin, cos, tan in a right triangle with labeled sides',
@@ -181,7 +221,7 @@ export const LESSON_GRADES = [
         ],
       },
       {
-        id: 'trig-graphs',
+        id: 'trig-graphs', difficulty: 'advanced',
         emoji: '〰️', title: 'Graphs of sin, cos, tan',
         color: '#fb923c', bg: 'linear-gradient(135deg, #7c2d12 0%, #c2410c 100%)',
         desc: 'Plot and compare the three trig functions on the same axes',
@@ -220,7 +260,7 @@ export const LESSON_GRADES = [
         ],
       },
       {
-        id: 'unit-circle',
+        id: 'unit-circle', difficulty: 'advanced',
         emoji: '🔵', title: 'The Unit Circle',
         color: '#60a5fa', bg: 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)',
         desc: 'cos θ and sin θ as coordinates on a circle of radius 1',
@@ -240,6 +280,10 @@ export const LESSON_GRADES = [
           },
         ],
       },
+      soon('metric-relations', '⊿', 'Metric Relations in Right Triangles',
+        'The altitude to the hypotenuse, and the relations it creates', 'intermediate', '#fb7185', BG.red[1]),  // sec 3
+      soon('sine-cosine-laws', '∡', 'Sine & Cosine Laws',
+        'Solving any triangle, not just the right-angled ones', 'advanced', '#f87171', BG.red[0]),              // sec 4
     ],
   },
 
@@ -251,7 +295,7 @@ export const LESSON_GRADES = [
     color: '#34d399',
     lessons: [
       {
-        id: 'linear-functions',
+        id: 'linear-functions', difficulty: 'beginner',
         emoji: '📈', title: 'Linear Functions',
         color: '#34d399', bg: 'linear-gradient(135deg, #022c22 0%, #14532d 100%)',
         desc: 'f(x) = ax + b — slope, y-intercept, and intersections',
@@ -277,7 +321,7 @@ export const LESSON_GRADES = [
         ],
       },
       {
-        id: 'quadratic-graphs',
+        id: 'quadratic-graphs', difficulty: 'intermediate',
         emoji: '⛰️', title: 'Quadratic Functions',
         color: '#fbbf24', bg: 'linear-gradient(135deg, #451a03 0%, #92400e 100%)',
         desc: 'Parabolas — vertex, axis of symmetry, roots',
@@ -304,7 +348,7 @@ export const LESSON_GRADES = [
         ],
       },
       {
-        id: 'derivatives-intro',
+        id: 'derivatives-intro', difficulty: 'advanced',
         emoji: '📉', title: 'Introduction to Derivatives',
         color: '#c084fc', bg: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
         desc: 'Slope at a point, tangent line, and the derivative function',
@@ -337,6 +381,10 @@ export const LESSON_GRADES = [
           },
         ],
       },
+      soon('function-basics', '🎯', 'What a Function Is',
+        'Notation, domain, range, and reading a graph', 'beginner', '#34d399', BG.green[1]),        // sec 3
+      soon('exponential-functions', '🚀', 'Exponential Functions',
+        'Growth and decay, and how they beat any polynomial', 'advanced', '#10b981', BG.green[0]),  // sec 4-5
     ],
   },
 
@@ -348,7 +396,7 @@ export const LESSON_GRADES = [
     color: '#38bdf8',
     lessons: [
       {
-        id: 'polygons',
+        id: 'polygons', difficulty: 'beginner',
         emoji: '🔷', title: 'Polygons & Angles',
         color: '#38bdf8', bg: 'linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%)',
         desc: 'Interior angles, perimeter, and properties of regular polygons',
@@ -373,7 +421,7 @@ export const LESSON_GRADES = [
         ],
       },
       {
-        id: 'pythagoras',
+        id: 'pythagoras', difficulty: 'beginner',
         emoji: '📐', title: 'Pythagorean Theorem',
         color: '#fbbf24', bg: 'linear-gradient(135deg, #451a03 0%, #92400e 100%)',
         desc: 'a² + b² = c² — proof and applications in right triangles',
@@ -401,6 +449,28 @@ export const LESSON_GRADES = [
           },
         ],
       },
+      soon('area-volume', '📦', 'Area, Perimeter & Volume',
+        'Plane figures, then prisms, cylinders and pyramids', 'beginner', '#38bdf8', BG.sky[1]),        // sec 1-2
+      soon('similar-figures', '🔍', 'Similar & Congruent Figures',
+        'Scale factor, and what it does to lengths, areas and volumes', 'intermediate', '#0ea5e9', BG.sky[0]), // sec 2-3
+      soon('analytic-geometry', '🧭', 'Analytic Geometry',
+        'Distance, midpoint and slope between two points', 'intermediate', '#38bdf8', BG.sky[1]),       // sec 4
+    ],
+  },
+
+  /* ── Statistics & Probability ─────────────────────────────────────────────── */
+  {
+    id: 'stats',
+    label: 'Statistics & Probability',
+    sublabel: 'Data, chance & correlation',
+    color: '#a78bfa',
+    lessons: [
+      soon('stats-data', '📊', 'Data, Graphs & Averages',
+        'Mean, median, mode, and choosing the right graph', 'beginner', '#a78bfa', BG.purple[0]),        // sec 1-2
+      soon('probability-basics', '🎲', 'Probability Basics',
+        'Counting outcomes, and independent vs dependent events', 'beginner', '#8b5cf6', BG.purple[1]),  // sec 2-3
+      soon('scatter-correlation', '✳️', 'Scatter Plots & Correlation',
+        'Reading a cloud of points and fitting a line through it', 'intermediate', '#a78bfa', BG.purple[0]), // sec 3-4
     ],
   },
 ]

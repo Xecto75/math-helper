@@ -12,7 +12,7 @@
  * regardless of which function(s) use it.
  *
  * Used by both `eq-replace-variable` (demoScripts.js) and rich text
- * (RichText.jsx: text boxes, comments, narration) — previously these two
+ * (RichText.jsx: text boxes, comments) — previously these two
  * consumers each had their own copy of the geometry-only lookup, which is
  * exactly the kind of drift this module exists to prevent.
  */

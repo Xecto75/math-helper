@@ -888,14 +888,6 @@ export const CATEGORIES = [
           { id: 'color', label: 'New Color (optional)', type: 'color-name', default: '', placeholder: 'leave blank = auto from eq' },
         ],
       },
-      {
-        id: 'narrate', label: 'Narrate', status: 'ready',
-        useAll: true,
-        description: 'Set the narration text and speak it aloud — the only function that controls narration. Supports the same $LaTeX$/{{ }}/[id]token syntax as Create Text Box.',
-        inputs: [
-          { id: 'text', label: 'Text', type: 'text', default: 'Here we can see the two functions intersect at two points.', placeholder: 'What to say…' },
-        ],
-      },
     ],
   },
 

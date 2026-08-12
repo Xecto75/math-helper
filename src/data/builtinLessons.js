@@ -9,14 +9,14 @@ const u = () => `bl${++_u}`
 const soon = (id, emoji, title, desc, difficulty, color, bg) =>
   ({ id, emoji, title, desc, difficulty, color, bg, comingSoon: true, pages: [] })
 
-// Two card looks per category so a shelf does not read as one solid block.
+// One look per category — every card on a shelf is the same.
 const BG = {
-  amber:  ['linear-gradient(135deg, #451a03 0%, #b45309 100%)', 'linear-gradient(135deg, #422006 0%, #a16207 100%)'],
-  blue:   ['linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)', 'linear-gradient(135deg, #172554 0%, #1e40af 100%)'],
-  red:    ['linear-gradient(135deg, #450a0a 0%, #991b1b 100%)', 'linear-gradient(135deg, #4c0519 0%, #9f1239 100%)'],
-  green:  ['linear-gradient(135deg, #022c22 0%, #14532d 100%)', 'linear-gradient(135deg, #052e16 0%, #15803d 100%)'],
-  sky:    ['linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%)', 'linear-gradient(135deg, #082f49 0%, #0284c7 100%)'],
-  purple: ['linear-gradient(135deg, #3b0764 0%, #6d28d9 100%)', 'linear-gradient(135deg, #2e1065 0%, #7c3aed 100%)'],
+  amber:  'linear-gradient(135deg, #451a03 0%, #b45309 100%)',
+  blue:   'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)',
+  red:    'linear-gradient(135deg, #450a0a 0%, #991b1b 100%)',
+  green:  'linear-gradient(135deg, #022c22 0%, #14532d 100%)',
+  sky:    'linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%)',
+  purple: 'linear-gradient(135deg, #3b0764 0%, #6d28d9 100%)',
 }
 
 export const LESSON_GRADES = [
@@ -28,13 +28,13 @@ export const LESSON_GRADES = [
     color: '#fbbf24',
     lessons: [
       soon('integers-operations', '➕', 'Integers & Order of Operations',
-        'Negative numbers, and which operation goes first', 'beginner', '#fbbf24', BG.amber[0]),   // sec 1
+        'Negative numbers, and which operation goes first', 'beginner', '#fbbf24', BG.amber),   // sec 1
       soon('fractions-decimals', '½', 'Fractions & Decimals',
-        'Add, compare and convert between the two forms', 'beginner', '#f59e0b', BG.amber[1]),     // sec 1-2
+        'Add, compare and convert between the two forms', 'beginner', '#fbbf24', BG.amber),     // sec 1-2
       soon('ratios-proportions', '🔗', 'Ratios, Rates & Proportions',
-        'Equivalent ratios, unit rates, and solving a proportion', 'beginner', '#fbbf24', BG.amber[0]), // sec 2
+        'Equivalent ratios, unit rates, and solving a proportion', 'beginner', '#fbbf24', BG.amber), // sec 2
       soon('percentages', '％', 'Percentages',
-        'Percent of a number, increase, decrease and discounts', 'beginner', '#f59e0b', BG.amber[1]),   // sec 2
+        'Percent of a number, increase, decrease and discounts', 'beginner', '#fbbf24', BG.amber),   // sec 2
     ],
   },
 
@@ -55,9 +55,7 @@ export const LESSON_GRADES = [
             id: u(), title: 'Solve: 3x + 5 = 14', layout: 'single-equation',
             steps: [
               { id: u(), funcId: 'eq-create',          inputs: { eq: '3x + 5 = 14' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'Send +5 to the other side as −5.' } },
               { id: u(), funcId: 'eq-send-other-side', inputs: { term: '+5' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'Divide both sides by 3.' } },
               { id: u(), funcId: 'eq-divide',           inputs: { divisor: '3' } },
             ],
           },
@@ -65,7 +63,6 @@ export const LESSON_GRADES = [
             id: u(), title: 'Solve: 2x − 7 = x + 4', layout: 'single-equation',
             steps: [
               { id: u(), funcId: 'eq-create',          inputs: { eq: '2x - 7 = x + 4' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'Send −7 across, then send x across.' } },
               { id: u(), funcId: 'eq-send-other-side', inputs: { term: '-7' } },
               { id: u(), funcId: 'eq-send-other-side', inputs: { term: 'x' } },
               { id: u(), funcId: 'eq-combine',         inputs: {} },
@@ -75,7 +72,6 @@ export const LESSON_GRADES = [
             id: u(), title: 'Solve: 4(x + 2) = 24', layout: 'single-equation',
             steps: [
               { id: u(), funcId: 'eq-create',          inputs: { eq: '4(x + 2) = 24' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'Distribute 4 into the bracket.' } },
               { id: u(), funcId: 'eq-distribute',      inputs: { eq: '4(x + 2)' } },
               { id: u(), funcId: 'eq-send-other-side', inputs: { term: '+8' } },
               { id: u(), funcId: 'eq-divide',          inputs: { divisor: '4' } },
@@ -138,7 +134,6 @@ export const LESSON_GRADES = [
             id: u(), title: 'Expand: (x + 3)(x − 2)', layout: 'single-equation',
             steps: [
               { id: u(), funcId: 'eq-create',    inputs: { eq: '(x + 3)(x - 2)' } },
-              { id: u(), funcId: 'narrate',       inputs: { text: 'Apply FOIL: First, Outside, Inside, Last.' } },
               { id: u(), funcId: 'eq-distribute', inputs: { eq: '(x + 3)(x - 2)' } },
               { id: u(), funcId: 'eq-combine',    inputs: {} },
             ],
@@ -147,7 +142,6 @@ export const LESSON_GRADES = [
             id: u(), title: 'Notable identity: (a + b)²', layout: 'single-equation',
             steps: [
               { id: u(), funcId: 'eq-create',    inputs: { eq: '(x + 5)^2' } },
-              { id: u(), funcId: 'narrate',       inputs: { text: '(a + b)² = a² + 2ab + b².' } },
               { id: u(), funcId: 'eq-distribute', inputs: { eq: '(x + 5)^2' } },
               { id: u(), funcId: 'eq-combine',    inputs: {} },
             ],
@@ -166,16 +160,15 @@ export const LESSON_GRADES = [
               { id: u(), funcId: 'eq-create',              inputs: { eq: 'x + y = 10' } },
               { id: u(), funcId: 'graph-plot-function',    inputs: { expr: '10 - x', id: 'f1' } },
               { id: u(), funcId: 'graph-plot-function',    inputs: { expr: 'x - 4',  id: 'f2' } },
-              { id: u(), funcId: 'narrate',                inputs: { text: 'The intersection is the solution.' } },
               { id: u(), funcId: 'graph-find-intersections', inputs: { f1: 'f1', f2: 'f2' } },
             ],
           },
         ],
       },
       soon('algebraic-expressions', '🔤', 'Algebraic Expressions',
-        'Building expressions, substituting a value, collecting like terms', 'beginner', '#60a5fa', BG.blue[1]),  // sec 1-2
+        'Building expressions, substituting a value, collecting like terms', 'beginner', '#60a5fa', BG.blue),  // sec 1-2
       soon('inequalities', '≤', 'Inequalities',
-        'Solving them, and why dividing by a negative flips the sign', 'intermediate', '#3b82f6', BG.blue[0]),    // sec 3-4
+        'Solving them, and why dividing by a negative flips the sign', 'intermediate', '#60a5fa', BG.blue),    // sec 3-4
     ],
   },
 
@@ -196,7 +189,6 @@ export const LESSON_GRADES = [
             id: u(), title: 'Right triangle — labeling sides', layout: 'single-geo',
             steps: [
               { id: u(), funcId: 'geo-create-polygon', inputs: { shapeId: 'tri', 'shape-type': 'right-triangle', values: '5,3,4', fillColor: '#1e3a5f', borderColor: '#60a5fa' } },
-              { id: u(), funcId: 'narrate',            inputs: { text: 'In a right triangle: opposite, adjacent, hypotenuse.' } },
               { id: u(), funcId: 'geo-label-sides',    inputs: { shapeId: 'tri', labels: 'adj=3,opp=4,hyp=5' } },
               { id: u(), funcId: 'geo-show-angles',    inputs: { shapeId: 'tri', color: '#fbbf24' } },
             ],
@@ -207,14 +199,12 @@ export const LESSON_GRADES = [
               { id: u(), funcId: 'geo-create-polygon', inputs: { shapeId: 'tri', 'shape-type': 'right-triangle', values: '5,3,4', fillColor: '#1e3a5f', borderColor: '#60a5fa' } },
               { id: u(), funcId: 'geo-label-sides',    inputs: { shapeId: 'tri', labels: 'adj=3,opp=4,hyp=5' } },
               { id: u(), funcId: 'eq-create',          inputs: { eq: '\\sin\\theta = \\frac{\\text{opp}}{\\text{hyp}} = \\frac{4}{5} = 0.8' } },
-              { id: u(), funcId: 'narrate',            inputs: { text: 'sin θ = opposite ÷ hypotenuse = 4/5 = 0.8.' } },
             ],
           },
           {
             id: u(), title: 'Finding the angle — inverse trig', layout: 'single-equation',
             steps: [
               { id: u(), funcId: 'eq-create',             inputs: { eq: '\\sin\\theta = 0.8' } },
-              { id: u(), funcId: 'narrate',               inputs: { text: 'Apply sin⁻¹ to both sides.' } },
               { id: u(), funcId: 'eq-apply-inverse-trig', inputs: { trig: 'sin' } },
             ],
           },
@@ -232,7 +222,6 @@ export const LESSON_GRADES = [
               { id: u(), funcId: 'graph-set-viewport',  inputs: { xMin: '-7', xMax: '7', yMin: '-2', yMax: '2' } },
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'sin(x)', id: 'sinf' } },
               { id: u(), funcId: 'graph-name-func',     inputs: { funcId: 'sinf', label: 'sin(x)', x0: '1.5', y0: '1.2' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'Period = 2π, amplitude = 1. Zeros at multiples of π.' } },
               { id: u(), funcId: 'graph-mark-roots',    inputs: { funcId: 'sinf' } },
             ],
           },
@@ -244,7 +233,6 @@ export const LESSON_GRADES = [
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'cos(x)', id: 'cosf' } },
               { id: u(), funcId: 'graph-name-func',     inputs: { funcId: 'sinf', label: 'sin(x)', x0: '1.5', y0: '1.2' } },
               { id: u(), funcId: 'graph-name-func',     inputs: { funcId: 'cosf', label: 'cos(x)', x0: '0.3', y0: '1.2' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'cos(x) is sin(x) shifted left by π/2.' } },
             ],
           },
           {
@@ -254,7 +242,6 @@ export const LESSON_GRADES = [
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'sin(x)',   id: 'base' } },
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: '2*sin(x)', id: 'amp2' } },
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'sin(2*x)', id: 'per2' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: '2·sin(x) doubles the amplitude. sin(2x) halves the period.' } },
             ],
           },
         ],
@@ -271,7 +258,6 @@ export const LESSON_GRADES = [
               { id: u(), funcId: 'graph-set-viewport',  inputs: { xMin: '-1.8', xMax: '1.8', yMin: '-1.8', yMax: '1.8' } },
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'sqrt(1-x^2)',  id: 'top' } },
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: '-sqrt(1-x^2)', id: 'bot' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'Unit circle: x = cos θ, y = sin θ at angle θ.' } },
               { id: u(), funcId: 'graph-add-point',     inputs: { x: '1',  y: '0',  id: 'p0',   label: '0°' } },
               { id: u(), funcId: 'graph-add-point',     inputs: { x: '0',  y: '1',  id: 'p90',  label: '90°' } },
               { id: u(), funcId: 'graph-add-point',     inputs: { x: '-1', y: '0',  id: 'p180', label: '180°' } },
@@ -281,9 +267,9 @@ export const LESSON_GRADES = [
         ],
       },
       soon('metric-relations', '⊿', 'Metric Relations in Right Triangles',
-        'The altitude to the hypotenuse, and the relations it creates', 'intermediate', '#fb7185', BG.red[1]),  // sec 3
+        'The altitude to the hypotenuse, and the relations it creates', 'intermediate', '#f87171', BG.red),  // sec 3
       soon('sine-cosine-laws', '∡', 'Sine & Cosine Laws',
-        'Solving any triangle, not just the right-angled ones', 'advanced', '#f87171', BG.red[0]),              // sec 4
+        'Solving any triangle, not just the right-angled ones', 'advanced', '#f87171', BG.red),              // sec 4
     ],
   },
 
@@ -305,7 +291,6 @@ export const LESSON_GRADES = [
             steps: [
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: '2*x + 1', id: 'f1' } },
               { id: u(), funcId: 'graph-name-func',     inputs: { funcId: 'f1', label: 'f(x) = 2x + 1', x0: '0.5', y0: '3' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'Slope a = 2 means +2 in y for every +1 in x. y-intercept = 1.' } },
               { id: u(), funcId: 'graph-add-point',     inputs: { x: '0', y: '1', id: 'yint', label: 'b = 1' } },
             ],
           },
@@ -314,7 +299,6 @@ export const LESSON_GRADES = [
             steps: [
               { id: u(), funcId: 'graph-plot-function',      inputs: { expr: '2*x + 1', id: 'f1' } },
               { id: u(), funcId: 'graph-plot-function',      inputs: { expr: '-x + 4',  id: 'f2' } },
-              { id: u(), funcId: 'narrate',                  inputs: { text: 'Set 2x + 1 = −x + 4 and solve for x.' } },
               { id: u(), funcId: 'graph-find-intersections', inputs: { f1: 'f1', f2: 'f2' } },
             ],
           },
@@ -331,7 +315,6 @@ export const LESSON_GRADES = [
             steps: [
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x^2 - 4*x + 3', id: 'par' } },
               { id: u(), funcId: 'graph-name-func',     inputs: { funcId: 'par', label: 'x² − 4x + 3', x0: '3', y0: '2' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'Vertex at x = −b/2a = 2. Roots at x = 1 and x = 3.' } },
               { id: u(), funcId: 'graph-mark-roots',    inputs: { funcId: 'par' } },
               { id: u(), funcId: 'graph-add-point',     inputs: { x: '2', y: '-1', id: 'vert', label: 'vertex' } },
             ],
@@ -342,7 +325,6 @@ export const LESSON_GRADES = [
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x^2',     id: 'a1' } },
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: '2*x^2',   id: 'a2' } },
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: '0.5*x^2', id: 'a3' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'Larger |a| = narrower parabola. Smaller |a| = wider.' } },
             ],
           },
         ],
@@ -357,7 +339,6 @@ export const LESSON_GRADES = [
             id: u(), title: 'Tangent line to f(x) = x²', layout: 'single-graph',
             steps: [
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x^2', id: 'fx' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'At x = 2, f(2) = 4. The slope is f′(2) = 2·2 = 4.' } },
               { id: u(), funcId: 'graph-tangent',       inputs: { funcId: 'fx', x0: '2', y0: '4' } },
             ],
           },
@@ -366,7 +347,6 @@ export const LESSON_GRADES = [
             steps: [
               { id: u(), funcId: 'graph-set-viewport',   inputs: { xMin: '-7', xMax: '7', yMin: '-2', yMax: '2' } },
               { id: u(), funcId: 'graph-plot-function',  inputs: { expr: 'sin(x)', id: 'sinf' } },
-              { id: u(), funcId: 'narrate',              inputs: { text: 'The derivative of sin(x) is cos(x).' } },
               { id: u(), funcId: 'graph-plot-derivative', inputs: { funcId: 'sinf' } },
             ],
           },
@@ -374,7 +354,6 @@ export const LESSON_GRADES = [
             id: u(), title: 'Area under a curve — Riemann sum', layout: 'single-graph',
             steps: [
               { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x^2', id: 'fx' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'Area under x² from 0 to 3 = ∫₀³ x² dx = 9.' } },
               { id: u(), funcId: 'graph-shade-area',    inputs: { funcId: 'fx', a: '0', b: '3' } },
               { id: u(), funcId: 'graph-riemann-sum',   inputs: { funcId: 'fx', a: '0', b: '3', n: '6', method: 'midpoint' } },
             ],
@@ -382,9 +361,9 @@ export const LESSON_GRADES = [
         ],
       },
       soon('function-basics', '🎯', 'What a Function Is',
-        'Notation, domain, range, and reading a graph', 'beginner', '#34d399', BG.green[1]),        // sec 3
+        'Notation, domain, range, and reading a graph', 'beginner', '#34d399', BG.green),        // sec 3
       soon('exponential-functions', '🚀', 'Exponential Functions',
-        'Growth and decay, and how they beat any polynomial', 'advanced', '#10b981', BG.green[0]),  // sec 4-5
+        'Growth and decay, and how they beat any polynomial', 'advanced', '#34d399', BG.green),  // sec 4-5
     ],
   },
 
@@ -406,7 +385,6 @@ export const LESSON_GRADES = [
             steps: [
               { id: u(), funcId: 'geo-create-polygon', inputs: { shapeId: 'tri', 'shape-type': 'triangle', values: '6,5,4', fillColor: '#1e3a5f', borderColor: '#38bdf8' } },
               { id: u(), funcId: 'geo-show-angles',    inputs: { shapeId: 'tri', color: '#fbbf24' } },
-              { id: u(), funcId: 'narrate',            inputs: { text: 'The three interior angles of any triangle always sum to 180°.' } },
             ],
           },
           {
@@ -415,7 +393,6 @@ export const LESSON_GRADES = [
               { id: u(), funcId: 'geo-create-polygon', inputs: { shapeId: 'rect', 'shape-type': 'rectangle', values: '8,4', fillColor: '#1e3a5f', borderColor: '#60a5fa' } },
               { id: u(), funcId: 'geo-label-sides',    inputs: { shapeId: 'rect', labels: '8,4,8,4' } },
               { id: u(), funcId: 'eq-create',          inputs: { eq: 'P = 2(l + w) = 2(8 + 4) = 24' } },
-              { id: u(), funcId: 'narrate',            inputs: { text: 'Perimeter = 2(l + w) = 24 units. Area = l × w = 32 units².' } },
             ],
           },
         ],
@@ -432,7 +409,6 @@ export const LESSON_GRADES = [
               { id: u(), funcId: 'geo-create-polygon',  inputs: { shapeId: 'tri', 'shape-type': 'right-triangle', values: '5,3,4', fillColor: '#1e3a5f', borderColor: '#fbbf24' } },
               { id: u(), funcId: 'geo-label-sides',     inputs: { shapeId: 'tri', labels: 'a=3,b=4,c=?' } },
               { id: u(), funcId: 'eq-create',           inputs: { eq: 'a^2 + b^2 = c^2' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: '3² + 4² = 9 + 16 = 25. So c = √25 = 5.' } },
               { id: u(), funcId: 'eq-replace-variable', inputs: { var_a: '3', var_b: '4' } },
             ],
           },
@@ -443,18 +419,17 @@ export const LESSON_GRADES = [
               { id: u(), funcId: 'geo-label-sides',     inputs: { shapeId: 'tri', labels: 'a=5,b=?,c=13' } },
               { id: u(), funcId: 'eq-create',           inputs: { eq: '5^2 + b^2 = 13^2' } },
               { id: u(), funcId: 'eq-send-other-side',  inputs: { term: '5^2' } },
-              { id: u(), funcId: 'narrate',             inputs: { text: 'b² = 169 − 25 = 144, so b = 12.' } },
               { id: u(), funcId: 'eq-racine-des-bords', inputs: { eq: 'b^2 = 144' } },
             ],
           },
         ],
       },
       soon('area-volume', '📦', 'Area, Perimeter & Volume',
-        'Plane figures, then prisms, cylinders and pyramids', 'beginner', '#38bdf8', BG.sky[1]),        // sec 1-2
+        'Plane figures, then prisms, cylinders and pyramids', 'beginner', '#38bdf8', BG.sky),        // sec 1-2
       soon('similar-figures', '🔍', 'Similar & Congruent Figures',
-        'Scale factor, and what it does to lengths, areas and volumes', 'intermediate', '#0ea5e9', BG.sky[0]), // sec 2-3
+        'Scale factor, and what it does to lengths, areas and volumes', 'intermediate', '#38bdf8', BG.sky), // sec 2-3
       soon('analytic-geometry', '🧭', 'Analytic Geometry',
-        'Distance, midpoint and slope between two points', 'intermediate', '#38bdf8', BG.sky[1]),       // sec 4
+        'Distance, midpoint and slope between two points', 'intermediate', '#38bdf8', BG.sky),       // sec 4
     ],
   },
 
@@ -466,11 +441,11 @@ export const LESSON_GRADES = [
     color: '#a78bfa',
     lessons: [
       soon('stats-data', '📊', 'Data, Graphs & Averages',
-        'Mean, median, mode, and choosing the right graph', 'beginner', '#a78bfa', BG.purple[0]),        // sec 1-2
+        'Mean, median, mode, and choosing the right graph', 'beginner', '#a78bfa', BG.purple),        // sec 1-2
       soon('probability-basics', '🎲', 'Probability Basics',
-        'Counting outcomes, and independent vs dependent events', 'beginner', '#8b5cf6', BG.purple[1]),  // sec 2-3
+        'Counting outcomes, and independent vs dependent events', 'beginner', '#a78bfa', BG.purple),  // sec 2-3
       soon('scatter-correlation', '✳️', 'Scatter Plots & Correlation',
-        'Reading a cloud of points and fitting a line through it', 'intermediate', '#a78bfa', BG.purple[0]), // sec 3-4
+        'Reading a cloud of points and fitting a line through it', 'intermediate', '#a78bfa', BG.purple), // sec 3-4
     ],
   },
 ]

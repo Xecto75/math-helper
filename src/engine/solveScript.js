@@ -47,7 +47,6 @@ export function generateScript(initialSnapshot, originalInput) {
       ? state[varSide].indexOf(targetSame[0])
       : state[varSide].length
 
-    script.push({ type: 'showNarration', text: `Move ${fmtTerm(term)} to the other side.` })
     script.push({
       type: 'sendToOtherSide',
       id:            term.id,
@@ -87,10 +86,6 @@ export function generateScript(initialSnapshot, originalInput) {
       ? state[otherSide].indexOf(targetSame[0])
       : state[otherSide].length
 
-    const narration = b.value > 0
-      ? `Subtract ${b.label} from both sides.`
-      : `Add ${Math.abs(b.value)} to both sides.`
-    script.push({ type: 'showNarration',  text: narration })
     script.push({
       type: 'sendToOtherSide',
       id:            b.id,
@@ -138,7 +133,6 @@ export function generateScript(initialSnapshot, originalInput) {
         ? (sq2Other === 'left' ? state.left : state.right).indexOf(otherConsts[0])
         : (sq2Other === 'left' ? state.left : state.right).length
 
-      script.push({ type: 'showNarration', text: `Move ${fmtTermFull(constTerm)} to the other side.` })
       script.push({
         type: 'sendToOtherSide',
         id:            constTerm.id,
@@ -181,10 +175,8 @@ export function generateScript(initialSnapshot, originalInput) {
     const roundedRecip  = Math.round(reciprocal)
     const isUnitFraction = coeff < 1 && Math.abs(reciprocal - roundedRecip) < 1e-6 && roundedRecip > 1
     if (isUnitFraction) {
-      script.push({ type: 'showNarration', text: `Multiply both sides by ${roundedRecip}.` })
       script.push({ type: 'multiplyBothSides', multiplier: roundedRecip })
     } else {
-      script.push({ type: 'showNarration', text: `Divide both sides by ${coeff}.` })
       script.push({ type: 'divideBothSides', divisor: coeff })
     }
   }
@@ -192,7 +184,6 @@ export function generateScript(initialSnapshot, originalInput) {
   // ── 5b. Square root — if a degree-2 term remains isolated, take √ both sides ──
   const sq = [...state.left, ...state.right].find(t => t.degree === 2 && t.variable)
   if (sq) {
-    script.push({ type: 'showNarration', text: 'Take the square root of both sides.' })
     script.push({ type: 'racineDesBords' })
   }
 
@@ -254,7 +245,6 @@ function distributeAllParens(state, script) {
 
       const insertIdx = (side === 'left' ? state.left : state.right).indexOf(group)
 
-      script.push({ type: 'showNarration', text: `Distribute ${fmtParenGroup(group)}.` })
       script.push({
         type: 'distributeParentheses',
         id:   group.id,
@@ -315,7 +305,6 @@ function combineOnSide(state, degree, side) {
   const newId       = crypto.randomUUID()
   const firstPos    = (side === 'left' ? state.left : state.right).indexOf(terms[0])
 
-  actions.push({ type: 'showNarration',  text: `Combine the ${label} on the ${side}.` })
   actions.push({ type: 'outlineDegree',  degree, side, color })
   actions.push({
     type: 'combineTerms',
@@ -373,7 +362,6 @@ export function generateQuadraticScript(state, script) {
   // "sending" it across (a no-op −0 on both sides).
   const rightCopy = [...state.right].filter(t => t.value !== 0)
   if (rightCopy.length > 0) {
-    script.push({ type: 'showNarration', text: 'Mise en forme standard : ax² + bx + c = 0' })
   }
   for (const rTerm of rightCopy) {
     const resultId       = crypto.randomUUID()

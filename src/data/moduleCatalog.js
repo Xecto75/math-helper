@@ -30,7 +30,7 @@ FORMAT: [["Title","LC",[["FC",a,...],...]],...]
   bool→0/1  ""=skip optional mid-arg  omit trailing defaults
   Output compact codes ONLY — never {"func":…} form.
 
-ANIMATION FIRST: teach by drawing/animating, not text. No narration steps. Every step = a visual action.
+ANIMATION FIRST: teach by drawing/animating, not text. Every step = a visual action.
 
 COLORS: 0=red 1=purple 2=orange 3=green 4=yellow 5=pink 6=teal 7=white. Never blue. Never repeat one on a page.
 

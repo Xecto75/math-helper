@@ -12,13 +12,6 @@ export const PAGE_BACKGROUNDS = [
 
 export const SECONDARY_ACTIONS = [
   {
-    funcId: 'narrate',
-    icon: '💬', label: 'Narration',
-    desc:  'Spoken + written text',
-    inputs: { text: '' },
-    inputDefs: [{ id: 'text', label: 'Text', type: 'text', placeholder: 'What the teacher says…' }],
-  },
-  {
     funcId: 'celebrate',
     icon: '🎉', label: 'Celebration',
     desc:  'Confetti burst',

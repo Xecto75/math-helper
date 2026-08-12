@@ -144,7 +144,6 @@ export function demoRacineDesBords(eqText) {
   const snapshot = parseEquation(eq).snapshot()
   const script = [
     { type: 'renderEquation' },
-    { type: 'showNarration', text: 'Apply square root to both sides.' },
     { type: 'racineDesBords' },
   ]
   return { snapshot, script }
@@ -163,7 +162,6 @@ export function demoDisparitionExposant(eqText, newDegreeRaw) {
 
   const script = [
     { type: 'renderEquation' },
-    { type: 'showNarration', text: `Change exponent to ${newDegree}.` },
     { type: 'disparitionExposant', termId: term.id, newDegree },
   ]
   return { snapshot, script }
@@ -397,16 +395,13 @@ export function demoGeoClear() {
     { type: 'showTitle',     text: 'clearAll()' },
     { type: 'ggb-clear' },
     // Create a few things first
-    { type: 'showNarration', text: 'Quelques formes créées au préalable…' },
     { type: 'ggb-create-polygon', id: 's1', shapeType: 'hexagon',  values: [2.5],
       opts: { autoFit: false, color: [100, 149, 237], fillOpacity: 0.2 } },
     { type: 'ggb-move-shape', id: 's1', dx: -3, dy: 0 },
     { type: 'ggb-create-polygon', id: 's2', shapeType: 'circle', values: [2],
       opts: { autoFit: false, color: [168, 85, 247], fillOpacity: 0.2 } },
     { type: 'ggb-move-shape', id: 's2', dx: 3, dy: 0 },
-    { type: 'showNarration', text: 'clearAll() — tout efface d\'un coup' },
     { type: 'ggb-clear' },
-    { type: 'showNarration', text: 'Canvas réinitialisé.' },
   ]
   return { snapshot: null, script }
 }
@@ -429,14 +424,12 @@ export function demoGraphPlotFunction(exprRaw, idRaw, hideLabelRaw) {
   const hideLabel   = String(hideLabelRaw ?? '').trim() === '1'
   const script = [
     { type: 'showTitle',     text: `plotFunction("${id}", "${expr}")` },
-    { type: 'showNarration', text: `Trace "${id}" : f(x) = ${expr}` },
     { type: 'ggb-plot-function', id, expr, opts: { thickness: 3 } },
   ]
   if (!hideLabel) {
     const label = expr.includes('=') ? expr : `${id}(x) = ${expr}`
     script.push({ type: 'ggb-name-func', id, funcId: id, label, x: 3 + existingCount * 1.5 })
   }
-  script.push({ type: 'showNarration', text: `Courbe "${id}" tracée.` })
   return { snapshot: null, script }
 }
 
@@ -445,9 +438,7 @@ export function demoGraphRemoveFunction(funcIdRaw) {
   const funcId = (funcIdRaw || 'f').trim()
   const script = [
     { type: 'showTitle',     text: `removeFunction("${funcId}")` },
-    { type: 'showNarration', text: `Suppression de la courbe "${funcId}" (+ ses étiquettes et tangentes)` },
     { type: 'ggb-remove-function', id: funcId },
-    { type: 'showNarration', text: `Courbe "${funcId}" supprimée.` },
   ]
   return { snapshot: null, script }
 }
@@ -466,9 +457,7 @@ export function demoGraphShadeArea(funcIdRaw, aRaw, bRaw) {
   const b      = Number(bRaw) || 3
   const script = [
     { type: 'showTitle',     text: `shadeUnderCurve("${funcId}", ${a}, ${b})` },
-    { type: 'showNarration', text: `Ombrage de la courbe "${funcId}" entre x = ${a} et x = ${b}` },
     { type: 'ggb-shade-area', id: 'area', funcId, a, b },
-    { type: 'showNarration', text: `Aire ombrée entre x = ${a} et x = ${b}.` },
   ]
   return { snapshot: null, script }
 }
@@ -481,9 +470,7 @@ export function demoGraphFindIntersections(f1IdRaw, f2IdRaw, colorRaw, hideLabel
   const hideLabel = String(hideLabelRaw ?? '').trim() === '1'
   const script = [
     { type: 'showTitle',     text: `findIntersections("${f1Id}", "${f2Id}")` },
-    { type: 'showNarration', text: `Recherche des intersections entre "${f1Id}" et "${f2Id}"` },
     { type: 'ggb-find-intersections', id: 'pts', f1Id, f2Id, opts: { color, hideLabel } },
-    { type: 'showNarration', text: 'Points d\'intersection marqués.' },
   ]
   return { snapshot: null, script }
 }
@@ -616,7 +603,6 @@ export function demoGraphAdjustView(cxRaw, cyRaw, rangeRaw) {
   const range = Math.max(Number(rangeRaw) || 10, 0.1)
   const script = [
     { type: 'showTitle',     text: `adjustView(cx=${cx}, cy=${cy}, range=${range})` },
-    { type: 'showNarration', text: `Centre (${cx}, ${cy})  —  plage visible : [${cx - range/2}, ${cx + range/2}]` },
     { type: 'ggb-adjust-view', cx, cy, range },
   ]
   return { snapshot: null, script }
@@ -638,9 +624,7 @@ export function demoGraphSetViewport(xMinR, xMaxR, yMinR, yMaxR) {
   const yMax = numOr(yMaxR,  4)
   const script = [
     { type: 'showTitle',     text: `setViewport(${xMin}, ${xMax}, ${yMin}, ${yMax})` },
-    { type: 'showNarration', text: `setViewport(${xMin}, ${xMax}, ${yMin}, ${yMax})` },
     { type: 'ggb-set-viewport', xMin, xMax, yMin, yMax },
-    { type: 'showNarration', text: `Viewport → x:[${xMin}, ${xMax}]  y:[${yMin}, ${yMax}]` },
   ]
   return { snapshot: null, script }
 }
@@ -661,7 +645,6 @@ export function demoGraphNameFunc(funcIdRaw, labelRaw, x0Raw, _y0Raw) {
   const action = { type: 'ggb-name-func', id: funcId, funcId, label, x: x0 }
   const script = [
     { type: 'showTitle',     text: `nameFunc("${funcId}", "${label}")` },
-    { type: 'showNarration', text: `Étiquette "${label}" sur la courbe "${funcId}" en x₀ = ${x0}` },
     action,
   ]
   return { snapshot: null, script }
@@ -672,9 +655,7 @@ export function demoGraphAddHorizontalLine(yRaw) {
   const y = isFinite(Number(yRaw)) ? Number(yRaw) : 1
   const script = [
     { type: 'showTitle',     text: `addHorizontalLine(y = ${y})` },
-    { type: 'showNarration', text: `Trace la droite horizontale y = ${y}` },
     { type: 'ggb-horizontal-line', id: `hl_${Date.now()}`, y, opts: { color: [96, 165, 250], thickness: 2 } },
-    { type: 'showNarration', text: `Droite y = ${y} tracée.` },
   ]
   return { snapshot: null, script }
 }
@@ -684,9 +665,7 @@ export function demoGraphMarkRoots(funcIdRaw) {
   const funcId = (funcIdRaw || 'f').trim()
   const script = [
     { type: 'showTitle',     text: `markRoots("${funcId}")` },
-    { type: 'showNarration', text: `Recherche des racines de "${funcId}" (f(x) = 0)` },
     { type: 'ggb-mark-roots', id: `roots_${funcId}`, funcId },
-    { type: 'showNarration', text: 'Racines marquées en jaune (x où f(x) = 0).' },
   ]
   return { snapshot: null, script }
 }
@@ -733,7 +712,6 @@ export function demoGraphShowProjection(pointIdRaw, showValuesRaw) {
   const showValues = showValuesRaw !== false && String(showValuesRaw).trim() !== 'false'
   const script = [
     { type: 'showTitle',     text: `showProjection("${pointId}")` },
-    { type: 'showNarration', text: `Projection du point "${pointId}" sur les axes` },
     { type: 'ggb-show-projection', id: `proj_${pointId}_${Date.now()}`, pointId, opts: { showValues } },
   ]
   return { snapshot: null, script }
@@ -744,9 +722,7 @@ export function demoGraphPlotDerivative(funcIdRaw) {
   const funcId = (funcIdRaw || 'f').trim()
   const script = [
     { type: 'showTitle',     text: `plotDerivative("${funcId}")` },
-    { type: 'showNarration', text: `Trace la dérivée f'(x) de "${funcId}"` },
     { type: 'ggb-plot-derivative', id: `d_${funcId}`, funcId, opts: { thickness: 2 } },
-    { type: 'showNarration', text: `Dérivée de "${funcId}" tracée en cyan (pointillé).` },
   ]
   return { snapshot: null, script }
 }
@@ -760,9 +736,7 @@ export function demoGraphRiemannSum(funcIdRaw, aRaw, bRaw, nRaw, methodRaw) {
   const method = ['left','right','midpoint'].includes(methodRaw) ? methodRaw : 'midpoint'
   const script = [
     { type: 'showTitle',     text: `riemannSum("${funcId}", ${a}, ${b}, n=${n}, ${method})` },
-    { type: 'showNarration', text: `Somme de Riemann (${method}) sur [${a}, ${b}] avec ${n} rectangle${n > 1 ? 's' : ''}` },
     { type: 'ggb-riemann-sum', id: `rs_${funcId}`, funcId, a, b, n, method, opts: { fillOpacity: 0.5 } },
-    { type: 'showNarration', text: `${n} rectangle${n > 1 ? 's' : ''} tracé${n > 1 ? 's' : ''} (méthode ${method}).` },
   ]
   return { snapshot: null, script }
 }
@@ -775,9 +749,7 @@ export function demoGraphDrawVector(x1Raw, y1Raw, x2Raw, y2Raw) {
   const y2 = Number(y2Raw) || 3
   const script = [
     { type: 'showTitle',     text: `drawVector((${x1},${y1}) → (${x2},${y2}))` },
-    { type: 'showNarration', text: `Trace un vecteur de (${x1}, ${y1}) vers (${x2}, ${y2})` },
     { type: 'ggb-draw-vector', id: `vec_${Date.now()}`, x1, y1, x2, y2, opts: { color: [96, 165, 250], thickness: 2 } },
-    { type: 'showNarration', text: `Vecteur tracé de (${x1}, ${y1}) vers (${x2}, ${y2}).` },
   ]
   return { snapshot: null, script }
 }
@@ -817,9 +789,7 @@ export function demoGraphTransformFunction(funcIdRaw, typeRaw, valueRaw) {
   const desc = labels[type] ?? type
   const script = [
     { type: 'showTitle',     text: `transformFunction("${funcId}", "${type}", ${value})` },
-    { type: 'showNarration', text: `Transformation de "${funcId}" : ${desc}` },
     { type: 'ggb-transform-function', id: `tf_${funcId}_${type}`, funcId, transformType: type, value, opts: {} },
-    { type: 'showNarration', text: `Courbe "${funcId}" déplacée.` },
   ]
   return { snapshot: null, script }
 }
@@ -837,9 +807,7 @@ export function demoGraphTangent(funcIdRaw, x0Raw, y0Raw) {
   const coordStr = hasY0 ? `(${x0}, ${y0Num})` : `x₀ = ${x0} (y calculé depuis la courbe)`
   const script = [
     { type: 'showTitle',     text: `tangent("${funcId}", x₀=${x0})` },
-    { type: 'showNarration', text: `Tangente sur "${funcId}" en ${coordStr}` },
     action,
-    { type: 'showNarration', text: 'Tangent line drawn. Hit Reset to go back.' },
   ]
   return { snapshot: null, script }
 }
@@ -873,9 +841,7 @@ export function demoTableCreate(dataRaw, headerRowRaw, gridIdRaw, colorRaw) {
 
   const script = [
     { type: 'showTitle',     text: `createTable("${gid}", ${cols}×${rows})` },
-    { type: 'showNarration', text: `Creating a ${cols}×${rows} table` },
     { type: 'table-create-grid', id: gid, cols, rows, values, opts },
-    { type: 'showNarration', text: `Table "${gid}" ready — ${cols} columns, ${rows} rows.` },
   ]
   return { snapshot: null, script }
 }
@@ -890,9 +856,7 @@ export function demoTableCreateGrid(colsRaw, rowsRaw, valuesRaw, headerRowRaw, g
 
   const script = [
     { type: 'showTitle',     text: `createGrid("${gid}", ${cols}, ${rows})` },
-    { type: 'showNarration', text: `Creating a ${cols}×${rows} grid` },
     { type: 'table-create-grid', id: gid, cols, rows, values, opts: { headerRow } },
-    { type: 'showNarration', text: `Grid "${gid}" ready — ${cols} columns, ${rows} rows.` },
   ]
   return { snapshot: null, script }
 }
@@ -902,9 +866,7 @@ export function demoTableEraseGrid(gridIdRaw) {
   const gid = (gridIdRaw ?? '').trim() || 'grid1'
   const script = [
     { type: 'showTitle',     text: `eraseGrid("${gid}")` },
-    { type: 'showNarration', text: `Fading out grid "${gid}"…` },
     { type: 'table-erase-grid', id: gid },
-    { type: 'showNarration', text: 'Grid erased.' },
   ]
   return { snapshot: null, script }
 }
@@ -915,9 +877,7 @@ export function demoTableAddColumn(valuesRaw, gridIdRaw) {
   const values = parseRow(valuesRaw || 'Grade,A,B+,A-')
   const script = [
     { type: 'showTitle',     text: `addColumn("${gid}", values)` },
-    { type: 'showNarration', text: `Adding column [${values.join(', ')}] to "${gid}"` },
     { type: 'table-add-column', id: gid, values },
-    { type: 'showNarration', text: 'Column added.' },
   ]
   return { snapshot: null, script }
 }
@@ -929,9 +889,7 @@ export function demoTableRemoveColumn(colIndexRaw, gridIdRaw) {
   const label    = colIndex < 0 ? 'last' : `index ${colIndex}`
   const script = [
     { type: 'showTitle',     text: `removeColumn("${gid}", ${colIndex})` },
-    { type: 'showNarration', text: `Removing the ${label} column from "${gid}"…` },
     { type: 'table-remove-column', id: gid, colIndex },
-    { type: 'showNarration', text: 'Column removed.' },
   ]
   return { snapshot: null, script }
 }
@@ -942,9 +900,7 @@ export function demoTableAddRow(valuesRaw, gridIdRaw) {
   const values = parseRow(valuesRaw || 'Dave,28,88')
   const script = [
     { type: 'showTitle',     text: `addRow("${gid}", values)` },
-    { type: 'showNarration', text: `Adding row [${values.join(', ')}] to "${gid}"` },
     { type: 'table-add-row', id: gid, values },
-    { type: 'showNarration', text: 'Row added.' },
   ]
   return { snapshot: null, script }
 }
@@ -956,9 +912,7 @@ export function demoTableRemoveRow(rowIndexRaw, gridIdRaw) {
   const label    = rowIndex < 0 ? 'last' : `index ${rowIndex}`
   const script = [
     { type: 'showTitle',     text: `removeRow("${gid}", ${rowIndex})` },
-    { type: 'showNarration', text: `Removing the ${label} row from "${gid}"…` },
     { type: 'table-remove-row', id: gid, rowIndex },
-    { type: 'showNarration', text: 'Row removed.' },
   ]
   return { snapshot: null, script }
 }
@@ -971,9 +925,7 @@ export function demoTableChangeValue(colRaw, rowRaw, valueRaw, gridIdRaw) {
   const value = valueRaw ?? ''
   const script = [
     { type: 'showTitle',     text: `changeValue("${gid}", col=${col}, row=${row})` },
-    { type: 'showNarration', text: `Setting [${col}, ${row}] to "${value}" in "${gid}"` },
     { type: 'table-change-value', id: gid, col, row, value },
-    { type: 'showNarration', text: `Cell updated to "${value}".` },
   ]
   return { snapshot: null, script }
 }
@@ -992,16 +944,14 @@ export function demoTableChangeValues(changesRaw, gridIdRaw) {
 
   const script = [
     { type: 'showTitle',     text: `changeValues("${gid}", ${changes.length} cells)` },
-    { type: 'showNarration', text: `Updating ${changes.length} cells in "${gid}"…` },
     { type: 'table-change-values', id: gid, changes },
-    { type: 'showNarration', text: 'Values updated.' },
   ]
   return { snapshot: null, script }
 }
 
 // ── tab-highlight-row ──────────────────────────────────────────────────────────
-// Silent, like eq-save-result/set-layout — no title/narration, since this is
-// an accent step meant to sit alongside other steps rather than announce itself.
+// Silent, like eq-save-result/set-layout — sets no title, since this is an
+// accent step meant to sit alongside other steps rather than announce itself.
 export function demoTableHighlightRow(gridIdRaw, rowIndexRaw, colorRaw) {
   const gid      = (gridIdRaw ?? '').trim() || 'grid1'
   const rowIndex = Math.max(0, Math.round(Number(rowIndexRaw) || 0))
@@ -1143,13 +1093,6 @@ export function demoUpdateComment(cmtIdRaw, textRaw, colorRaw) {
   const text  = (textRaw  || '').trim() || null
   const color = (colorRaw || '').trim() || null
   return { snapshot: null, script: [{ type: 'update-comment', id, text, color }] }
-}
-
-// ── narrate ───────────────────────────────────────────────────────────────────
-export function demoNarrate(textRaw) {
-  const text = (textRaw || '').trim()
-  if (!text) return { snapshot: null, script: [] }
-  return { snapshot: null, script: [{ type: 'set-narration', text }] }
 }
 
 // ── set-layout ────────────────────────────────────────────────────────────────

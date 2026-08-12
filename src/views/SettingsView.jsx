@@ -1,7 +1,7 @@
 import { u, SUPPORTED_LANGS } from '../i18n/uiText.js'
 import { PLANS as PLAN_NAMES, PLAN_FEATURES, tr } from '../i18n/catalog.js'
 import {
-  GlobeIcon, SunIcon, MoonIcon, TypeIcon, VolumeIcon, VolumeMuteIcon,
+  GlobeIcon, SunIcon, MoonIcon, TypeIcon,
   CreditCardIcon, TerminalIcon, CheckIcon,
 } from '../components/Icon.jsx'
 
@@ -27,7 +27,7 @@ const PLANS = [
   { id: 'pro',  amount: '$4.99', perMonth: true, features: ['allLessons', 'allTools', 'customUnlim', 'progress', 'adFree'], highlight: true },
 ]
 
-export default function SettingsView({ lang, onLang, theme, onTheme, textSize, onTextSize, muted, onMuted, plan, onPlan, adminMode, onAdminMode }) {
+export default function SettingsView({ lang, onLang, theme, onTheme, textSize, onTextSize, plan, onPlan, adminMode, onAdminMode }) {
   return (
     <div className="section-view settings-view">
       {/* Language */}
@@ -66,15 +66,6 @@ export default function SettingsView({ lang, onLang, theme, onTheme, textSize, o
               {u(lang, s)}
             </button>
           ))}
-        </div>
-      </div>
-
-      {/* Sound */}
-      <div className="settings-block">
-        <h3 className="settings-block-title"><VolumeIcon width={16} height={16} />{u(lang, 'sound')}</h3>
-        <div className="settings-row">
-          <button className={`theme-btn${!muted ? ' theme-btn--active' : ''}`} onClick={() => onMuted(false)}><VolumeIcon width={15} height={15} />{u(lang, 'soundOn')}</button>
-          <button className={`theme-btn${ muted ? ' theme-btn--active' : ''}`} onClick={() => onMuted(true)}><VolumeMuteIcon width={15} height={15} />{u(lang, 'soundOff')}</button>
         </div>
       </div>
 

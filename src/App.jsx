@@ -25,7 +25,6 @@ const LessonBuilder = import.meta.env.DEV
   : null
 import { ExerciseQuestionBar, ExerciseQuestionHero, ExerciseAnswerBar } from './components/ExercisePanel.jsx'
 import Sidebar             from './components/Sidebar.jsx'
-import MathText             from './components/RichText.jsx'
 import LibraryView          from './views/LibraryView.jsx'
 import CustomView           from './views/CustomView.jsx'
 import SettingsView         from './views/SettingsView.jsx'
@@ -78,7 +77,7 @@ import {
   demoTableHighlightRow, demoTableClearRowHighlight,
   demoAddCommentGraph, demoAddCommentGraphFunc, demoAddCommentGraphArea,
   demoAddCommentGrid, demoAddCommentGeo, demoAddCommentGeoEdge,
-  demoAddCommentEquation, demoAddCommentFree, demoClearComments, demoRemoveComment, demoUpdateComment, demoNarrate,
+  demoAddCommentEquation, demoAddCommentFree, demoClearComments, demoRemoveComment, demoUpdateComment,
   demoTextCreate, demoTextAddItem, demoTextRemoveItem,
   demoTextUpdateTitle, demoTextRemove, demoTextFadeContent,
   demoCalcStep, demoCalcClear,
@@ -242,7 +241,7 @@ const TOOL_LAYOUTS = {
 export default function App() {
   // ── Core state ─────────────────────────────────────────────────────────────
   const [equationSnap, setEquationSnap] = useState(null)
-  const [ui,           setUI]           = useState({ title: null, narration: null, answer: null })
+  const [ui,           setUI]           = useState({ title: null, answer: null })
   const [error,        setError]        = useState(null)
   const [running,      setRunning]      = useState(false)
   const [graphFuncIds, setGraphFuncIds] = useState([])
@@ -423,10 +422,8 @@ export default function App() {
   }, [])
 
   // ── Lesson UI state ────────────────────────────────────────────────────────
-  const [muted,           setMuted]           = useState(false)
   const [lang,            setLang]            = useState(() => localStorage.getItem('math-lang') ?? 'en')
   const [mdasPreset,      setMdasPreset]      = useState(0)
-  const [narrationHidden, setNarrationHidden] = useState(false)
   const [builderOpen,     setBuilderOpen]     = useState(false)
   const [lessonPages,     setLessonPages]     = useState(null)
   const [lessonPageIdx,   setLessonPageIdx]   = useState(0)
@@ -472,9 +469,6 @@ export default function App() {
   const threeRef        = useRef(null)
   const commentLayerRef = useRef(null)
   const contentRef      = useRef(null)
-  const audioRef        = useRef(null)
-  const mutedRef        = useRef(muted)
-  mutedRef.current      = muted
   const langRef         = useRef(lang)
   langRef.current       = lang
   const animSpeedRef      = useRef(1)
@@ -507,7 +501,7 @@ export default function App() {
   // or page steps.
   const inSolveRef        = useRef(false)
   const latestCommentsRef = useRef([])
-  const latestUIRef       = useRef({ title: null, narration: null, answer: null })
+  const latestUIRef       = useRef({ title: null, answer: null })
 
   const setEquationSnapTracked = useCallback((snap) => {
     latestEquationSnapRef.current = snap
@@ -527,7 +521,7 @@ export default function App() {
 
   // A 'set-layout' script step stashes the requested layout on ui._layout
   // (see ActionExecutor.js) rather than touching layoutMode directly, so it
-  // flows through the same snapshot/undo plumbing as title/narration/answer.
+  // flows through the same snapshot/undo plumbing as title/answer.
   // This effect is what actually applies it — CSS transitions on
   // .display-slot (App.css) turn the swap into a smooth resize/reposition/fade
   // instead of an instant pop.
@@ -538,32 +532,6 @@ export default function App() {
   const refreshFuncIds  = () => setGraphFuncIds(graphEngine.getFunctionIds())
   const refreshGridIds  = () => setTableGridIds(tableEngine.getGridIds())
   const refreshShapeIds = () => setGeoShapeIds(geometryEngine.getShapeIds())
-
-  // ── TTS ───────────────────────────────────────────────────────────────────
-  const stopAudio = useCallback(() => {
-    window.speechSynthesis?.cancel()
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
-  }, [])
-
-  useEffect(() => {
-    if (!ui.narration || mutedRef.current) return
-    const synth = window.speechSynthesis
-    if (!synth) return
-    synth.cancel()
-    const utter = new SpeechSynthesisUtterance(ui.narration)
-    utter.lang  = 'en-US'
-    utter.rate  = 0.92
-    const voices    = synth.getVoices()
-    const preferred = voices.find(v => v.lang === 'en-US' && !v.localService)
-                   ?? voices.find(v => v.lang === 'en-US') ?? null
-    if (preferred) utter.voice = preferred
-    synth.speak(utter)
-    return () => synth.cancel()
-  }, [ui.narration])
-
-  const toggleMute = useCallback(() => {
-    setMuted(m => { if (!m) stopAudio(); return !m })
-  }, [stopAudio])
 
   // ── Lang persist ──────────────────────────────────────────────────────────
   const setLangPersist = (l) => { setLang(l); localStorage.setItem('math-lang', l) }
@@ -592,8 +560,8 @@ export default function App() {
     setEquationSnap(null)
     latestCommentsRef.current = []
     setComments([])
-    latestUIRef.current = { title: null, narration: null, answer: null }
-    setUI({ title: null, narration: null, answer: null })
+    latestUIRef.current = { title: null, answer: null }
+    setUI({ title: null, answer: null })
     setExercise(null)
     setExerciseAnswer(null)
     setExerciseResult(null)
@@ -601,8 +569,7 @@ export default function App() {
     setGraphFuncIds([])
     setTableGridIds([])
     setGeoShapeIds([])
-    stopAudio()
-  }, [stopAudio])
+  }, [])
 
   // ── Back to section browser ───────────────────────────────────────────────
   const handleBack = useCallback(() => {
@@ -777,7 +744,6 @@ export default function App() {
       case 'cmt-update':              return demoUpdateComment(inputs.cmtId, inputs.text, inputs.color)
       case 'cmt-clear':               return demoClearComments()
       case 'cmt-remove':              return demoRemoveComment(inputs.cmtId)
-      case 'narrate':                 return demoNarrate(inputs.text)
       case 'calc-step':               return demoCalcStep(inputs.latex)
       case 'calc-clear':              return demoCalcClear()
       case 'arith-solve':             return demoSimpleCalc(inputs.a, inputs.op, inputs.b)
@@ -901,7 +867,7 @@ export default function App() {
       setEquationSnapTracked(null)
       latestCommentsRef.current = []
       setComments([])
-      const initUI = { title: pg.title || null, narration: null, answer: null }
+      const initUI = { title: pg.title || null, answer: null }
       latestUIRef.current = initUI
       setUI(initUI)
       setError(null)
@@ -1569,30 +1535,6 @@ export default function App() {
             </div>
             <button className="pb-btn pb-btn--restart" onClick={handleReplay} disabled={!lastBuiltPage} title="Restart">↺</button>
           </div>
-        </div>
-
-        {/* ── Narration — always rendered so height never collapses ───────── */}
-        <div className="bottom-section bottom-section--narration">
-          <div className="narration-row" style={{ visibility: (!narrationHidden && ui.narration) ? 'visible' : 'hidden' }}>
-            <p className="narration-text"><MathText text={ui.narration ?? ' '} /></p>
-            <div className="narration-btns">
-              <button className={`narr-btn${muted ? ' narr-btn--active' : ''}`} onClick={toggleMute} title={muted ? 'Unmute' : 'Mute'}>
-                {muted
-                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/></svg>
-                }
-              </button>
-              <button className="narr-btn" onClick={() => setNarrationHidden(true)} title="Hide">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-              </button>
-            </div>
-          </div>
-          {narrationHidden && (
-            <button className="narr-show-btn" onClick={() => setNarrationHidden(false)}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              Show narration
-            </button>
-          )}
         </div>
 
         {/* ── AI Prompt ─────────────────────────────────────────────────────── */}

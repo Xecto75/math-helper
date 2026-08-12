@@ -13,7 +13,7 @@ import { resolveValueRef, VALUE_TOKEN_PATTERN } from '../engine/valueRefs.js'
 //   [id]x1/y1/x2/y2/len → graph segment           [id]expr → plotted f(x)
 //   [id]r<row>c<col>    → table cell
 // Leaves the token untouched if the object isn't found (usually means it
-// hasn't been created yet — create it before the text/narration/comment).
+// hasn't been created yet — create it before the text/comment).
 const GEO_REF_RE = new RegExp(`\\[([^\\]]+)\\](${VALUE_TOKEN_PATTERN})`, 'g')
 function resolveGeoRefs(str) {
   return str.replace(GEO_REF_RE, (m, id, tok) => {
@@ -146,7 +146,7 @@ function renderParts(parts) {
 
 // Renders text with geo refs, computed {{ }} blocks, {color: …}, **bold**, ^sup,
 // $LaTeX$, and line breaks (\n or a real newline). Shared by text boxes, comments,
-// and narration.
+// and comments.
 export default function MathText({ text, className }) {
   const resolved = evalExprs(resolveGeoRefs(text ?? ''))
   const lines    = resolved.split(/\\n|\n/)   // literal "\n" or a real newline

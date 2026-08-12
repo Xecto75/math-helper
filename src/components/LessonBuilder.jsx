@@ -813,9 +813,6 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
           </optgroup>
         )
       })}
-      <optgroup label="Narration">
-        <option value="narrate">Narrate</option>
-      </optgroup>
     </>
   )
 

@@ -93,7 +93,6 @@ const FUNCS = {
   cq: 'cmt-grid',        cG: 'cmt-geo',          cE: 'cmt-geo-edge',
   ce: 'cmt-equation',    cx: 'cmt-clear',         cu: 'cmt-update',
   cF: 'cmt-free',        cd: 'cmt-remove',
-  n:  'narrate',
 
   // ── Page flow ────────────────────────────────────────────────────────────────
   sL: 'set-layout',
@@ -268,7 +267,7 @@ function parseCompact(rawText) {
 //
 // Case matters: tc/ti/tf are text boxes, Tt/Tc/Ta are tables.
 function moduleForCode(code) {
-  if (code === 'n' || code === 'sL') return null        // narrate / set-layout: always available
+  if (code === 'sL') return null                        // set-layout: always available
   if (code.startsWith('S3')) return 'geo3d'
   if (code.startsWith('S2')) return 'geo2d'
   if (code.startsWith('T'))  return 'table'

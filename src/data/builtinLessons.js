@@ -48,7 +48,7 @@ export const LESSON_GRADES = [
       {
         id: 'linear-equations', difficulty: 'beginner',
         emoji: '⚖️', title: 'Solving Linear Equations',
-        color: '#60a5fa', bg: 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)',
+        color: '#60a5fa', bg: BG.blue,
         desc: 'Isolate x step by step — send terms across, divide both sides',
         pages: [
           {
@@ -82,7 +82,7 @@ export const LESSON_GRADES = [
       {
         id: 'quadratic-equations', difficulty: 'advanced',
         emoji: '🔬', title: 'Quadratic Equations',
-        color: '#a78bfa', bg: 'linear-gradient(135deg, #3b0764 0%, #6d28d9 100%)',
+        color: '#60a5fa', bg: BG.blue,
         desc: 'Discriminant Δ, real roots, factored form — ax² + bx + c = 0',
         pages: [
           /* Page 1 — concept + formula */
@@ -127,7 +127,7 @@ export const LESSON_GRADES = [
       {
         id: 'factoring', difficulty: 'intermediate',
         emoji: '🔣', title: 'Expanding & Factoring',
-        color: '#e879f9', bg: 'linear-gradient(135deg, #3b0764 0%, #7e22ce 100%)',
+        color: '#60a5fa', bg: BG.blue,
         desc: 'Distributivity, notable identities, and factoring expressions',
         pages: [
           {
@@ -151,7 +151,7 @@ export const LESSON_GRADES = [
       {
         id: 'systems-equations', difficulty: 'intermediate',
         emoji: '🔀', title: 'Systems of Equations',
-        color: '#f472b6', bg: 'linear-gradient(135deg, #831843 0%, #9d174d 100%)',
+        color: '#60a5fa', bg: BG.blue,
         desc: 'Solve 2×2 linear systems — substitution and elimination',
         pages: [
           {
@@ -182,7 +182,7 @@ export const LESSON_GRADES = [
       {
         id: 'trig-ratios', difficulty: 'intermediate',
         emoji: '📐', title: 'Trig Ratios — SOH CAH TOA',
-        color: '#f87171', bg: 'linear-gradient(135deg, #450a0a 0%, #991b1b 100%)',
+        color: '#f87171', bg: BG.red,
         desc: 'sin, cos, tan in a right triangle with labeled sides',
         pages: [
           {
@@ -213,7 +213,7 @@ export const LESSON_GRADES = [
       {
         id: 'trig-graphs', difficulty: 'advanced',
         emoji: '〰️', title: 'Graphs of sin, cos, tan',
-        color: '#fb923c', bg: 'linear-gradient(135deg, #7c2d12 0%, #c2410c 100%)',
+        color: '#f87171', bg: BG.red,
         desc: 'Plot and compare the three trig functions on the same axes',
         pages: [
           {
@@ -249,7 +249,7 @@ export const LESSON_GRADES = [
       {
         id: 'unit-circle', difficulty: 'advanced',
         emoji: '🔵', title: 'The Unit Circle',
-        color: '#60a5fa', bg: 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)',
+        color: '#f87171', bg: BG.red,
         desc: 'cos θ and sin θ as coordinates on a circle of radius 1',
         pages: [
           {
@@ -283,7 +283,7 @@ export const LESSON_GRADES = [
       {
         id: 'linear-functions', difficulty: 'beginner',
         emoji: '📈', title: 'Linear Functions',
-        color: '#34d399', bg: 'linear-gradient(135deg, #022c22 0%, #14532d 100%)',
+        color: '#34d399', bg: BG.green,
         desc: 'f(x) = ax + b — slope, y-intercept, and intersections',
         pages: [
           {
@@ -307,7 +307,7 @@ export const LESSON_GRADES = [
       {
         id: 'quadratic-graphs', difficulty: 'intermediate',
         emoji: '⛰️', title: 'Quadratic Functions',
-        color: '#fbbf24', bg: 'linear-gradient(135deg, #451a03 0%, #92400e 100%)',
+        color: '#34d399', bg: BG.green,
         desc: 'Parabolas — vertex, axis of symmetry, roots',
         pages: [
           {
@@ -332,7 +332,7 @@ export const LESSON_GRADES = [
       {
         id: 'derivatives-intro', difficulty: 'advanced',
         emoji: '📉', title: 'Introduction to Derivatives',
-        color: '#c084fc', bg: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
+        color: '#34d399', bg: BG.green,
         desc: 'Slope at a point, tangent line, and the derivative function',
         pages: [
           {
@@ -377,7 +377,7 @@ export const LESSON_GRADES = [
       {
         id: 'polygons', difficulty: 'beginner',
         emoji: '🔷', title: 'Polygons & Angles',
-        color: '#38bdf8', bg: 'linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%)',
+        color: '#38bdf8', bg: BG.sky,
         desc: 'Interior angles, perimeter, and properties of regular polygons',
         pages: [
           {
@@ -400,7 +400,7 @@ export const LESSON_GRADES = [
       {
         id: 'pythagoras', difficulty: 'beginner',
         emoji: '📐', title: 'Pythagorean Theorem',
-        color: '#fbbf24', bg: 'linear-gradient(135deg, #451a03 0%, #92400e 100%)',
+        color: '#38bdf8', bg: BG.sky,
         desc: 'a² + b² = c² — proof and applications in right triangles',
         pages: [
           {
@@ -449,5 +449,13 @@ export const LESSON_GRADES = [
     ],
   },
 ]
+
+// Each shelf reads easiest to hardest. Sorted here rather than by hand-ordering
+// the arrays above, so adding a lesson anywhere in a category lands it in the
+// right place on its own.
+const RANK = { beginner: 0, intermediate: 1, advanced: 2 }
+for (const grade of LESSON_GRADES) {
+  grade.lessons.sort((a, b) => (RANK[a.difficulty] ?? 0) - (RANK[b.difficulty] ?? 0))
+}
 
 export const BUILTIN_LESSONS = LESSON_GRADES.flatMap(g => g.lessons.filter(l => !l.comingSoon))

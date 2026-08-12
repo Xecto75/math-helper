@@ -1,6 +1,15 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { u } from '../i18n/uiText.js'
+import { tr, LIB_CATS, LIB_CAT_SUBS, LIB_NAMES, LIB_DESCS } from '../i18n/catalog.js'
 import { SearchIcon, CloseIcon, ChevronIcon } from '../components/Icon.jsx'
+
+// The catalogue's own strings are English — they are the fallback, not the
+// display text. Everything the Library shows goes through here so the cards
+// speak the same language as the chrome around them.
+const lessonName = (lesson, lang) => tr(lang, LIB_NAMES, lesson.id) || lesson.title
+const lessonDesc = (lesson, lang) => tr(lang, LIB_DESCS, lesson.id) || lesson.desc
+const catName    = (cat, lang) => tr(lang, LIB_CATS, cat.id) || cat.label
+const catSub     = (cat, lang) => tr(lang, LIB_CAT_SUBS, cat.id) || cat.sublabel
 
 // Accent- and case-insensitive, so "geometrie" finds "Géométrie" and "PYTHAG"
 // finds "Pythagorean". Typing is how people search; spelling it exactly is not.
@@ -35,8 +44,8 @@ function LessonCard({ lesson, catLabel, onPlay, adminMode, onEditLesson, lang })
           </span>
         )}
         <span className="lib-card-emoji">{lesson.emoji}</span>
-        <span className="lib-card-title">{lesson.title}</span>
-        <span className="lib-card-desc">{lesson.desc}</span>
+        <span className="lib-card-title">{lessonName(lesson, lang)}</span>
+        <span className="lib-card-desc">{lessonDesc(lesson, lang)}</span>
         <span className="lib-card-foot">
           {catLabel && <span className="lib-card-cat">{catLabel}</span>}
           <span className={`lib-card-cta${soon ? ' lib-card-cta--soon' : ''}`}>
@@ -207,8 +216,8 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
     <section className="lib-shelf">
       <header className="lib-shelf-head">
         <span className="lib-shelf-dot" style={{ background: cat.color }} />
-        <h3 className="lib-shelf-title">{cat.label}</h3>
-        <span className="lib-shelf-sub">{cat.sublabel}</span>
+        <h3 className="lib-shelf-title">{catName(cat, lang)}</h3>
+        <span className="lib-shelf-sub">{catSub(cat, lang)}</span>
         <span className="lib-shelf-count">{cat.lessons.length}</span>
       </header>
 
@@ -312,13 +321,20 @@ export default function LibraryView({ grades, onPlay, adminMode, onEditLesson, l
   const [query, setQuery] = useState('')
 
   // Flattened once per language, not per keystroke: each lesson carries the
-  // text it can be found by, including its category and level.
+  // text it can be found by, including its category and level. Both the
+  // translated wording and the English original go in, so a search still works
+  // for someone typing the English name of a topic while the app is in French.
   const searchable = useMemo(() => {
     const diff = u(lang, 'diff')
     return grades.flatMap(cat => cat.lessons.map(lesson => ({
       lesson,
-      catLabel: cat.label,
-      text: [lesson.title, lesson.desc, cat.label, cat.sublabel, diff[lesson.difficulty]].join(' '),
+      catLabel: catName(cat, lang),
+      text: [
+        lessonName(lesson, lang), lessonDesc(lesson, lang),
+        catName(cat, lang), catSub(cat, lang),
+        lesson.title, lesson.desc, cat.label, cat.sublabel,
+        diff[lesson.difficulty],
+      ].join(' '),
     })))
   }, [grades, lang])
 

@@ -4519,7 +4519,9 @@
 }
 .lib-card:not(:disabled):hover::before { background: rgba(255,255,255,0.07); }
 .lib-card:not(:disabled):active { transform: translateY(-1px); }
-.lib-card--soon { opacity: 0.55; cursor: default; }
+/* No dimming: the "Coming soon" label already says it, and fading the card just
+   made half a shelf look darker than the other half. */
+.lib-card--soon { cursor: default; }
 
 .lib-card-emoji { font-size: 1.9rem; line-height: 1; }
 .lib-card-title {

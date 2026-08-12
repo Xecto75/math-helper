@@ -215,10 +215,8 @@ function Shelf({ cat, onPlay, adminMode, onEditLesson, lang }) {
   return (
     <section className="lib-shelf">
       <header className="lib-shelf-head">
-        <span className="lib-shelf-dot" style={{ background: cat.color }} />
         <h3 className="lib-shelf-title">{catName(cat, lang)}</h3>
         <span className="lib-shelf-sub">{catSub(cat, lang)}</span>
-        <span className="lib-shelf-count">{cat.lessons.length}</span>
       </header>
 
       <div className="lib-shelf-body">

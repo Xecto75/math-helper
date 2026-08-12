@@ -4340,18 +4340,16 @@
 
 /* ── One category shelf ───────────────────────────────────────────────────── */
 .lib-shelf { margin-bottom: 34px; }
+/* A rule between categories, not above the first one or below the last. */
+.lib-shelf + .lib-shelf {
+  border-top: 1px solid var(--border);
+  padding-top: 30px;
+}
 .lib-shelf-head {
   display: flex;
   align-items: baseline;
   gap: 10px;
   margin: 0 0 14px;
-}
-.lib-shelf-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  align-self: center;
 }
 .lib-shelf-title {
   margin: 0;
@@ -4368,17 +4366,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.lib-shelf-count {
-  margin-left: auto;
-  flex-shrink: 0;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--bg-3);
-  color: var(--text-2);
-  font-size: 0.72rem;
-  font-weight: 700;
-  align-self: center;
 }
 
 .lib-shelf-body { position: relative; }

@@ -501,12 +501,14 @@ ORDERING: fp before fV/fr/fn/fP/ft/fs on the same function. fp needs an id arg. 
   fd:[funcId]                                          — plot derivative f'(x)
   fR:[funcId,a,b,n,method]                             — Riemann rectangles (method: left|right|midpoint)
   fD:[x1,y1,x2,y2]                                     — draw vector/arrow
-  fgb:[a,b,color,id]                                   — mark the ANGLE BETWEEN two segments/vectors, by their ids. The arc
+  fgb:[a,b,color,id,side,label]                        — mark the ANGLE BETWEEN two segments/vectors, by their ids. The arc
                                     sits on the endpoint they share — two vectors from the origin meet there — or where
                                     their lines cross. Right angles draw a square instead of an arc. Measure is computed.
+                                    side "right"/"above-left"/… picks one of the FOUR angles two crossing lines make (opposite, alternate
+                                    interior…) by where it opens; label replaces the measure ("-" = none).
   fgx:[id]                                             — remove an angle mark
   fT:[funcId,transformType,value]                      — transform function (translateX|translateY|scaleY|scaleX|reflectX|reflectY)
-  fg:[ax,ay,bx,by,cx,cy,color]                         — mark angle ABC at vertex B (auto square if 90°)
+  fg:[ax,ay,bx,by,cx,cy,color,id,label]                — mark angle ABC at vertex B (auto square if 90°); label replaces the measure ("-" = none)
   fB:[points,showCoords,color]                         — batch add points "id:x:y:label|..." (parallel)
   fBP:[pointIds]                                       — batch show projections "id1|id2|..." (parallel)
   fTC:[]                                               — draw complete unit circle (all 16 standard angles)

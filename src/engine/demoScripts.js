@@ -1146,13 +1146,19 @@ export function demoGraphRiemannSum(funcIdRaw, aRaw, bRaw, nRaw, methodRaw) {
 }
 
 // ── graph-angle-between ───────────────────────────────────────────────────────
-export function demoGraphAngleBetween(aRaw, bRaw, colorRaw, idRaw) {
+export function demoGraphAngleBetween(aRaw, bRaw, colorRaw, idRaw, sideRaw, labelRaw) {
   const a = (aRaw || 'seg1').trim()
   const b = (bRaw || 'seg2').trim()
   const id = (idRaw || 'ang1').trim()
   const opts = {}
   const color = colorRaw ? resolveColor(colorRaw) : ''
   if (color) opts.color = color
+  // Which of the four angles two crossing lines make; blank keeps the one
+  // between the segments' own directions.
+  const side = String(sideRaw ?? '').trim()
+  if (side && side !== 'between') opts.side = side
+  const label = String(labelRaw ?? '').trim()
+  if (label) opts.label = label
   return { snapshot: null, script: [
     { type: 'showTitle', text: `angleBetween("${a}", "${b}")` },
     { type: 'ggb-angle-between', id, a, b, opts },
@@ -1183,7 +1189,7 @@ export function demoGraphDrawVector(x1Raw, y1Raw, x2Raw, y2Raw) {
 
 // ── graph-draw-angle ──────────────────────────────────────────────────────────
 // Mark angle ABC (vertex B) with an arc + measured degrees. Auto right-angle square.
-export function demoGraphDrawAngle(axR, ayR, bxR, byR, cxR, cyR, colorRaw, idRaw) {
+export function demoGraphDrawAngle(axR, ayR, bxR, byR, cxR, cyR, colorRaw, idRaw, labelRaw) {
   const ax = Number(axR), ay = Number(ayR)
   const bx = Number(bxR), by = Number(byR)
   const cx = Number(cxR), cy = Number(cyR)
@@ -1193,6 +1199,9 @@ export function demoGraphDrawAngle(axR, ayR, bxR, byR, cxR, cyR, colorRaw, idRaw
   const id    = (idRaw || '').trim() || `ang_${Date.now()}`
   const opts  = { radius: 1 }
   if (color) opts.color = resolveColor(color)
+  // Blank writes the measure; "-" writes nothing; anything else is the label.
+  const label = String(labelRaw ?? '').trim()
+  if (label) opts.label = label
   const script = [
     { type: 'showTitle',     text: `drawAngle(A(${ax},${ay}), B(${bx},${by}), C(${cx},${cy}))` },
     { type: 'ggb-draw-angle', id, ax, ay, bx, by, cx, cy, opts },

@@ -914,7 +914,7 @@ export const CATEGORIES = [
       {
         id: 'graph-draw-angle',
         label: 'drawAngle',
-        description: 'Mark angle ABC (vertex B) with an arc + its computed measure (auto square if 90°)',
+        description: 'Mark angle ABC (vertex B) with an arc + its computed measure (auto square if 90°). A Label replaces the measure: a letter, a given value like 40°, or LaTeX such as \\hat{xOy}; "-" draws the angle with no label.',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'ax', label: 'A x', type: 'number', default: 4 },
@@ -924,18 +924,33 @@ export const CATEGORIES = [
           { id: 'cx', label: 'C x', type: 'number', default: 3 },
           { id: 'cy', label: 'C y', type: 'number', default: 4 },
           { id: 'color', label: 'Color', type: 'color-name', default: '', placeholder: 'blue (default) / #hex' },
+          { id: 'id', label: 'ID (to remove it later)', type: 'text', default: '' },
+          { id: 'label', label: 'Label (blank = the measure, "-" = none)', type: 'text', default: '' },
         ],
       },
       {
         id: 'graph-angle-between',
         label: 'angleBetween',
-        description: 'Mark the angle between two segments or vectors, by their IDs — the arc sits on the endpoint they share (two vectors from the origin meet there), or where their lines cross if they never touch. Auto square if 90°.',
+        description: 'Mark the angle between two segments or vectors, by their IDs — the arc sits on the endpoint they share (two vectors from the origin meet there), or where their lines cross if they never touch. Auto square if 90°. Two crossing lines make FOUR angles: Which angle picks one by where it opens from the crossing (right, above-left…), which is how a vertically opposite or an alternate interior angle is marked without computing any coordinate. A Label replaces the measure ("-" = none).',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'a', label: 'Segment / vector 1', type: 'text', default: 'seg1' },
           { id: 'b', label: 'Segment / vector 2', type: 'text', default: 'seg2' },
           { id: 'color', label: 'Color', type: 'color-name', default: '', placeholder: 'blue (default) / #hex' },
           { id: 'id', label: 'ID', type: 'text', default: 'ang1' },
+          { id: 'side', label: 'Which angle', type: 'select', default: 'between',
+            options: [
+              { value: 'between',     label: 'Between the two segments' },
+              { value: 'right',       label: 'Opening to the right' },
+              { value: 'above-right', label: 'Above right' },
+              { value: 'above',       label: 'Above' },
+              { value: 'above-left',  label: 'Above left' },
+              { value: 'left',        label: 'Opening to the left' },
+              { value: 'below-left',  label: 'Below left' },
+              { value: 'below',       label: 'Below' },
+              { value: 'below-right', label: 'Below right' },
+            ] },
+          { id: 'label', label: 'Label (blank = the measure, "-" = none)', type: 'text', default: '' },
         ],
       },
       {

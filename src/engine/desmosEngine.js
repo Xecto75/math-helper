@@ -1390,6 +1390,16 @@ export async function removeVector(calc, id) {
   await fadeOut(calc, e.calcIds, e.fadeProps ?? { lineOpacity: 1 })
 }
 
+// What an angle's label says. Blank is its measure; anything else replaces it —
+// a letter, a given value like "40°", or a name written in LaTeX, which is sent
+// between backticks because that is how Desmos sets math in a label. "-" means
+// no label at all (see showLabel where it is used).
+function angleLabelText(label, deg) {
+  const s = String(label ?? '').trim()
+  if (!s || s === '-') return `${+deg.toFixed(1)}°`
+  return s.includes('\\') && !s.startsWith('`') ? `\`${s}\`` : s
+}
+
 // Mark the angle ABC (vertex at B) with an arc + measured-degrees label.
 // If the angle is ~90° it draws a right-angle square instead of an arc.
 // The measure is computed from the points — the label is always correct.
@@ -1452,7 +1462,7 @@ export async function drawAngle(calc, id, ax, ay, bx, by, cx, cy, opts = {}) {
   const ly = by + lr * Math.sin(t1 + diff / 2)
   calc.setExpression({
     id: lblId, latex: `(${f(lx)},${f(ly)})`, color,
-    showLabel: true, label: opts.label ?? `${+deg.toFixed(1)}°`,
+    showLabel: String(opts.label ?? '').trim() !== '-', label: angleLabelText(opts.label, deg),
     // The label rides on a point, and Desmos fades the LABEL with the point:
     // pointOpacity 0 was hiding the dot and the degrees along with it. The dot
     // stays 1px — invisible in practice — and its opacity is what the fade below
@@ -1511,13 +1521,54 @@ export async function angleBetween(calc, id, aId, bId, opts = {}) {
     rb = [vertex[0] + d2x, vertex[1] + d2y]
   }
 
+  // Two lines that cross make FOUR angles, and the one between the segments' own
+  // directions is only one of them. `side` picks another by where it opens from
+  // the crossing — "left", "below-right"… — so a vertically opposite angle, or
+  // an alternate interior one, is marked without working out a coordinate. The
+  // angle chosen is the one whose middle points closest to that direction.
+  const SIDES = { right: [1, 0], 'above-right': [1, 1], above: [0, 1], 'above-left': [-1, 1],
+                  left: [-1, 0], 'below-left': [-1, -1], below: [0, -1], 'below-right': [1, -1] }
+  const want = SIDES[opts.side]
+  if (want) {
+    const da = [ra[0] - vertex[0], ra[1] - vertex[1]]
+    const db = [rb[0] - vertex[0], rb[1] - vertex[1]]
+    const la = Math.hypot(da[0], da[1]) || 1, lb = Math.hypot(db[0], db[1]) || 1
+    const wl = Math.hypot(want[0], want[1])
+    let best = null, bestDot = -Infinity
+    for (const [sa, sb] of [[1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+      const mx = sa * da[0] / la + sb * db[0] / lb
+      const my = sa * da[1] / la + sb * db[1] / lb
+      const ml = Math.hypot(mx, my)
+      if (ml < 1e-9) continue
+      const dot = (mx * want[0] + my * want[1]) / (ml * wl)
+      if (dot > bestDot) { bestDot = dot; best = [sa, sb] }
+    }
+    if (best) {
+      ra = [vertex[0] + best[0] * da[0], vertex[1] + best[0] * da[1]]
+      rb = [vertex[0] + best[1] * db[0], vertex[1] + best[1] * db[1]]
+    }
+  }
+
   // The mark is sized from the segments it sits between, not from a fixed 1 unit:
   // on a graph zoomed out to 20 units a one-unit arc is a smudge, and on a tight
   // one it swallows the figure. A quarter of the shorter ray reads the same at
   // every zoom, which is what the reader actually compares it against.
+  //
+  // How far each ray REALLY runs from the vertex: to the end of its own segment
+  // in the direction it points. Where two long lines cross in their middles,
+  // the whole segment used to be the reach, and the arcs at two nearby
+  // crossings (a transversal through two parallels) grew into each other.
+  const rayReach = (seg, dx, dy) => {
+    let best = 0
+    for (const [ex, ey] of [[seg.x1, seg.y1], [seg.x2, seg.y2]]) {
+      const vx = ex - vertex[0], vy = ey - vertex[1]
+      if (vx * dx + vy * dy > 1e-9) best = Math.max(best, Math.hypot(vx, vy))
+    }
+    return best || Math.hypot(dx, dy)
+  }
   const reach = Math.min(
-    Math.hypot(ra[0] - vertex[0], ra[1] - vertex[1]),
-    Math.hypot(rb[0] - vertex[0], rb[1] - vertex[1]),
+    rayReach(s1, ra[0] - vertex[0], ra[1] - vertex[1]),
+    rayReach(s2, rb[0] - vertex[0], rb[1] - vertex[1]),
   )
   const radius = opts.radius ?? Math.max(0.6, Math.min(reach * 0.26, 2.5))
   await drawAngle(calc, id, ra[0], ra[1], vertex[0], vertex[1], rb[0], rb[1], { ...opts, radius })

@@ -20,11 +20,12 @@
 // Injected into every generator call, regardless of module selection.
 
 import { EXAMPLE_LESSONS } from './exampleLessons.js'
+import { PANELS } from './panels.js'
 
-export const BASE_RULES = `Lesson generator for math-engine. Return ONLY raw JSON, no prose, no fences.
+export const BASE_RULES = `Lesson generator for Vectora. Return ONLY raw JSON, no prose, no fences.
 
-FORMAT: [["Title","LC",[["FC",a,...],...]],...]
-  LC = layout code   FC = function code   args = positional
+FORMAT: [["Title","PN",[["FC",a,...],...]],...]
+  PN = panel digits (see PANELS)   FC = function code   args = positional
   ARGS ARE FLAT, siblings of the code: ["fv",0,0,6] — NEVER ["fv",[0,0,6]].
     A nested array puts every argument into the first input and destroys the step.
   bool→0/1  ""=skip optional mid-arg  omit trailing defaults
@@ -37,36 +38,98 @@ COLORS: 0=red 1=purple 2=orange 3=green 4=yellow 5=pink 6=teal 7=white. Never bl
 LENGTH: 4-6 pages typical, 3 min, 8 max. Arc: concept → worked example → different case → recap.
   One idea + one visual per page. No padding pages, no cramming stages. Max 8 steps/page.
 
-TEXT(tc/tf): lines sep by | · $latex$ inline · **bold** · JSON: double backslashes (\\\\frac not \\frac)
-  ONE FORMULA PER LINE: "$a$|$b$|$c$", never "$a$ $b$ $c$" (narrow panel, wraps mid-fraction).
-  Max 3 lines. clr "" unless the user asks for a colored box. Brief annotations → c* codes, not tc.
+COMPUTE not assert: every number via {{ expr }} (mathjs) or a solving step; never hand-type a computed
+  result. {{ }} runs AFTER [id]token substitution, so {{ [a] + [b] }} works.
+SHOW THE WORK: the quantity being solved for stays an UNKNOWN everywhere until the steps derive it.
+  A lesson that states the answer before deriving it has taught nothing — reveal it only after, from
+  the step that found it.
+COLOR LINKS: one colour per concept; whatever carries a colour must be matched by whatever refers to it.
 
-LAYOUT: any layout with a text panel (tg/tG/tq/te/ge/Ge/Gc) needs ≥1 tc, else pick a non-text layout.
-sL:[layout] — change THIS page's layout mid-script (te → "single-equation" → "graph-equation"). Shared
-  panels resize smoothly, others fade. Arg is the FULL name, never the LC code. Most pages need no sL.
+INLINE SYNTAX — the ONLY markup these strings understand, anywhere text is written:
+  |                    splits lines (a | inside $ $ stays an absolute value)
+  **bold**             the only emphasis that exists
+  {color: text}        or \\clr{color}{x} inside $ $
+  ^sup                 outside maths: "m^2" prints m². Inside $ $ use LaTeX ^{ }.
+  $math$  $$block$$    see MATH INSIDE TEXT below
+  {{ expr }}           evaluated with mathjs   ·   [id]token   live value off a shape/graph/table
+  EVERYTHING ELSE IS PRINTED AS TYPED. *italic*, _underscore_, backtick code spans, # headings
+  and "- " bullets are not parsed — those characters appear on the page exactly as written,
+  which is how *a word meant to be emphasised* ends up surrounded by asterisks. Emphasis is
+  **bold** and nothing else; for a list use the isList argument of tc, not "-" or "1." lines
+  you write yourself.
 
-COMPUTE not assert: every number via {{ expr }} (mathjs) or eq-*; never hand-type a computed result.
-SHOW THE WORK: the quantity being solved for stays an UNKNOWN everywhere until the steps derive it —
-  in the equation, in tc content, and in shape labels alike. A lesson that states the answer before
-  deriving it has taught nothing. Reveal it only after, from the step that found it ([eq-result]).
-COLOR LINKS: a colored shape edge/angle REQUIRES its matching eq term or comment in that color. One color per concept.
-ORDERING: fp→before fV/fr/fn/fP/ft/fs/cf | gp→before gl/ga/gh/gE/gA/gr | S2c→before S2l/S2a/S2h/S2E/S2A | fp needs an id arg.
+MATH INSIDE TEXT — text boxes, comment bubbles, titles, annotation notes: every string a learner
+reads. Put the maths between $ … $ and write ordinary LaTeX (KaTeX renders it).
+  THE BACKSLASH IS WRITTEN TWICE IN JSON AND NEVER MORE. "$\\\\sqrt{25}$" is correct: JSON
+  turns the two into the one the renderer needs. "$\\\\\\\\sqrt{25}$" arrives as \\\\sqrt and
+  prints the letters s q r t on the page — that is the single most common way these lessons break,
+  and it breaks silently. Count the backslashes in every $ $ before returning.
 
-[id]token refs (in tc/tf content, and as an ev: value e.g. ev:[a=[tri]0,b=[tri]1]) — never retype a
-number another step made; pull it live so it cannot drift:
-  2D shape (gp/S2c): [id]N=side N · [id]h=height · [id]r=radius · [id]aN=angle N°
-  3D solid (S3c)   : [id]a/r/h/l/d/R — same letters S3m labels: cube→a sphere→r cone/cylinder→r+h
-                     rect-prism→l+h+d pyramid→a+h tetra/octahedron→a torus→R+r
-  Point (fa)       : [id]x [id]y          Segment (fsg): [id]x1 [id]y1 [id]x2 [id]y2 [id]len
-  Function (fp)    : [id]expr=its expression as text · [id]N=Nth number in it L→R, literal
-                     ("2x+4"→[id]0=2 [id]1=4) or |slider| live value ("|a|x+|b|"→[id]0=a)
-  Slider           : [name]v — by its own name, whichever function uses it
-  Table cell       : [id]r<row>c<col> 0-indexed, e.g. [grid1]r0c1
-  {{ mathjs }}     : runs AFTER token substitution, so {{ [trap]0 + [trap]1 }} works
-  {color: text} or \\clr{color}{x} inside $ $ · [eq-result]=current eq's answer (tf/cu)
+  root       $\\\\sqrt{25}$   $\\\\sqrt[3]{8}$      power     $x^2$  $2^{10}$  (braces past one char)
+  fraction   $\\\\frac{a}{b}$                 index     $x_1$  $a_{n+1}$
+  trig       $\\\\cos \\\\theta$  $\\\\sin(2x)$  $\\\\tan A$   inverse   $\\\\arcsin(0.8)$  $\\\\arccos x$
+  greek      $\\\\pi$ $\\\\theta$ $\\\\alpha$ $\\\\Delta$      degrees   $30^\\\\circ$
+  multiply   $3 \\\\times 4$  $3 \\\\cdot 4$        plus/minus $\\\\pm$
+  compare    $\\\\le$ $\\\\ge$ $\\\\ne$ $\\\\approx$          absolute  $\\\\left|x\\\\right|$
+  log/exp    $\\\\log_2 8$  $e^{2x}$           angle     $\\\\angle ABC$
+  words and units go inside \\\\text{ }: $49\\\\text{ m}^2$ — bare letters in $ $ come out
+  italic, because maths mode reads every letter as a variable.
+
+  Outside the $ $ it is plain prose: write "the square root of 25", never a loose \\sqrt.
+  Equation-panel strings (eq/ev/er) are NOT LaTeX — those take plain math, x/2 and x^2.
+
+sL:[mode] — change THIS page's panels mid-script ("0" → "03"). Shared panels resize smoothly,
+  others fade. Same digits as the page field. Most pages need no sL.
 `
 
+// ── LAYOUTS ───────────────────────────────────────────────────────────────────
+// Every layout, and the modules it needs to be fillable. A layout is offered
+// only when ALL of them were picked — a two-panel layout with one panel the
+// generator has no functions for is what produced invented codes: it chose
+// text-graph with no graph module loaded, then made up plausible-looking codes
+// to put something in the empty half.
+//
+// `needs` is a list of alternatives when a panel can be served by more than one
+// module (single-3d works with either geo module).
+const LAYOUT_INFO = {
+  sT: { name: 'single-text',    desc: 'text box alone, no paired display', needs: [['text']] },
+  se: { name: 'single-equation', desc: 'equation alone',                   needs: [['equation']] },
+  sg: { name: 'single-graph',   desc: 'graph alone',                       needs: [['graph']] },
+  sq: { name: 'single-grid',    desc: 'table alone',                       needs: [['table']] },
+  s3: { name: 'single-3d',      desc: 'a solid, alone', needs: [['geo2d', 'geo3d']] },
+  sc: { name: 'single-calc',    desc: 'calculation lines alone',           needs: [['calc']] },
+  te: { name: 'text-equation',  desc: 'text + equation',                   needs: [['text'], ['equation']] },
+  tg: { name: 'text-graph',     desc: 'text + graph',                      needs: [['text'], ['graph']] },
+  tq: { name: 'text-grid',      desc: 'text + table',                      needs: [['text'], ['table']] },
+  tG: { name: 'text-geo',       desc: 'text + SVG geometry',               needs: [['text'], ['geo2d']] },
+  ge: { name: 'graph-equation', desc: 'graph + equation',                  needs: [['graph'], ['equation']] },
+  Ge: { name: 'geo-equation',   desc: 'SVG geometry + equation',           needs: [['geo2d'], ['equation']] },
+  qe: { name: 'grid-equation',  desc: 'table + equation, no text',         needs: [['table'], ['equation']] },
+  qg: { name: 'grid-graph',     desc: 'table + graph',                     needs: [['table'], ['graph']] },
+}
+
+// The layouts a given module set can actually fill.
+// The panels a given module set can actually fill. A panel is offered only if
+// at least one of the modules that draw into it was picked, so the generator
+// never sees a panel it has no function for.
+export function panelsFor(moduleIds) {
+  const have = new Set(moduleIds)
+  return Object.entries(PANELS)
+    .filter(([, pnl]) => pnl.modules.some(m => have.has(m)))
+    .map(([digit, pnl]) => `  ${digit} = ${pnl.id}  —  ${pnl.label}`)
+}
+
+export function layoutsFor(moduleIds) {
+  const have = new Set(moduleIds)
+  return Object.entries(LAYOUT_INFO)
+    .filter(([, l]) => l.needs.every(alts => alts.some(m => have.has(m))))
+    .map(([code, l]) => `  ${code} = ${l.name}  —  ${l.desc}`)
+}
+
 // ── MODULE DEFINITIONS ────────────────────────────────────────────────────────
+// Each module carries its own `rules` (including how to reference the things it
+// creates) and its own `funcs`. Nothing here is emitted unless its module was
+// picked, so the generator never reads about a function it cannot call.
 
 export const MODULES = {
 
@@ -74,86 +137,206 @@ export const MODULES = {
   equation: {
     label: 'Equation Solving',
     description: 'Algebra: solve, distribute, combine, substitute, inverse trig, exponents',
-    layouts: ['se', 'te', 'ge', 'Ge', 'qe'],
-    doc: `EQUATION LAYOUTS: se=single-equation  te=text-equation  ge=graph-equation  Ge=geo-equation  qe=grid-equation
-
-RULES: eq ONCE per page, never again mid-solve. ef for ANY degree-1 single-variable eq (fractions,
+    rules: `eq ONCE per page, never again mid-solve. ef for ANY degree-1 single-variable eq (fractions,
 multi-term, constants both sides). Non-linear (quadratic/trig/log): ec/es/eo/ed/eD manually.
 
-STRING SYNTAX: plain math, no LaTeX (LaTeX only inside $...$ in tc) — fractions x/2 (NOT \\frac),
-exponents x^2, colored vars |label|{color}
+STRING SYNTAX: plain math, no LaTeX — fractions x/2 (NOT \\frac), exponents x^2 (a letter or an
+expression works too: 2^n, a_1 * r^(n-1)), subscripts a_1, coloured vars |label|{color}.
 
 FIND-THE-MISSING-VALUE PAGES — the derivation IS the lesson, so build it as steps:
   eq:"a^2+b^2=c^2" → ev:"a=5,c=13" (knowns ONLY) → es to isolate the unknown term → er (√) / ed / ef
-  → the value appears BECAUSE of the steps → only now S2l/tf/cu put it on the shape.
-  The shape's own S2c vals do hold the real numbers (geometry cannot be drawn without them) and that
-  is fine — they are not learner-visible. Everything the student READS (eq, tc, labels) must keep the
-  unknown unknown until derived. Substituting it, or writing "$b^2=169-25=144$" in a tc, skips the
-  entire lesson.
+  → the value appears BECAUSE of the steps → only now is it written anywhere the student reads.
+  Everything read (the equation, panel text, labels) must keep the unknown unknown until derived.
+  Substituting it, or writing "$b^2=169-25=144$", skips the entire lesson.
 
-FUNCTIONS [positional args]:
-  eq:[equation]                      — create/display equation (plain math string)
-  ec:[]                              — auto-combine like terms
-  eD:[equation]                      — distribute parentheses (provide expanded form)
-  es:[termIndex]                     — move term at index to other side (0=first term left→right)
-  eo:[]                              — reorder so like terms are adjacent
-  ed:[divisor]                       — divide both sides by number
-  em:[multiplier]                    — multiply both sides by number (clears x/2=4 style fractions)
-  ef:[]                              — animated full solve (combine→send→divide) — use for any degree-1 eq
-  ev:[replacements]                  — substitute KNOWN values only, never the one being solved for
+REFERENCING RESULTS: [eq-result] = the current equation's answer. eS stashes one under a name, which
+  a later step pulls back as [name]v.
+
+FORMULAS THAT ARE NOT SOLVED: a page can put up a theoretical form (y = ax + b, A = pi*r^2) and
+explain its parts instead of solving it. eq once, then one eA per part — the underline and its note
+say what that piece is. This is the ONLY way to label a piece of a formula: a text box beside the
+equation cannot point at anything, and colouring a term says a piece matters without saying why.
+One colour per part, and if a text box or a shape refers to that part it carries the same colour.
+
+INTENT: algebra/solve-for-x → an equation layout with eq-*.`,
+    funcs: `FUNCTIONS [positional args]:
+  eq:[eq]                                   — create/display equation (plain math string)
+  ec:[]                                     — auto-combine like terms
+  eD:[eq]                                   — distribute parentheses (provide expanded form)
+  es:[term]                                 — move term at index to other side (0=first term left→right)
+  eo:[]                                     — reorder so like terms are adjacent
+  ed:[divisor]                              — divide both sides by number
+  em:[multiplier]                           — multiply both sides by number (clears x/2=4 style fractions)
+  ef:[]                                     — animated full solve (combine→send→divide) — use for any degree-1 eq
+  ev:[replacements]                         — substitute KNOWN values only, never the one being solved for
                                         (see FIND-THE-MISSING-VALUE). Prefer a live [id]token over a
                                         literal when the value came from a shape/graph/table:
                                         "a=[tri]0,r=[circ]r"
-  eS:[name]                          — stash the current solved result under a name (no visual
+  eS:[name]                                 — stash the current solved result under a name (no visual
                                         change); a later eq/ev/tc/cu pulls it back via [name]v
-  er:[equation]                      — show √ both sides (eq must be "x^2=N" form)
-  ea:[trig]                          — apply inverse trig: sin|cos|tan
-  ee:[equation,newDegree]            — change exponent (fade old, fade in new)
+  er:[eq]                                   — show √ both sides (eq must be "x^2=N" form)
+  ea:[trig]                                 — apply inverse trig: sin|cos|tan
+  ee:[eq,newDegree]                         — change exponent (fade old, fade in new)
+  eT:[side,index,op,value]                  — transform ONE term into an equal form. Everything
+                                              else that scales acts on both sides; this does not,
+                                              because it is a statement about the term, not a move
+                                              on the equation — the value is unchanged.
+                                              op "over": 6 becomes 6/1, giving it a denominator.
+                                              op "amplify" with value k: a fraction of two numbers
+                                              has both multiplied by k (6/1 amplified by 3 = 18/3),
+                                              which is how two fractions reach a common denominator.
+                                              A mixed number is written "6 2/3" — it goes up as
+                                              written and its "+" arrives a beat later on its own.
+  eR3:[equation]                            — RULE OF THREE. Draws the cross over the equals sign of a
+                                              proportion and writes a·d = b·c underneath in grey as each
+                                              line lands, then a last line dividing by what multiplied
+                                              the unknown. Nothing moves; the equation is not replaced.
+                                              It then STOPS on the working, and › writes the answer.
+                                              The proportion is typed into eR3 itself — no eC before it.
+                                              Write the unknown in |pipes| when it is a NUMERATOR —
+                                              "2/3 = |x|/12" — or x/12 parses as (1/12)x and there is no
+                                              ratio left to cross. A denominator needs no pipes.
+  eFa:[side,index]                          — expand a FACTORIAL one factor at a time: 5! → 4!·5 → 3!·4·5
+                                              → … → 1·2·3·4·5. Write it in eC with a plain "!" ("5!",
+                                              "5! = x"). Follow with eF to multiply it out. This is the
+                                              step that makes n! mean something; the answer alone does
+                                              not.
+  eSc:[side,index]                          — write out SCIENTIFIC NOTATION. The term must have been
+                                              created as m × 10^n ("24,56 * 10^2", or "24,56 x 10^2").
+                                              The comma walks one place per beat while the exponent
+                                              counts down, and a 0 is laid down when it runs off the
+                                              end: 24,56×10² → 245,6×10¹ → 2456. A negative exponent
+                                              walks it the other way (24,56×10⁻² → 0,2456).
+  eA:[annotId,side,from,to,part,text,color] — underline part of the equation and write a note under it.
+                                              SEVEN arguments and the note is the SIXTH — part comes before it and is easy to
+                                              skip. part is "" for the whole term; "coeff"/"var" narrow to the a or the x of
+                                              "ax"; "int"/"sep"/"dec" narrow to the whole part, the separator or the decimal
+                                              part of a decimal number, so 35,234 can be annotated in three pieces. Those
+                                              six strings are all it accepts, never a sentence. text is the note itself.
+                                              side "left"/"right", cells counted per side from 0, to "" = just that
+                                              cell. Overlapping notes stack.
+  eX:[annotId]                              — remove one annotation, or all of them when id is ""
+  eW:[arrowId,side,from,to,text,place,color] — curved arrow from one term to another with a note at its
+                                              middle: how the terms of a SEQUENCE are linked. Write the
+                                              sequence in eq as a list, items separated by ";":
+                                              "u_0 ; u_1 ; u_2 ; … ; u_n" or "3 ; 7 ; 11 ; 15" (no + between
+                                              items, u_0 prints as u₀, "…" is an item too). side "left" for a
+                                              list, cells from 0. place "above" for each hop between
+                                              neighbours ("+4", "×2"), "below" for one long arrow from the
+                                              first term to the last ("+n × 4").
+  eWx:[arrowId]                             — remove one arrow, or all of them when id is ""
+  eWc:[arrowId,side,from,to,text,place,color] — one arrow from EVERY term to the next, all with the same note,
+                                              drawn left to right: the whole sequence linked in one step.
+                                              to "" = up to the last term. Use it instead of one eW per hop.
+  eSq:[kind,first,step,count,dots,arrows,points,rank,color] — write a SEQUENCE out from its first term and
+                                              its step, computed: kind "arithmetic" (+d) or "geometric" (×r).
+                                              It goes up as a list with its arrows (+4, ×3) drawn for you.
+                                              dots "yes" adds "…"; arrows "above"/"below"/"none"; points
+                                              "yes" also plots (n, aₙ) from n = rank on a graph panel.
+  eP:[poly,divisor]                         — polynomial long division, laid out as the school tableau. Takes
+                                        over the equation panel — a page has an equation or a
+                                        division, never both, and either replaces the other. Draws
+                                        the setup, then waits; each click brings down one
+                                        subtraction. One variable, ^ for exponents: "8x^3-4x^2+8x-12"
+                                        divided by "x-1". Use it for factoring and for dividing out a
+                                        known root — the panel does the arithmetic.
+`,
+  },
 
-INTENT: algebra/solve-for-x → te+eq-* | geo+equation mix → Ge layout
+  // ── Charts ─────────────────────────────────────────────────────────────────
+  chart: {
+    label: 'Fraction circles',
+    description: 'Fraction circles (pies) — a quantity drawn, not a grid of cells',
+    rules: `Same panel as tables (2), nothing else in common: a table is cells you fill in, a chart is
+a quantity you draw. A page has ONE or the other, never both.
+
+FRACTION CIRCLE (cP) is the one to reach for whenever a fraction is the subject: it draws den equal
+slices with num filled AND writes the fraction under the circle as plain text. Never pair it with a
+text box repeating the same fraction — the circle already says it.
+
+PERCENTAGES: the same circle, the same fill, a different number underneath — cP with mode "percent",
+or cM to rewrite one that is already up. Going fraction → percent with cM IS the lesson on percentages:
+the drawing stays put, which is what shows they are two names for one quantity. Never draw a second
+pie to show the percentage of the first.
+
+IMPROPER FRACTIONS: num MAY exceed den, and that is the case worth drawing. 8/3 comes out as two
+whole circles and two thirds of a third — the fill runs on into the next circle instead of stopping
+at one. Never reduce 8/3 to 2 2/3 before drawing it, and never clamp it to 3/3: seeing the fill pass
+a whole circle IS how the idea lands.
+cP builds it in stages on its own: one circle fills, the next arrives beside it while the row
+slides over, each keeps its own tally, and the tallies add up into the fraction at the end. Never
+stage that by hand with several cP calls — one call is the whole animation.
+
+CHANGING A VALUE: cS sweeps an EXISTING pie to a new value, animating through the in-between fill, so
+3/8 → 5/8 is watched filling rather than replaced. That IS the teaching moment — never draw a second
+pie to show a new value, and never cX+cP to fake a change. Blank keeps what it has: cS:["p",5] means
+five eighths, cS:[chartId,num,den] means the same amount cut into quarters.
+
+EQUIVALENT FRACTIONS: two pies side by side (same panel, two ids) is how 1/2 = 2/4 is shown — same
+filled area, different slice count. cS one of them to land on the other.
+
+
+ONE colour per chart, and whatever refers to it in text or an equation carries the same one.`,
+    funcs: `FUNCTIONS [positional args]:
+  cP:[chartId,num,den,color,label,mode] — fraction circle: den slices, num filled, the value written
+                                       underneath. label is optional text above the circle;
+                                       mode "percent" or "decimal" writes it that way from the start.
+  cS:[chartId,num,den]                  — sweep an existing pie to a new value. "" for either part keeps
+                                       the current one. Animated — this is the point of the panel.
+  cM:[chartId,mode]                     — rewrite the value as "percent", "decimal" or "fraction"
+                                       ("toggle" cycles the three). The drawing does not move; only the
+                                       number under it is rewritten.
+  cN:[chartId,sets]                     — the number sets drawn inside one another, ℝ ⊃ ℚ ⊃ 𝔻 ⊃ ℤ ⊃ ℕ,
+  cT:[stages,count,headers,results,id]  — POSSIBILITY TREE: a column per stage, a path per outcome, and
+                                       the complete outcomes down a last column. Outcomes comma
+                                       separated ("P,F"); stages that differ are separated by "|"
+                                       ("P,F | 1,2,3,4,5,6" is a coin then a die). With no "|" the same
+                                       outcomes repeat `count` times. Any number of outcomes per stage.
+                                       headers names the columns; results="0" hides the last one.
+                                       Counting the leaves IS the multiplication rule — use it for
+                                       dénombrement, compound experiments and OU/ET, not only for coins.
+  cTp:[path,id]                        — follow ONE outcome through that tree, branch by branch: the
+                                       path lights up as it is walked and the rest dims. Write it as it
+                                       reads in the results column ("PFP"). path="" clears it.
+  cV:[sets,id]                                         — VENN diagram, 2 or 3 sets: sets="A,B" or "A,B,C" (never more). Draws
+                                    the diagram EMPTY; shade it with cVh, one step per region.
+  cVh:[expr,color,id]                                  — shade the region expr names: "A∩B", "A∪B", "A'", "A∩B'", "(A∪B)'",
+                                    "A∩B∩C". Use ∩ or &, ∪ or U, ' for the complement, () to group. Each cVh cross-fades out
+                                    of the previous one, so walk the cases with several cVh on ONE cV. expr="" clears it.
+                                          each with a few examples in its own band. sets "" = those five;
+                                          otherwise one row per ring, outermost first, "symbol|name|ex,ex".
+                                          The nesting is the teaching: a list of definitions cannot show
+                                          that every natural number is also an integer.
+  cX:[chartId]                          — several at once with "a|b|c" — fade a chart out and drop it
+Several charts can share the panel — they lay out in a row automatically, so two pies side by side
+is just two cP with different ids.
 `,
   },
 
   // ── 2D Shapes (Three.js flat) ──────────────────────────────────────────────
+  // ── 2D Shapes (Three.js flat) ──────────────────────────────────────────────
+  // The only flat-geometry module. It shares its engine and its display with
+  // geo3d — same scene, same camera — which is why the function ids all read
+  // "geo3d-" even for a plane figure.
   geo2d: {
     label: '2D Shapes (animated)',
     description: 'Flat 2D shapes (animated): triangles, rectangles, circles, polygons — edges, angle arcs, side labels',
-    layouts: ['s3'],
-    doc: `GEO2D LAYOUT: s3=single-3d  (used for ALL Three.js displays — 2D and 3D)
-
-FUNCTIONS [positional args]:
-  S2c:[id,type,a,b,c,color]                             — create flat 2D shape. a/b/c are SEPARATE
-                                                          numeric args (not one "6,4" string) and
-                                                          there is ONE color. Flip/rotate are S2f/S2r.
-  S2m:[id,dx,dy]                                        — move shape by offset
-  S2h:[id]                                              — pulse highlight
-  S2l:[id,labels]                                       — label sides. labels is ONE string, entries
-                                                          COMMA-separated in edge order, never "|":
-                                                          "6,4,," labels e0 and e1 and leaves e2/e3
-                                                          alone; "" labels every side with its real
-                                                          computed length.
-  S2a:[id,color,showValues]                             — show all interior angle arcs; showValues=true also labels each arc with its measured degrees
-  S2A:[id,angleIndex,color]                             — pop+recolor one angle arc
-  S2E:[id,edgeIndex,color]                              — animated highlight on one edge
-  S2tk:[id,edgeIndex,ticks,color]                       — congruent-side tick mark(s) at an edge's midpoint (ticks=1-3; use a different count for a different equal-side pair)
-  S2tx:[id,edgeIndex]                                    — remove tick mark(s) from an edge
-  S2c with type="line": a genuine line SEGMENT (not an infinite line) — vals=[length]; e0 is its only edge, v0/v1 its endpoints
-  S2w:[id,arrowId,from,to,color]                        — draw animated arrow inside shape
-  S2W:[id,arrowId]                                      — remove arrow
-  S2x:[id]                                              — remove shape
-  S2f:[id]                                              — flip horizontal
-  S2r:[id]                                              — rotate 90° CCW
-  gM:[id,clr]                                           — show ALL area-formula measures (dashed height + relevant side labels — square→s, rectangle→l+h, parallelogram→b+h, trapeze→B+b+h, triangle→b+h, circle→r). Same function as geo_canvas's gM — works on geo2d shapes too.
-  gP:[id,clr]                                           — show ALL perimeter-formula measures (every side highlighted in turn + labeled with its length; circle→r same as gM). Same function as geo_canvas's gP — works on geo2d shapes too.
-
-SHAPE TYPES — what a, b, c mean (leave the unused ones ""):
+    rules: `SHAPE TYPES — what a, b, c mean (leave the unused ones ""):
   triangle         a,b,c = the 3 side lengths      right-triangle   a,b = the 2 legs (hyp auto)
   rectangle        a=width  b=height               square           a=side
-  circle           a=radius                        line             a=length
+  circle           a=radius  b=degrees (omit = 360)   line             a=length
+                     90 = quarter, 180 = half, 270 = three quarters. A sector is drawn with
+                     its two radii, not just the arc.
   parallelogram    a=width  b=height  c=dx         trapeze          a=top  b=bottom  c=height
+  trapeze-right    a=top  b=bottom  c=height       rhombus          a=big diag  b=small diag
+                     vertical left edge, 2 right angles            area = a x b / 2
   pentagon/hexagon/octagon/regular-polygon         a=circumradius
 
-color: index (0–7) or "" for default. A triangle given 3 sides has a height it COMPUTES — you do not
+color: index (0–7) or "" for default.
+
+A RIGHT TRIANGLE IS ALWAYS type "right-triangle" (a=base b=height, right angle at v1) — NEVER
+"triangle". Any shape needing a right angle, or a chosen base AND height, is right-triangle: [id]h
+comes back EXACTLY as typed. A triangle given 3 sides has a height it COMPUTES — you do not
 choose it. Never assume it: read it as [id]h (a 6,5,7 triangle is 3.87 tall, not 4), and if a second
 shape has to match that height, it cannot be hand-typed — build the lesson around what gM shows.
 
@@ -169,31 +352,67 @@ INDICES:
 S2l blank=auto lengths; literal text only for unknowns ("c = ?"). S2a=all arcs, S2A=pop one;
 angle value in text = {{ [id]aN }}°. S2w anchors: "v0","v1"…=vertices, "e0","e1"…=edge midpoints;
 arrowId unique per shape; use it for relationships (v2 is opposite e0 in a right-triangle).
+
+SNAPPING (S2s) — the ONLY way to draw a figure whose parts touch: a triangle cut by a line parallel
+to one side, a median, a segment along part of an edge. S2c always CENTRES what it builds, so two
+S2c shapes can never meet. S2s takes its corners from a shape that already exists:
+  vN     = corner N        eN@0.4 = 40% along edge N        eN:7.2 = 7.2 units along edge N
+  Edge N runs from corner N to corner N+1. Prefer eN:distance — the problem hands you lengths, not
+  fractions, and the figure then measures EXACTLY right ([id]N comes back as the true length).
+  A snapped shape is an ordinary shape: S2l/S2a/S2n/S2E/[id]N all work on it.
+  Triangle ABC cut at D on BC and E on CA, small triangle CDE:
+    S2c big triangle AB,BC,CA  then  S2s small big "v2,e1:BD,e2:CE"   (v2=C, then D, then E)
+
+NAMING (S2n) — letters go on the CORNERS, lengths on the SIDES (S2l). Where two shapes share a
+corner, name it on ONE of them and put "-" in the other, or the letter is drawn twice on itself.
+
+REFERENCING A SHAPE: [id]N=side N · [id]h=height · [id]r=radius · [id]aN=angle N°. Never retype a
+  number the shape already knows — pull it live so it cannot drift.
 ORDERING: S2c before S2l/S2a/S2h/S2E/S2A/S2w/S2x on the same shape.
+A coloured edge or angle REQUIRES whatever refers to it to carry the same colour.`,
+    funcs: `FUNCTIONS [positional args]:
+  S2c:[id,type,a,b,c,color]            — create flat 2D shape. a/b/c are SEPARATE
+                                                          numeric args (not one "6,4" string) and
+                                                          there is ONE color. Flip/rotate are S2f/S2r.
+  S2p:[shapeId,points,color]           — polygon from its CORNERS: "x,y;x,y;…" in
+                                                          order, not closed. For the figure a problem
+                                                          draws when it is nobody's named shape.
+  S2s:[shapeId,parentId,anchors,color] — NEW shape whose corners sit ON an existing
+                                                          one. anchors = ONE comma string; 2 = segment,
+                                                          3+ = polygon. See SNAPPING below.
+  S2n:[shapeId,names,color]            — name the CORNERS (A,B,C…). ONE comma string,
+                                                          one entry per corner, "-" skips one.
+  S2m:[id,dx,dy]                       — move shape by offset
+  S2h:[id]                             — pulse highlight
+  S2l:[id,labels]                      — label sides. labels is ONE string, entries
+                                                          COMMA-separated in edge order, never "|":
+                                                          "6,4,," labels e0 and e1 and leaves e2/e3
+                                                          alone; "" labels every side with its real
+                                                          computed length.
+  S2a:[id,color,showValues]            — show all interior angle arcs; showValues=true also labels each arc with its measured degrees
+  S2A:[id,angleIndex,color]            — pop+recolor one angle arc
+  S2E:[id,edgeIndex,color]             — animated highlight on one edge
+  S2tk:[id,edgeIndex,ticks,color]      — congruent-side tick mark(s) at an edge's midpoint (ticks=1-3; use a different count for a different equal-side pair)
+  S2tx:[id,edgeIndex]                  — remove tick mark(s) from an edge
+  S2c with type="line": a genuine line SEGMENT (not an infinite line) — vals=[length]; e0 is its only edge, v0/v1 its endpoints
+  S2w:[id,arrowId,from,to,color]                — draw animated arrow inside shape
+  S2W:[id,arrowId]                              — remove arrow
+  S2x:[id]                                      — several at once with "a|b|c" — remove shape
+  S2f:[id]                                      — flip horizontal
+  S2r:[id]                                      — rotate 90° CCW
+  S2v:[zoom,panX,panY,distance,duration,preset] — camera. preset (3D only): front|back|top|bottom|side|corner — look straight at a highlighted face.
+  gM:[shapeId,color]                            — show ALL area-formula measures (dashed height + relevant side labels — square→s, rectangle→l+h, parallelogram→b+h, trapeze→B+b+h, triangle→b+h, circle→r)
+  gP:[shapeId,color]                            — show ALL perimeter-formula measures (every side highlighted in turn + labeled with its length; circle→r same as gM)
+ga/gr/gM/gP clr "" = light blue.
 `,
   },
+
 
   // ── 3D Shapes (Three.js volumetric) ───────────────────────────────────────
   geo3d: {
     label: '3D Shapes (volumetric)',
     description: 'Rotatable 3D solids: cube, sphere, cone, cylinder, prism, pyramid',
-    layouts: ['s3'],
-    doc: `GEO3D LAYOUT: s3=single-3d
-
-FUNCTIONS [positional args]:
-  S3c:[id,type,a,b,c,color]    — create 3D shape (auto-rotates in perspective view)
-  S3t:[labelId,text,x,y]       — floating text label at world position (y<0 = below shape)
-  S3x:[id]                     — remove shape by id
-  S3C:[]                       — clear all shapes and labels
-  S3m:[id,clr]                 — label the dimensions THIS shape's VOLUME formula needs (auto by type: cube→a sphere→r cone/cylinder→r+h rect-prism→l+w+h pyramid→a+h tetra/octahedron→a torus→R+r). Prefer over hand-written S3t labels.
-  S3mx:[id]                    — remove volume-measure labels
-  S2E:[id,edgeIndex,color]     — highlight one edge. Box solids only: edgeIndex 0-11 of the 12 box edges.
-  S2Ex:[id,edgeIndex]          — remove one edge's highlight
-  S2F:[id,faceIndex,color]     — highlight one FACE (translucent panel) — cube/rectangular-prism only. faceIndex: 0=+X 1=-X 2=top 3=bottom 4=+Z 5=-Z
-  S2Fx:[id,faceIndex]          — remove one face's highlight
-  S2v:[zoom,panX,panY,distance,duration,preset]  — camera. preset (3D only): front|back|top|bottom|side|corner — look straight at a highlighted face.
-
-SHAPE TYPES & PARAMS:
+    rules: `SHAPE TYPES & PARAMS:
   cube             a=side length
   sphere           a=radius
   cone             a=radius  b=height
@@ -206,96 +425,91 @@ SHAPE TYPES & PARAMS:
 
 color: index 0-7. Auto-spins, no camera needed. S3t for volume/surface formulas below the shape.
 S2E/S2F work on box solids only (cube, prism, rectangular-prism), never curved ones.
+
+REFERENCING A SOLID: [id]a/r/h/l/d/R — the same letters S3m labels: cube→a · sphere→r ·
+  cone/cylinder→r+h · rect-prism→l+h+d · pyramid→a+h · tetra/octahedron→a · torus→R+r.
+  Pull the number live rather than retyping it.`,
+    funcs: `FUNCTIONS [positional args]:
+  S3c:[id,type,a,b,c,color]                     — create 3D shape (auto-rotates in perspective view)
+  S3t:[labelId,text,x,y]                        — floating text label at world position (y<0 = below shape)
+  S3x:[id]                                      — remove shape by id
+  S3C:[]                                        — clear all shapes and labels
+  S3m:[id,color]                                — label the dimensions THIS shape's VOLUME formula needs (auto by type: cube→a sphere→r cone/cylinder→r+h rect-prism→l+w+h pyramid→a+h tetra/octahedron→a torus→R+r). Prefer over hand-written S3t labels.
+  S3mx:[id]                                     — remove volume-measure labels
+  S2E:[id,edgeIndex,color]                      — highlight one edge. Box solids only: edgeIndex 0-11 of the 12 box edges.
+  S2Ex:[id,edgeIndex]                           — remove one edge's highlight
+  S2F:[id,faceIndex,color]                      — highlight one FACE (translucent panel) — cube/rectangular-prism only. faceIndex: 0=+X 1=-X 2=top 3=bottom 4=+Z 5=-Z
+  S2Fx:[id,faceIndex]                           — remove one face's highlight
+  S2v:[zoom,panX,panY,distance,duration,preset] — camera. preset (3D only): front|back|top|bottom|side|corner — look straight at a highlighted face.
 `,
   },
 
   // ── Canvas Geometry (SVG) ──────────────────────────────────────────────────
-  geo_canvas: {
-    label: 'Canvas Geometry (SVG)',
-    description: 'SVG 2D constructions/proofs — arrows, annotations, measurements',
-    layouts: ['sG', 'tG', 'Ge'],
-    doc: `GEO-CANVAS LAYOUTS: sG=single-geo  tG=text-geo  Ge=geo-equation
-
-FUNCTIONS [positional args]:
-  gp:[shId,type,values,fillClr,borderClr,flipX,flipY]  — create polygon/shape. NOTE the order:
-                                                         colors BEFORE flips. Unlike geo2d's S2c,
-                                                         values here IS one comma string ("6,4").
-  gx:[id]                                              — erase shape
-  gm:[id,dx,dy]                                        — move shape
-  gh:[id]                                              — highlight shape (pulse)
-  gl:[id,labels]                                       — label sides (ONE comma-separated string,
-                                                         never "|", same as geo2d's S2l)
-  gt:[lId,text,x,y]                                    — add floating text
-  ga:[id,clr]                                          — show all angle arcs
-  gw:[id,arrId,from,to,clr]                            — draw arrow (from vertex to vertex)
-  gW:[arrId]                                           — remove arrow
-  gE:[id,edgeIdx,clr]                                  — highlight edge
-  gA:[id,vtxIdx,clr]                                   — highlight angle at vertex
-  gC:[]                                                — clear all
-  gr:[id,clr,angle,label]                              — show measure (circle=radius, polygon=height)
-  gM:[id,clr]                                           — show ALL area measures (dashed height + relevant side labels — different per shape type, see below)
-  gP:[id,clr]                                           — show ALL perimeter measures (every side highlighted in turn + labeled with its length; circle→r same as gM)
-
-TYPES: triangle  right-triangle  rectangle  square  circle  parallelogram  trapeze  pentagon  hexagon
-VALS: right-triangle="a,b"  rectangle="w,h"  square="s"  parallelogram="w,h,dx"  trapeze="aTop,bBot,h"  circle="r"  pentagon/hexagon/octagon="r"
-
-INDICES (same as geo2d):
-  right-triangle : v0=BL  v1=BR=90°  v2=top  ·  e0=base  e1=vertical  e2=hyp
-  rectangle/square: v0=BL CCW  ·  e0=bottom  e1=right  e2=top  e3=left
-
-gM = exactly the area formula's measures: square→s · rectangle→l+h · parallelogram→b+h(dashed) ·
-trapeze→B+b+h(dashed) · triangle→b+h(dashed) · circle→r · other→s. Use it over gr for area (gr gives
-height only). gP labels EVERY side — use it for perimeter instead of chaining gE+gl.
-tc refs: [id]N=side [id]h=height [id]r=radius [id]aN=angle°. Never guess an angle: {{ [id]aN }}°.
-ga/gr/gM/gP clr "" = light blue.
-`,
-  },
+  // The SVG geometry module used to live here. It drew the same plane figures
+  // as geo2d through a second engine, which is what made a flat trapezoid come
+  // out under a "geo3d-" function id. Geometry is one engine now — the same
+  // one the solids use. Its gp/gs/gv functions still run, for lessons already
+  // saved and from the Builder; the API just cannot pick them.
 
   // ── Graphing (Desmos) ──────────────────────────────────────────────────────
   graph: {
     label: 'Function Graphing',
     description: 'Desmos graphing: plot, shade, intersections, derivatives, Riemann, unit circle, vectors, transforms',
     layouts: ['sg', 'tg', 'ge'],
-    doc: `GRAPH LAYOUTS: sg=single-graph  tg=text-graph  ge=graph-equation
-
-FUNCTIONS [positional args]:
-  fp:[expr,id,hideLabel]        — plot f(x); id required ("f","g"). Auto-labels "f(x) = expr" near the curve unless hideLabel=1 — no fn for the same curve unless you need another x or custom text.
-  fx:[id]                       — remove function
-  fs:[id,a,b]                   — shade area under curve from a to b
-  fi:[f1,f2,clr,hideLabel]      — intersection points of two functions (also general forms like
-                                    "-6x+3y=12"); shows (x,y) unless hideLabel=1
-  fa:[x,y,id,funcId,label,showCoords]  — add point (funcId/label/showCoords optional)
-  fap:[id]                      — remove point
-  fbf:[pointIds,id,clr]         — least-squares trend line through placed points (comma-separated fa ids), dashed
-  fsc:[slope,intercept,coeff,count,xMin,xMax,clr,id]  — scatter around y=slope·x+intercept; coeff=spread (0=on the line). Correlation/regression.
-  fscx:[id]                     — remove scatter plot
-  fsg:[x1,y1,x2,y2,clr,id]      — finite SEGMENT (not an infinite line) — geometry drawn on the graph
-  fsgx:[id]                     — remove segment
-  fst:[id,ticks,clr]            — congruent tick(s) 1-3 at a segment midpoint; different count = different equal pair
-  fstx:[id]                     — remove segment tick
-  fsd:[id,parts,clr,showLabels] — mark the points splitting a segment into "parts" equal sections
-  fsdx:[id]                     — remove segment division points
-  fv:[cx,cy,range]              — center view at (cx,cy); range = VERTICAL span. LEAVE MARGIN: ask for
-                                    ~1.5x the span you need, or the vertex/root/point at the extreme
-                                    sits flat on the edge of the panel. x follows the panel shape.
-  fV:[xMin,xMax,yMin,yMax]      — exact bounds, padded the same way (~a quarter of the span spare on
-                                    each side). Widened automatically to keep units square.
-  fn:[id,lbl,x]                 — floating label on a curve at x position
-  ft:[id,x,y]                   — draw tangent line at (x, y)
-  fh:[y]                        — horizontal line y=c
-  fr:[id]                       — mark roots f(x)=0
-  fP:[id,showValues]            — dashed projection lines from point to axes
-  fd:[id]                       — plot derivative f'(x)
-  fR:[id,a,b,n,method]          — Riemann rectangles (method: left|right|midpoint)
-  fD:[x1,y1,x2,y2]             — draw vector/arrow
-  fT:[id,type,val]              — transform function (translateX|translateY|scaleY|scaleX|reflectX|reflectY)
-  fg:[Ax,Ay,Bx,By,Cx,Cy,clr]   — mark angle ABC at vertex B (auto square if 90°)
-  fB:[points,showCoords,clr]    — batch add points "id:x:y:label|..." (parallel)
-  fBP:[pointIds]                — batch show projections "id1|id2|..." (parallel)
-  fTC:[]                        — draw complete unit circle (all 16 standard angles)
+    rules: `REFERENCING WHAT IS PLOTTED — pull the value live, never retype it:
+  Point (fa)    : [id]x  [id]y
+  Segment (fsg) : [id]x1 [id]y1 [id]x2 [id]y2 [id]len
+  Function (fp) : [id]expr = its expression as text · [id]N = the Nth number in it L→R, either a
+                  literal ("2x+4" → [id]0=2, [id]1=4) or a |slider| live value ("|a|x+|b|" → [id]0=a)
+  Slider        : [name]v — by its own name, whichever function uses it
 
 fp with |name| sliders auto-shows a live equation badge — nothing to call.
-ORDERING: fp before fV/fr/fn/fP/ft/fs/cf on the same function. fP needs a non-root x.
+ORDERING: fp before fV/fr/fn/fP/ft/fs on the same function. fp needs an id arg. fP needs a non-root x.`,
+    funcs: `FUNCTIONS [positional args]:
+  fp:[expr,id,hideLabel]                               — plot f(x); id required ("f","g"). Auto-labels "f(x) = expr" near the curve unless hideLabel=1 — no fn for the same curve unless you need another x or custom text.
+                                    fp also takes an INEQUALITY and shades the region it describes: "x > -2", "x >= -2",
+                                    "y < 2x+1", "2x - y >= 3". Strict (> <) draws a DASHED boundary, inclusive (>= <=) a solid
+                                    one. A region is never auto-labelled, so hideLabel does not apply to it.
+  fx:[funcId]                                          — remove function
+  fs:[funcId,a,b]                                      — shade area under curve from a to b
+  fi:[f1,f2,color,hideLabel]                           — intersection points of two functions (also general forms like
+                                    "-6x+3y=12"); shows (x,y) unless hideLabel=1
+  fa:[x,y,id,funcId,label,showCoords]                  — add point (funcId/label/showCoords optional)
+  fap:[id]                                             — remove point
+  fbf:[pointIds,id,color]                              — least-squares trend line through placed points (comma-separated fa ids), dashed
+  fsc:[slope,intercept,coeff,count,xMin,xMax,color,id] — scatter around y=slope·x+intercept; coeff=spread (0=on the line). Correlation/regression.
+  fscx:[id]                                            — remove scatter plot
+  fsg:[x1,y1,x2,y2,color,id,arrow,name]                    — finite SEGMENT (not an infinite line) — geometry drawn on the graph; name is written beside it (a vector's gets its arrow on top), and the same id again changes it in place
+                                    arrow="end" makes it a VECTOR, "both" a two-headed measure arrow; omit it for a plain
+                                    segment. Prefer fsg over fD: a vector is a segment, so it gets an id, a colour and removal.
+  fsgx:[id]                                            — remove segment
+  fst:[id,ticks,color]                                 — congruent tick(s) 1-3 at a segment midpoint; different count = different equal pair
+  fstx:[id]                                            — remove segment tick
+  fsd:[id,parts,color,showLabels]                      — mark the points splitting a segment into "parts" equal sections
+  fsdx:[id]                                            — remove segment division points
+  fv:[cx,cy,range]                                     — center view at (cx,cy); range = VERTICAL span. LEAVE MARGIN: ask for
+                                    ~1.5x the span you need, or the vertex/root/point at the extreme
+                                    sits flat on the edge of the panel. x follows the panel shape.
+  fV:[xMin,xMax,yMin,yMax]                             — exact bounds, padded the same way (~a quarter of the span spare on
+                                    each side). Widened automatically to keep units square.
+  fn:[funcId,label,x0]                                 — floating label on a curve at x position
+  ft:[funcId,x0,y0]                                    — draw tangent line at (x, y)
+  fh:[y]                                               — horizontal line y=c
+  fr:[funcId]                                          — mark roots f(x)=0
+  fP:[pointId,showValues]                              — dashed projection lines from point to axes; given a VECTOR (segment id) instead,
+                                                       its components: dashed Δx and Δy legs labelled "Δx = …", "Δy = …"
+  fd:[funcId]                                          — plot derivative f'(x)
+  fR:[funcId,a,b,n,method]                             — Riemann rectangles (method: left|right|midpoint)
+  fD:[x1,y1,x2,y2]                                     — draw vector/arrow
+  fgb:[a,b,color,id]                                   — mark the ANGLE BETWEEN two segments/vectors, by their ids. The arc
+                                    sits on the endpoint they share — two vectors from the origin meet there — or where
+                                    their lines cross. Right angles draw a square instead of an arc. Measure is computed.
+  fgx:[id]                                             — remove an angle mark
+  fT:[funcId,transformType,value]                      — transform function (translateX|translateY|scaleY|scaleX|reflectX|reflectY)
+  fg:[ax,ay,bx,by,cx,cy,color]                         — mark angle ABC at vertex B (auto square if 90°)
+  fB:[points,showCoords,color]                         — batch add points "id:x:y:label|..." (parallel)
+  fBP:[pointIds]                                       — batch show projections "id1|id2|..." (parallel)
+  fTC:[]                                               — draw complete unit circle (all 16 standard angles)
 `,
   },
 
@@ -304,20 +518,27 @@ ORDERING: fp before fV/fr/fn/fP/ft/fs/cf on the same function. fP needs a non-ro
     label: 'Data Tables',
     description: 'Animated data grids: values, comparisons, frequency tables',
     layouts: ['sq', 'tq', 'qe'],
-    doc: `TABLE LAYOUTS: sq=single-grid  tq=text-grid  qe=grid-equation (table + equation, no text — pair with Th to walk a per-row calculation next to its formula)
-
-FUNCTIONS [positional args]:
-  Tt:[data,hdr,gId,clr]          — PREFERRED way to create: data is a literal 2D array "[[2,2,3],[5,5,6]]", size auto-detected, no cols/rows.
-  Tc:[gId,cols,rows,hdr,vals]    — create grid (hdr=0/1; vals: rows sep by |, cells by ,)
-  Tx:[id]                        — erase grid (fade out)
-  Ta:[id,vals]                   — append column (vals: top-to-bottom comma list)
-  Tr:[id,colIndex]               — remove column (0=first, -1=last)
-  TR:[id,vals]                   — append row (vals: comma list)
-  TrR:[id,rowIndex]              — remove row (0=first, -1=last)
-  Tv:[id,col,row,val]            — update single cell (col/row 0-based)
-  TV:[id,changes]                — update multiple cells "col,row,val|col,row,val"
-  Th:[id,rowIndex,clr]           — highlight one row (0-based); calling again slides the same bar, no clear step between rows
-  Thx:[id]                       — fade out the row highlight
+    rules: `REFERENCING A CELL: [id]r<row>c<col>, 0-indexed — e.g. [grid1]r0c1. Pull the value live
+  rather than retyping it.
+Th walks a per-row calculation: call it again to slide the same bar to the next row, no clear between.`,
+    funcs: `FUNCTIONS [positional args]:
+  Tc:[gridId,cols,rows,headerRow,headerCol,values,color]
+                                         — create the grid. vals: rows separated by |, cells by ,
+                                           headerRow styles the TOP ROW as headings, headerCol the
+                                           LEFT COLUMN (both 0/1). Turn both on for a table that
+                                           crosses two axes — a times table, two dice, a truth
+                                           table — where the top row and the left column are the
+                                           things being compared and every other cell is a result.
+                                           One grid per panel: creating another replaces it.
+  Tx:[gridId]                            — erase grid (fade out)
+  Ta:[gridId,values]                     — append column (vals: top-to-bottom comma list)
+  Tr:[gridId,colIndex]                   — remove column (0=first, -1=last)
+  TR:[gridId,values]                     — append row (vals: comma list)
+  TrR:[gridId,rowIndex]                  — remove row (0=first, -1=last)
+  Tv:[gridId,col,row,value]              — update single cell (col/row 0-based)
+  TV:[gridId,changes]                    — update multiple cells "col,row,val|col,row,val"
+  Th:[gridId,rowIndex,color]             — highlight one row (0-based); calling again slides the same bar, no clear step between rows
+  Thx:[gridId]                           — fade out the row highlight
 `,
   },
 
@@ -326,20 +547,19 @@ FUNCTIONS [positional args]:
     label: 'Text & Formula Panels',
     description: 'Text/formula panels: LaTeX, lists, computed values',
     layouts: [],
-    doc: `TEXT LAYOUTS: sT=single-text (text box alone, no paired display)
-TEXT FUNCTIONS [positional args]:
-  tc:[boxId,title,content,isList,color]   — create text box
-  ti:[bId,item]                           — append item to list box
-  tx:[bId,index]                          — remove list item (0=first, -1=last)
-  tt:[bId,title]                          — change title
-  td:[bId]                                — remove box
-  tf:[bId,content]                        — cross-fade content
-
-content syntax: lines sep by | · $latex$ inline · **bold**
-isList: 0=paragraph  1=bullet list  "steps"=numbered list ("1. …", "2. …")
-color: "" always, unless user asks for a colored box
-
-Layouts tg/tG/tq/te/ge/Ge/Gc have a text panel — ≥1 tc or it renders blank. tc = key formulas; c* codes = brief annotations.
+    rules: `ONE FORMULA PER LINE: "$a$|$b$|$c$", never "$a$ $b$ $c$" — the panel is narrow and wraps
+  mid-fraction. Max 3 lines per box.
+isList: 0=paragraph · 1=bullet list · "steps"=numbered list ("1. …", "2. …")
+color: "" always, unless the user asks for a coloured box.
+Any layout with a text panel needs ≥1 tc, or that half renders blank — otherwise pick a layout
+  without one. tc is for key formulas; brief labels on a visual belong to annotation functions.`,
+    funcs: `FUNCTIONS [positional args]:
+  tc:[boxId,title,content,isList,color] — create text box
+  ti:[boxId,item]                       — append item to list box
+  tx:[boxId,index]                      — remove list item (0=first, -1=last)
+  tt:[boxId,title]                      — change title
+  td:[boxId]                            — several at once with "a|b|c" — remove box
+  tf:[boxId,content]                    — cross-fade content
 `,
   },
 
@@ -348,13 +568,11 @@ Layouts tg/tG/tq/te/ge/Ge/Gc have a text panel — ≥1 tc or it renders blank. 
     label: 'Step-by-step Calculation',
     description: 'Vertical LaTeX calculation lines, one at a time (PEMDAS, integrals, derivations)',
     layouts: ['sc'],
-    doc: `CALC LAYOUTS: sc=single-calc
-
-FUNCTIONS [positional args]:
-  Cs:[latex]    — append one calculation line (LaTeX string)
-  Cc:[]         — clear all lines
-
-One step per Cs, LaTeX with doubled backslashes. PEMDAS / arithmetic / long derivations → sc+Cs.
+    rules: `One step per Cs, LaTeX with doubled backslashes. PEMDAS, arithmetic and long derivations
+  belong here rather than in an equation panel.`,
+    funcs: `FUNCTIONS [positional args]:
+  Cs:[latex] — append one calculation line (LaTeX string)
+  Cc:[]      — clear all lines
 `,
   },
 
@@ -363,27 +581,37 @@ One step per Cs, LaTeX with doubled backslashes. PEMDAS / arithmetic / long deri
     label: 'Comment Annotations',
     description: 'Comment bubbles on points, curves, cells, vertices/edges, equation terms',
     layouts: [],
-    doc: `COMMENT FUNCTIONS [positional args]:
-  cg:[id,text,x,y,clr]              — comment at exact graph point (x,y). x/y take a live value too:
+    rules: `id="" when no later update is needed (cu/cd need one). Works on any layout. Prefer a
+  comment over a text box for a brief label on a visual.
+Only the comment functions for panels this lesson actually has are listed below.`,
+    // A comment has to attach to something. Each line names the module whose
+    // panel it anchors on, so a lesson with no graph is never shown how to
+    // comment on a curve.
+    funcs: (have) => {
+      const lines = [
+        ['graph', `  cg:[cmtId,text,x,y,color]         — comment at exact graph point (x,y). x/y take a live value too:
                                       "[x]v" (saved result), "[pA]x", or {{ }} arithmetic on them —
-                                      never hand-type a coordinate the lesson already derived.
-  cf:[id,text,funcId,x,clr]         — comment snapped onto curve f at x. funcId may instead be a
+                                      never hand-type a coordinate the lesson already derived.`],
+        ['graph', `  cf:[cmtId,text,funcId,x,color]    — comment snapped onto curve f at x. funcId may instead be a
                                       SEGMENT id (from fsg): it anchors on the segment's midpoint in
                                       both x and y, x ignored — use this for "rise = 6" style labels
-                                      rather than cg with hand-typed coordinates.
-  cA:[id,text,funcId,x,clr]         — comment inside shaded area under curve at x
-  cq:[id,text,gridId,col,row,clr]   — comment on a grid cell
-  cG:[id,text,shapeId,vtx,clr]      — comment on a shape vertex
-  cE:[id,text,shapeId,edge,clr]     — comment on a shape edge midpoint
-  ce:[id,text,side,indices,clr]     — comment on equation (side=both|left|right; indices=blank or "0,1,2")
-  cd:[id]                            — fade out ONE comment by id, leaving the others
-  cx:[]                              — clear all comments
-  cu:[id,text,clr]                  — update existing comment text/color; use [eq-result] to pull eq answer
-
-id="" when no later update is needed (cu/cd need one). Works on any layout. Prefer c* over tc for brief
-labels on visuals. text: same | line separator and $latex$/{{ }}/[id]token syntax as tc — "x = [x]v|y = [y]v"
-is two lines. A | inside $ $ stays an absolute value.
-`,
+                                      rather than cg with hand-typed coordinates.`],
+        ['graph', '  cA:[cmtId,text,funcId,x,color]    — comment inside shaded area under curve at x'],
+        ['table', '  cq:[cmtId,text,gridId,col,row,color]  — comment on a grid cell'],
+        ['shape', '  cG:[cmtId,text,shapeId,vertexIndex,color]  — comment on a shape vertex'],
+        ['shape', '  cE:[cmtId,text,shapeId,edgeIndex,color]  — comment on a shape edge midpoint'],
+        ['equation', '  ce:[cmtId,text,side,indices,color]  — comment on equation (side=both|left|right; indices=blank or "0,1,2")'],
+        [null, '  cd:[cmtId]                        — fade out a comment by id, leaving the others; "a|b|c" drops several together'],
+        [null, '  cx:[]                             — clear all comments'],
+        [null, '  cu:[cmtId,text,color]             — update existing comment text/color'],
+      ]
+      const shapes = ['geo2d', 'geo3d', 'geo_canvas']
+      const ok = (need) =>
+        need === null ? true
+        : need === 'shape' ? shapes.some(m => have.has(m))
+        : have.has(need)
+      return ['FUNCTIONS [positional args]:', ...lines.filter(([n]) => ok(n)).map(([, l]) => l)].join('\n')
+    },
   },
 }
 
@@ -468,8 +696,89 @@ EXAMPLES (the non-English/misspelled ones are real past failures — treat as th
 // but a non-Latin script would need font and layout work first.
 const LANG_NAMES = { en: 'English', fr: 'French', de: 'German', es: 'Spanish' }
 
+/**
+ * Assembled in the order the generator needs to read it:
+ *
+ *   1. general rules      — true of every lesson, whatever the modules
+ *   2. layouts            — only those the picked modules can actually fill
+ *   3. module rules       — how each picked panel behaves, and how to reference it
+ *   4. module functions   — the only codes it is allowed to emit
+ *   5. language
+ *   6. reference lesson   — last, so the worked model is freshest
+ *
+ * Nothing outside the picked modules appears anywhere. That is the whole point:
+ * a generator shown a shape token, a layout or a function it has no panel for
+ * will eventually use it, and the step is dead on arrival.
+ */
+// Keep only the steps the prompt can back up with a documented code, and only
+// the pages that still have a step left. A reference is a worked model — one
+// undocumented code in it is worth more damage than the step was worth.
+function pruneToDocumented(compact, documented) {
+  if (!Array.isArray(compact)) return compact
+  return compact
+    .map(page => {
+      if (!Array.isArray(page)) return page
+      const [title, layout, steps] = page
+      return [title, layout, (steps ?? []).filter(s => documented.has(s?.[0]))]
+    })
+    .filter(page => !Array.isArray(page) || (page[2] ?? []).length > 0)
+}
+
 export function buildGeneratorPrompt(moduleIds, lang = 'en', exampleCompact = null) {
+  const ids  = moduleIds.filter(id => MODULES[id])
+  const have = new Set(ids)
   const parts = [BASE_RULES.trim()]
+
+  const panels = panelsFor(ids)
+  parts.push(
+    `\n# PANELS\n` +
+    `A page shows ONE or TWO panels. The page's second field is their digits:\n` +
+    `  "3" = equation alone   "03" = text + equation   "14" = graph + 2D geometry\n` +
+    `Order is irrelevant — "03" and "30" are the same page. You choose WHAT is on\n` +
+    `the page; the system chooses how it is arranged. Never write a layout name.\n` +
+    `TWO AT MOST. A third panel is not a page, it is two pages.\n` +
+    (panels.length ? panels.join(`\n`) : `  (none — this module set has no renderable panel)`)
+  )
+
+  const rules = ids.map(id => [MODULES[id], MODULES[id].rules])
+                   .filter(([, r]) => r && r.trim())
+  if (rules.length) {
+    parts.push(
+      `\n# RULES\n` +
+      rules.map(([m, r]) => `## ${m.label}\n${r.trim()}`).join('\n\n')
+    )
+  }
+
+  const funcs = ids.map(id => {
+    const m = MODULES[id]
+    return [m, typeof m.funcs === 'function' ? m.funcs(have) : m.funcs]
+  }).filter(([, f]) => f && f.trim())
+  if (funcs.length) {
+    parts.push(
+      `\n# FUNCTIONS\nThese codes and no others.\n\n` +
+      funcs.map(([m, f]) => `## ${m.label}\n${f.trim()}`).join('\n\n')
+    )
+  }
+
+  // Every code the prompt above actually documents. The reference lesson is
+  // fixed, but this list is not: it shrinks with the module set. A step whose
+  // code is missing here is a trap — the example says "copy this" while the
+  // function list says that code does not exist, and the validator would
+  // reject it. Drop those steps instead of teaching them.
+  const documented = new Set(
+    funcs.flatMap(([, f]) => [...String(f).matchAll(/^ {2}([A-Za-z0-9]+):/gm)].map(m => m[1]))
+  )
+
+  // Scoped to learner-visible prose only: compact codes, layout codes, ids and
+  // colour names are format, not content — translating those breaks parsing.
+  // Always state the language, English included: with no instruction at all the
+  // model drifts (a plain English prompt came back entirely in Dutch).
+  const langName = LANG_NAMES[lang] ?? 'English'
+  parts.push(
+    `\n# LANGUAGE\n` +
+    `Learner-visible strings (page titles, panel titles and content, comment text) in ${langName}. ` +
+    `Never translate structure: func/layout codes, ids, colour names, math notation.`
+  )
 
   // The router picked the closest hand-built lesson; show it in the exact
   // output format we want back. A real, verified lesson is a far stronger
@@ -480,26 +789,8 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', exampleCompact = nu
       `\n# REFERENCE LESSON\n` +
       `Verified, in the exact output format. Copy its structure/pacing/step use; ` +
       `NOT its topic or numbers.\n` +
-      JSON.stringify(exampleCompact)
+      JSON.stringify(pruneToDocumented(exampleCompact, documented))
     )
-  }
-
-  // Appended after the base rules, and scoped to learner-visible prose only:
-  // compact codes, layout codes, ids and colour names are format, not content —
-  // translating those breaks parsing.
-  // Always state the language, English included: with no instruction at all the
-  // model drifts (a plain English prompt came back entirely in Dutch).
-  const langName = LANG_NAMES[lang] ?? 'English'
-  parts.push(
-    `\n# LANGUAGE\n` +
-    `Learner-visible strings (page titles, tc titles+content, comment text) in ${langName}. ` +
-    `Never translate structure: func/layout codes, ids, colour names, math notation.`
-  )
-
-  for (const id of moduleIds) {
-    const m = MODULES[id]
-    if (!m) continue
-    parts.push(`\n# ${m.label.toUpperCase()}\n${m.doc.trim()}`)
   }
 
   return parts.join('\n')
@@ -511,8 +802,10 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', exampleCompact = nu
 export function docForCode(code) {
   const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const re = new RegExp('^\\s*' + escaped + ':')
+  const every = new Set(Object.keys(MODULES))
   for (const m of Object.values(MODULES)) {
-    for (const line of m.doc.split('\n')) {
+    const funcs = typeof m.funcs === 'function' ? m.funcs(every) : m.funcs
+    for (const line of String(funcs ?? '').split('\n')) {
       if (re.test(line)) return line.trim()
     }
   }

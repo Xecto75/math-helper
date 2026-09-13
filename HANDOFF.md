@@ -56,7 +56,94 @@ Contrairement à ce que disait cette phrase avant : depuis la session qui a suiv
 
 ---
 
-## Ce qui a été fait cette session (dans l'ordre)
+## 🔴 RÈGLE #3 — MESURER, PAS DEVINER, QUAND C'EST "VISUEL"
+
+Née de la session 2026-09-06/08, et elle a payé trois fois de suite. Quand l'utilisateur dit que quelque chose « bouge », « tremble », « n'est pas smooth », « flash » : **ne pas regarder le code en devinant, instrumenter la page**. Un `setInterval` de 40-60 ms qui enregistre `getBoundingClientRect()` + `getComputedStyle().opacity` + `textContent` de l'élément concerné, puis dédupliquer la série. Ça donne la cause exacte en une manche :
+
+- « le 3.56 disparaît pas smooth » → la mesure a montré que le 3,56 fondait parfaitement en 650 ms et que c'était le **`−` qui ne partait jamais** (l'animation enlevait toujours l'opérateur *devant* le terme qui s'envole, alors que l'ancre était passée à droite).
+- « ça twitch pendant l'anim » → la mesure a montré que le bord gauche bougeait à chaque cran ; deux conteneurs centraient leur contenu, pas un.
+- « ça devient plus gros soudainement » → la mesure a montré que le panneau **arrondissait** la mantisse (24,2435 dessiné 24,244) et que l'étape la remplaçait par la valeur exacte en une image.
+
+Trois fois, mon hypothèse à la lecture du code était fausse et la mesure avait raison. **Coût : ~30 s. Gain : des allers-retours en moins et un utilisateur qui ne répète pas trois fois la même chose.**
+
+## 🔴 RÈGLE #4 — NE JAMAIS APPRENDRE À L'ÉVALUATEUR GÉNÉRIQUE À AVALER LA NOTATION QU'ON EXPLIQUE
+
+J'ai ajouté `n!` au parseur ET je l'ai déclaré « prêt à évaluer » dans `findReady` (exprTree.js). Résultat : Full Solve transformait `5!` en `120` d'un coup — exactement la chose que la fonction existait pour éviter. L'utilisateur : *« imagine toi que je suis un gamin de 15 ans et que j'ai aucune idée ce que fait n! — tu penses que j'ai compris si 5! devient 120 direct ? »*
+
+La règle : une notation qu'une leçon existe pour **expliquer** ne doit jamais être réductible en un pas par le solveur générique. Elle est **dépliée** d'abord (`unpackFactorials`, partagé entre l'étape dédiée et le solve), et seul le résultat du dépliage est évalué. Vaut pour tout ce qui viendra après : `C(n,k)`, `A(n,k)`, les puissances quand c'est la puissance qu'on enseigne.
+
+## 🔴 RÈGLE #5 — TESTER À 100 % DANS VECTORA, JAMAIS À CÔTÉ
+
+Demandée explicitement par l'utilisateur (2026-09-08), en majuscules : **« UTILISE TOUJOURS 100% VECTORA SINON TAURAS PAS LE MÊME RÉSULTAT QUE MOI ».** Il a raison, et ça a coûté plusieurs allers-retours cette session-là : je disais « vérifié », il rechargeait, et il voyait autre chose.
+
+**Interdit** : ouvrir un `Desmos.GraphingCalculator` de côté par-dessus la page, et déclarer que ça marche. Ça prouve ce que fait **Desmos**, pas ce que fait **Vectora** — or tout ce qui casse est entre les deux : `toDesmos`, `plotFunction`, `nameFunc`, `makeEval`, `ActionExecutor`, `buildPage`. Interdit aussi : se bricoler un mini-exécuteur qui réimplémente trois `case` d'`ActionExecutor` — ce n'est pas `ActionExecutor`.
+
+**La bonne façon** : Lesson Builder → onglet Preview → coller le JSON (setter natif + `dispatchEvent`, voir les pièges d'environnement) → Apply → Build Page N. Ensuite seulement, `import('/src/engine/desmosEngine.js')` pour **inspecter** l'état vivant (`getFunctionIds`, `getSliderVars`, `getLiveEquationText`) — lire, pas reconstruire.
+
+**Les quatre pièges qui font mentir un test à côté**, tous rencontrés pour de vrai :
+1. **Deux instances du module.** Après une édition, Vite sert `desmosEngine.js?t=…` : un `import()` à la main peut rendre un SECOND module, avec son propre `registry`, son `nextFuncId` et sa Map `sliders`. Les ids se marchent dessus et les couleurs ne défilent pas.
+2. **La Map `sliders` est au niveau module.** `registerSlider` sort tôt si le nom existe déjà, donc une DEUXIÈME calculatrice jetable ne reçoit jamais ses définitions `a=1, b=1…` : la courbe ne se dessine pas, sans erreur, et on accuse la mauvaise chose.
+3. **`requestAnimationFrame` est gelé quand l'onglet n'est pas au premier plan** — donc `fadeIn` ne se résout jamais, `plotFunction` ne rend jamais la main, le graphe reste vide et le script part en timeout. Mettre l'onglet devant (`tabs_select`) avant de tester une animation.
+4. **Le screenshot est souvent en retard d'une frame.** Deux fois cette session j'ai lu « plein » sur une capture alors que la modif rendait « pointillé », et l'inverse. Croiser avec `calc.getExpressions()` (`lineStyle`, `color`, `pointStyle`, `label`) avant de conclure.
+
+**Corollaire** : quand un JSON de test est donné à l'utilisateur, le donner **entier**, jamais « les lignes à remplacer ». Il a re-testé l'ancien script et vu l'ancien bug, ce qui a fait passer un fix réel pour un échec.
+
+---
+
+## Session 2026-09-06 → 09-08 — probabilités, notation scientifique, règle de 3
+
+### Nouvelles fonctions
+
+| Code | Fonction | Panneau |
+|---|---|---|
+| `cN` | `chart-number-sets` — ℝ ⊃ ℚ ⊃ 𝔻 ⊃ ℤ ⊃ ℕ en anneaux imbriqués | Chart |
+| `cV` / `cVh` | `chart-venn` + `chart-venn-highlight` | Chart |
+| `cT` / `cTp` | `chart-tree` + `chart-tree-path` — arbre de possibilités | Chart |
+| `fgb` / `fgx` | `graph-angle-between` + `graph-remove-angle` | Graphique |
+| `eSc` | `eq-sci-expand` — notation scientifique | Équation |
+| `eFa` | `eq-factorial` — `n!` déplié | Équation |
+| `eR3` | `eq-cross-multiply` — règle de 3 | Équation |
+
+Plus : `addSegment` a un paramètre **Arrow** (`none`/`end`/`both`) — un vecteur EST un segment, donc il hérite de l'id, de la couleur, de la suppression, des ticks, de `[id]len`, de l'ancre de commentaire ; `drawVector` (`fD`) n'est plus qu'un alias. `plotFunction` accepte les **inégalités** (`x > -2`, `2x - y >= 3`) et les dessine comme régions (pointillé si strict). `chart-pie-mode` a un troisième mode **décimal** (le `toggle` cycle les trois).
+
+**Le Venn** parse une vraie expression (`A∩B`, `(A∪B)'`, `A∩B∩C`) plutôt qu'une liste des neuf images usuelles, et chaque région est une **cellule** découpée par des masques SVG imbriqués — donc n'importe quelle expression marche du premier coup, sans que personne l'ait listée. 2 ou 3 ensembles, jamais plus : avec quatre cercles il n'existe pas d'arrangement où chaque combinaison a sa région.
+
+**L'arbre** : une colonne par étape, un chemin par issue, la colonne Résultats. Les étapes peuvent différer (`P,F | 1,2,3,4,5,6` = une pièce puis un dé) et avoir plus de deux issues. Les branches s'arrêtent **avant** chaque étiquette aux deux bouts (le trou s'adapte à la longueur du texte), sinon le P se retrouve posé en travers de trois traits.
+
+**La règle de 3** est une **chaîne**, pas une croix symétrique — c'est l'ordre dans lequel le travail se fait : deux valeurs se multiplient (×), la troisième divise (÷), et ça atterrit sur l'inconnue (=). Une couleur par étape (orange / violet / bleu), portée par les trois choses de cette étape : la ligne, son signe, et son morceau de la réponse en bas. Un seul arrêt à la fin, puis `›` résout **sur la ligne elle-même** (`2·12` → `24`, puis `÷ 3` s'efface et `24` → `8`), pas sur une deuxième ligne.
+
+### Bugs de fond corrigés (les plus importants pour la suite)
+
+1. **Les instantanés partageaient leur arbre d'expression avec l'état vivant.** `MathObject` copiait `expr`/`innerTerms`/`factors`… par référence, et un pas de solve réécrit ces nœuds **sur place** — donc l'instantané « avant » se transformait tout seul en « après ». Reculer avec `‹` atterrissait sur la réponse, jamais sur la question. `MathObject` fait maintenant une copie profonde de toutes ses données imbriquées. **C'est une classe de bug entière** : tout ce qui mute un nœud d'arbre en place est concerné.
+2. **`buildPage` ne vidait pas les charts.** Le graphe, la table, la géo, les text boxes, la 3D y étaient tous ; les charts avaient été oubliés quand `ChartDisplay` est arrivé. Un arbre construit sur une page restait sous la page suivante. Ça ne se voyait pas avec les pies parce qu'un second pie du même id écrasait le premier.
+3. **`flyTogether`/`flyInto` enlevaient le mauvais opérateur.** Ils prenaient toujours `secondary.previousElementSibling` ; depuis que l'ancre est le terme le plus à DROITE, le terme qui vole est à gauche et son opérateur est **derrière** lui. Le `−` restait planté en l'air puis disparaissait d'un coup.
+4. **Un `0` tapé devenait la valeur par défaut** — `Number(v) || défaut` dans les builders de steps. Un vecteur vers (0,5) sortait à (4,5). Corrigé avec un helper `num(v, d)` dans `demoScripts.js`.
+5. **`ExprNode` lisait un `term` qui n'existait pas** dans sa portée (fonction top-level référençant une variable locale d'une autre) — ReferenceError sur tout nœud `√`, `±` ou négation. Les deux champs voulus sont passés en props.
+6. **Les segments passent au-dessus des courbes** (`raiseSegments`) : Desmos peint sa liste dans l'ordre, donc un segment créé avant une courbe finissait dessous.
+7. **L'étiquette d'un angle était invisible** : Desmos fait fondre le LABEL avec le point qui le porte, et le point était à `pointOpacity: 0` pour cacher le dot.
+8. **`›` ne faisait rien quand la page était parkée sur un gate** — il testait « est-ce que ça joue ? » d'abord et accélérait une animation inexistante. Améliore aussi le pas-à-pas des autosolve.
+9. **Un step peut maintenant demander un vrai ARRÊT** (`{ gated: true, stop: true }`) : le `gated` existant ne veut dire que « ‹ › peuvent passer ici », et en lecture normale le budget est illimité donc ça traversait. L'arrêt affiche le `›` en **waiting** (`pb-btn--waiting`), pas un bouton Resume — un arrêt voulu n'est pas une interruption.
+10. **PEMDAS** : `(3.56-1.2)*3` distribuait le 3 au lieu de calculer la parenthèse. Si tout ce qu'il y a dans la parenthèse est des termes semblables, elle est **calculée d'abord** ; une parenthèse de termes non semblables se distribue toujours.
+11. **La mantisse d'une notation scientifique n'est plus arrondie** (`fmtNum` arrondit à 3 décimales partout ailleurs, et c'est bien) — les chiffres au-delà du troisième SONT le sujet.
+
+### Détails de mise en page qui ont coûté cher (à ne pas réapprendre)
+
+- `.term-cell` est une rangée flex avec un `gap: 3px`. Un nombre décimal y est dessiné en **trois** enfants (entier · séparateur · décimales) et paie donc le gap deux fois. Toute étape qui remplace le contenu de la cellule par des spans par chiffre doit mettre le gap à 0 et rendre l'espacement au séparateur, sinon la largeur saute.
+- **Deux** conteneurs centrent l'équation : le panneau ET le côté. Ancrer seulement l'extérieur laisse un décalage de 16 px. Et l'offset qui reproduit la position actuelle ne se mesure **qu'après** le passage en alignement à gauche — une boîte qui se rétracte sur son contenu n'a pas cet offset tant qu'elle le fait.
+- Un élément committé par React est **neuf**, et `.term-cell` porte une animation de montage : il faut `style.animation = 'none'` dessus quand la valeur affichée n'a pas changé, sinon ça clignote.
+- Les exposants unicode `³ ² ¹ ⁰` n'ont pas la même largeur — figer la boîte de l'exposant à la plus large des valeurs qu'elle prendra.
+- Un `gap` flex survit à une largeur animée à 0 : pour qu'un élément quitte vraiment la mise en page, `display: none` après le repli.
+
+### Ce que l'utilisateur a demandé et qui reste à faire
+
+- **`C(n,k)` et `A(n,k)`** — ne se parsent pas du tout aujourd'hui. C'était le point 2 de la liste probabilités.
+- **Probabilités géométriques** (aire favorable / aire totale) — faisable à moitié avec la géo 2D + un pie, mais bancal.
+- Toujours en attente des sessions précédentes : supprimer les fichiers de modules kid/primaire, supprimer les fichiers `geo_canvas`, écrire les exemples de référence manquants, le prisme à n côtés en 3D, et les sauvegardes `src/__b_functions.js` / `src/__b_threeEngine.js` qui traînent.
+
+---
+
+
+## Session précédente (générateur IA, Lesson Builder, Desmos) — dans l'ordre
 
 ### 1. Classificateur "off-topic" pour le générateur IA (2 requêtes)
 Le router (request 1, haiku) répond maintenant `{"status":"ok"|"off-topic"|"clarify"|"trivial", ...}` au lieu de juste `{"modules":[...]}`. Si `status !== 'ok'`, la request 2 (génération, sonnet) ne part jamais — économie de coût + réponse instantanée. Câblé dans `server.js`, `moduleCatalog.js` (prompt du router), `generateLesson.js` (transforme en erreur affichée via `aiError` existant, pas de nouveau composant).

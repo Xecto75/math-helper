@@ -5,6 +5,7 @@ import {
   onGraphClear, offGraphClear, setGraphInteractive,
 } from '../engine/desmosEngine.js'
 import MathText from './RichText.jsx'
+import { animCss } from '../engine/animSpeed.js'
 
 const SCRIPT_SRC = 'https://www.desmos.com/api/v1.9/calculator.js?apiKey=b4745411202b41739a8da3535562ca5b'
 
@@ -167,6 +168,17 @@ const DesmosDisplay = forwardRef(function DesmosDisplay(_, ref) {
         const vp = getViewport()
         const px = (item.mathX - vp.left) / (vp.right - vp.left) * 100
         const py = (vp.top - item.mathY) / (vp.top - vp.bottom) * 100
+        // anchorX/anchorY (-1 | 0 | 1) let a label grow AWAY from its anchor
+        // point instead of straddling it, so a coord label can sit tight
+        // against its own dot without ever covering it. No anchor (angle
+        // labels) keeps the old centred behaviour.
+        const GAP = 4
+        const tx = item.anchorX ===  1 ? `${GAP}px`
+                 : item.anchorX === -1 ? `calc(-100% - ${GAP}px)`
+                 : '-50%'
+        const ty = item.anchorY ===  1 ? `calc(-100% - ${GAP}px)`
+                 : item.anchorY === -1 ? `${GAP}px`
+                 : '-50%'
         return (
           <div
             key={item.id}
@@ -174,11 +186,13 @@ const DesmosDisplay = forwardRef(function DesmosDisplay(_, ref) {
               position: 'absolute',
               left: `${px}%`,
               top: `${py}%`,
-              transform: 'translate(-50%, -50%)',
+              transform: `translate(${tx}, ${ty})`,
               color: item.type === 'angle' ? '#f87171' : '#fca5a5',
-              fontSize: item.type === 'angle' ? '10px' : '10px',
+              fontSize: '12px',
               fontFamily: 'monospace',
               fontWeight: item.type === 'angle' ? 'bold' : 'normal',
+              textShadow: '0 0 3px #000, 0 0 3px #000',
+              animation: `tcLabelIn ${animCss(0.35)} ease both`,
               pointerEvents: 'none',
               zIndex: 4,
               whiteSpace: 'nowrap',
@@ -200,7 +214,7 @@ const DesmosDisplay = forwardRef(function DesmosDisplay(_, ref) {
               position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
               color: info.color, background: 'rgba(10,10,20,0.72)',
               padding: '4px 12px', borderRadius: 8,
-              fontWeight: 700, fontSize: 16,
+              fontWeight: 700, fontSize: 21,
               pointerEvents: 'none', zIndex: 6, whiteSpace: 'nowrap',
             }}
           >

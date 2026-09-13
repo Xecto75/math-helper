@@ -107,7 +107,7 @@ export function resolveValueRef(rawId, token) {
     if (v !== undefined) return v
   }
 
-  // Table cell (table-create / table-change-value) — [gridId]r<row>c<col>,
+  // Table cell (tab-create-grid / tab-change-value) — [gridId]r<row>c<col>,
   // both 0-indexed to match the authored `data` matrix directly.
   const cellM = token.match(/^r(\d+)c(\d+)$/)
   if (cellM) {

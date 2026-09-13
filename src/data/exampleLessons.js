@@ -663,18 +663,20 @@ export const EXAMPLE_LESSONS = [
             content: 'Correlation measures the link between two variables.|Positive correlation: as $x$ increases, $y$ increases too.|Negative correlation: as $x$ increases, $y$ decreases.|No correlation: no clear link between the two.',
             isList: 'true',
           }},
-          { id: u(), funcId: 'table-create', inputs: {
-            data: '[["x (study hours)","y (score %)"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]',
-            headerRow: 'true', gridId: 'etude1',
+          { id: u(), funcId: 'tab-create-grid', inputs: {
+            gridId: 'etude1', cols: '2', rows: '7',
+            headerRow: 'true', headerCol: 'false',
+            values: 'x (study hours),y (score %)|1,55|2,62|3,68|4,75|5,82|6,90',
           }},
         ],
       },
       {
         id: u(), title: 'Scatter Plot — Positive Trend', layout: 'grid-graph',
         steps: [
-          { id: u(), funcId: 'table-create', inputs: {
-            data: '[["x (study hours)","y (score %)"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]',
-            headerRow: 'true', gridId: 'etude2',
+          { id: u(), funcId: 'tab-create-grid', inputs: {
+            gridId: 'etude2', cols: '2', rows: '7',
+            headerRow: 'true', headerCol: 'false',
+            values: 'x (study hours),y (score %)|1,55|2,62|3,68|4,75|5,82|6,90',
           }},
           { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '0', xMax: '8', yMin: '0', yMax: '100' } },
           { id: u(), funcId: 'graph-add-point', inputs: { x: '1', y: '55', id: 'p1' } },
@@ -698,9 +700,10 @@ export const EXAMPLE_LESSONS = [
             content: '$r$ close to $1$: strong positive correlation|$r$ close to $-1$: strong negative correlation|$r$ close to $0$: no correlation',
             isList: 'true',
           }},
-          { id: u(), funcId: 'table-create', inputs: {
-            data: '[["x (study hours)","y (score %)"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]',
-            headerRow: 'true', gridId: 'etude3',
+          { id: u(), funcId: 'tab-create-grid', inputs: {
+            gridId: 'etude3', cols: '2', rows: '7',
+            headerRow: 'true', headerCol: 'false',
+            values: 'x (study hours),y (score %)|1,55|2,62|3,68|4,75|5,82|6,90',
           }},
           // Switch to table + equation once the formula's been introduced —
           // everything from here plugs the real data into it, row by row.
@@ -753,9 +756,10 @@ export const EXAMPLE_LESSONS = [
             content: 'Each unit is worth 10 times the next.|To convert, move the decimal point one position per unit.',
             isList: 'true',
           }},
-          { id: u(), funcId: 'table-create', inputs: {
-            data: '[["km","hm","dam","m","dm","cm","mm"],[1000,100,10,1,0.1,0.01,0.001]]',
-            headerRow: 'true', gridId: 'longueur1',
+          { id: u(), funcId: 'tab-create-grid', inputs: {
+            gridId: 'longueur1', cols: '7', rows: '2',
+            headerRow: 'true', headerCol: 'false',
+            values: 'km,hm,dam,m,dm,cm,mm|1000,100,10,1,0.1,0.01,0.001',
           }},
         ],
       },
@@ -779,9 +783,10 @@ export const EXAMPLE_LESSONS = [
             content: 'For area units, each unit is worth 100 times the next (not 10!).|E.g.: 1 km² = 100 hm² = 10,000 dam² = 1,000,000 m².',
             isList: 'true',
           }},
-          { id: u(), funcId: 'table-create', inputs: {
-            data: '[["km²","hm²","dam²","m²","dm²","cm²","mm²"],[1000000,10000,100,1,0.01,0.0001,0.000001]]',
-            headerRow: 'true', gridId: 'aire1',
+          { id: u(), funcId: 'tab-create-grid', inputs: {
+            gridId: 'aire1', cols: '7', rows: '2',
+            headerRow: 'true', headerCol: 'false',
+            values: 'km²,hm²,dam²,m²,dm²,cm²,mm²|1000000,10000,100,1,0.01,0.0001,0.000001',
           }},
         ],
       },

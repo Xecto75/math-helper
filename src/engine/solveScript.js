@@ -209,10 +209,50 @@ function distributeAllParens(state, script) {
     const arr    = side === 'left' ? state.left : state.right
     const groups = arr.filter(t => t.isParenGroup)
     for (const group of [...groups]) {
-      const outerVal = group.sign === '-' ? -group.parenCoeff : group.parenCoeff
-      const outerVar = group.parenCoeffVariable ?? null
-      const outerDeg = group.parenCoeffDegree ?? 1
-      const expandedTerms = (group.innerTerms ?? []).map(inner => {
+      // PEMDAS, and it is the P that comes first. When everything inside the
+      // bracket is like terms — two numbers, two multiples of the same x — the
+      // bracket HAS a value, and that value is what the multiplier meets.
+      // Distributing over it instead is not wrong arithmetic, it is the wrong
+      // lesson: it skips the step the reader is being taught to do first, and
+      // (3,56 − 1,2)·3 came out as 3·3,56 − 3·1,2 for no reason at all.
+      //
+      // A bracket of UNLIKE terms — (3x + 2) — has no value to work out, so
+      // distributing really is the next move and nothing here fires.
+      const inner = group.innerTerms ?? []
+      const alike = inner.length > 1 && inner.every(t =>
+        (t.variable ?? null) === (inner[0].variable ?? null) && t.degree === inner[0].degree)
+      if (alike) {
+        const sum = inner.reduce((s, t) => s + (t.sign === '-' ? -t.coefficient : t.coefficient), 0)
+        script.push({ type: 'combineInParens', id: group.id, side, value: sum })
+        group.innerTerms = [{
+          id: crypto.randomUUID(),
+          sign: sum < 0 ? '-' : '+',
+          coefficient: Math.abs(sum),
+          variable: inner[0].variable ?? null,
+          degree: inner[0].degree,
+        }]
+      }
+
+      // A bracket times a bracket is the same operation with more than one
+      // multiplier: every outer term meets every inner term. A monomial
+      // multiplier is just the one-outer-term case, so both go through the same
+      // loop and produce the same flat list the animation already knows.
+      const outers = group.outerTerms
+        ? group.outerTerms.map(o => ({
+            val: (o.sign === '-' ? -o.coefficient : o.coefficient) * (group.sign === '-' ? -1 : 1),
+            v:   o.variable ?? null,
+            d:   o.variable ? o.degree : 1,
+          }))
+        : [{
+            val: group.sign === '-' ? -group.parenCoeff : group.parenCoeff,
+            v:   group.parenCoeffVariable ?? null,
+            d:   group.parenCoeffDegree ?? 1,
+          }]
+
+      const expandedTerms = outers.flatMap(o => (group.innerTerms ?? []).map(inner => {
+      const outerVal = o.val
+      const outerVar = o.v
+      const outerDeg = o.d
         const innerVal    = inner.sign === '-' ? -inner.coefficient : inner.coefficient
         const expandedVal = outerVal * innerVal
 
@@ -241,7 +281,7 @@ function distributeAllParens(state, script) {
           variable,
           degree,
         }
-      })
+      }))
 
       const insertIdx = (side === 'left' ? state.left : state.right).indexOf(group)
 

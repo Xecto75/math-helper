@@ -2,6 +2,12 @@ import { useEffect, useLayoutEffect, useState, useCallback, useRef, memo, forwar
 import MathText, { splitLines } from './RichText.jsx'
 import { getShapePoint3D } from '../engine/threeEngine.js'
 import { onGraphInteractiveChange, offGraphInteractiveChange } from '../engine/desmosEngine.js'
+// Comment boxes and their connector lines are timed in CSS, which the gsap
+// timeline cannot touch — so a fast-forward left them playing at full length
+// while everything around them had already finished. animCss() writes the
+// duration as a calc() against the shared multiplier instead of a fixed
+// number, which is what makes them follow the skip.
+import { animCss } from '../engine/animSpeed.js'
 
 const BOX_W   = 150
 const BOX_H   = 56
@@ -91,14 +97,14 @@ const CommentBox = memo(function CommentBox({ c, smooth = true }) {
     <div data-cmt-id={c.id} style={{
       // On the way out the entry animation has to be dropped, or it keeps
       // asserting opacity:1 and the fade never shows.
-      animation: c.leaving ? 'none' : 'cmtFadeIn 0.35s ease both',
+      animation: c.leaving ? 'none' : `cmtFadeIn ${animCss(0.35)} ease both`,
       opacity: c.leaving ? 0 : undefined,
       // A comment re-anchors whenever another one appears next to it, the
       // layout changes, or its target moves — and it used to teleport to the
       // new spot. Slide instead. Suppressed while the user is dragging the
       // graph, where the position changes every frame and any easing would
       // just trail behind the cursor.
-      transition: `opacity 0.28s ease${smooth ? ', left 0.28s ease, top 0.28s ease' : ''}`,
+      transition: `opacity ${animCss(0.28)} ease${smooth ? `, left ${animCss(0.28)} ease, top ${animCss(0.28)} ease` : ''}`,
       position: 'absolute', left: c.boxX, top: c.boxY,
       width: BOX_W, minHeight: BOX_H,
       background: 'rgba(10,10,20,0.90)',
@@ -123,7 +129,7 @@ const CommentBox = memo(function CommentBox({ c, smooth = true }) {
         color,
         fontFamily: 'system-ui, sans-serif',
         wordBreak: 'break-word',
-        animation: 'cmtPop 0.3s cubic-bezier(0.34,1.56,0.64,1) both',
+        animation: `cmtPop ${animCss(0.3)} cubic-bezier(0.34,1.56,0.64,1) both`,
       }}>{renderCommentText(shown.text)}</p>
     </div>
   )
@@ -389,11 +395,11 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
 
           return (
             <g key={c.id} style={{
-              animation: c.leaving ? 'none' : 'cmtFadeIn 0.35s ease both',
+              animation: c.leaving ? 'none' : `cmtFadeIn ${animCss(0.35)} ease both`,
               opacity: c.leaving ? 0 : undefined,
-              transition: 'opacity 0.28s ease',
+              transition: `opacity ${animCss(0.28)} ease`,
             }}>
-              <g style={{ opacity: fadeForPan ? 0 : 1, transition: 'opacity 0.25s ease' }}>
+              <g style={{ opacity: fadeForPan ? 0 : 1, transition: `opacity ${animCss(0.25)} ease` }}>
                 {c.cellRects?.map((r, i) => (
                   <rect key={i}
                     x={r.x - 2} y={r.y - 2} width={r.w + 4} height={r.h + 4}
@@ -405,10 +411,10 @@ const CommentLayer = forwardRef(function CommentLayer({ comments, contentRef, ta
                     properties are animatable as CSS in Chrome; anywhere they
                     are not, this degrades to the previous instant move. */}
                 <line x1={lx} y1={ly} x2={c.tx} y2={dotTy}
-                  style={{ transition: fadeForPan ? 'none' : 'x1 0.28s ease, y1 0.28s ease, x2 0.28s ease, y2 0.28s ease' }}
+                  style={{ transition: fadeForPan ? 'none' : `x1 ${animCss(0.28)} ease, y1 ${animCss(0.28)} ease, x2 ${animCss(0.28)} ease, y2 ${animCss(0.28)} ease` }}
                   stroke={color} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.8} />
                 <circle cx={c.tx} cy={dotTy} r={DOT_R}
-                  style={{ transition: fadeForPan ? 'none' : 'cx 0.28s ease, cy 0.28s ease' }}
+                  style={{ transition: fadeForPan ? 'none' : `cx ${animCss(0.28)} ease, cy ${animCss(0.28)} ease` }}
                   fill={color} opacity={0.9} />
               </g>
             </g>

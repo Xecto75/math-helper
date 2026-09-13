@@ -4,6 +4,10 @@
  */
 
 import * as THREE from 'three'
+// Every tween in here runs its own rAF loop, so none of them were reachable
+// from the gsap timeline the fast-forward drives. They read the multiplier
+// directly instead.
+import { animMs } from './animSpeed.js'
 
 const registry = new Map()  // id → { type, isFlat, vertices, a, b, c, opts }
 
@@ -30,9 +34,14 @@ function resolveHex(color) {
 
 // ── Flat (2D) shape vertex calculation ────────────────────────────────────────
 
+// Trim float noise so a snapped corner reads as the number the author typed
+// rather than 7.199999999999999.
+const r4 = n => Math.round(n * 10000) / 10000
+
 const FLAT_TYPES = new Set([
   'circle', 'triangle', 'right-triangle', 'rectangle', 'square',
-  'parallelogram', 'trapeze', 'pentagon', 'hexagon', 'octagon', 'regular-polygon', 'line',
+  'parallelogram', 'trapeze', 'trapeze-right', 'rhombus',
+  'pentagon', 'hexagon', 'octagon', 'regular-polygon', 'line',
 ])
 
 // 6 decimals, not 4 — a "clean" triangle built from a precise law-of-sines
@@ -81,6 +90,20 @@ function calcFlatVertices(type, values) {
       const [a, b = a * 1.5, h = a * 0.7] = values
       const offset = (b - a) / 2
       return [[0,0],[b,0],[b-offset,h],[offset,h]]
+    }
+    case 'trapeze-right': {
+      // The isosceles trapeze above leans in on both sides. This one stands on
+      // a vertical left edge, so it has two right angles — the shape almost
+      // every area exercise actually draws.
+      const [a, b = a * 1.5, h = a * 0.7] = values
+      return [[0,0],[b,0],[a,h],[0,h]]
+    }
+    case 'rhombus': {
+      // Given by its DIAGONALS, because that is what the area formula uses and
+      // what a problem hands you: A = D x d / 2. The four equal sides fall out
+      // of them, and the engine measures them back for a label.
+      const [d1, d2 = d1 * 0.6] = values
+      return [[0, -d2 / 2], [d1 / 2, 0], [0, d2 / 2], [-d1 / 2, 0]]
     }
     case 'pentagon':
     case 'hexagon':
@@ -167,21 +190,34 @@ function buildFlatGroup(type, values, hexColor, opts = {}) {
 
   if (type === 'circle') {
     const r = values[0] ?? 2
-    const fillGeo = new THREE.CircleGeometry(r, 64)
+    // A second value turns the disc into a SECTOR: 90 gives a quarter, 180 a
+    // half, 270 three quarters. Anything at or past a full turn is the whole
+    // circle, which is also what an omitted value means — so every circle that
+    // was ever drawn keeps drawing exactly as it did.
+    const sweepDeg = Math.max(1, Math.min(Number(values[1]) || 360, 360))
+    const sweep    = (sweepDeg * Math.PI) / 180
+    const whole    = sweepDeg >= 360
+    const SEG      = Math.max(8, Math.round(64 * sweepDeg / 360))
+
+    const fillGeo = new THREE.CircleGeometry(r, SEG, 0, sweep)
     const fillMat = new THREE.MeshBasicMaterial({
       color: hexColor, opacity: fillOpacity, transparent: true, side: THREE.DoubleSide,
     })
     group.add(new THREE.Mesh(fillGeo, fillMat))
-    const pts = Array.from({ length: 65 }, (_, i) => {
-      const a = (i / 64) * Math.PI * 2
+
+    // The outline of a sector is two radii and an arc, not just the arc — an
+    // arc on its own reads as a curve floating in space, not as a slice.
+    const arc = Array.from({ length: SEG + 1 }, (_, i) => {
+      const a = (i / SEG) * sweep
       return new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), 0.01)
     })
+    const pts = whole ? arc : [new THREE.Vector3(0, 0, 0.01), ...arc, new THREE.Vector3(0, 0, 0.01)]
     const outlineColor = new THREE.Color(hexColor).lerp(new THREE.Color(0xffffff), 0.55)
     group.add(new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(pts),
       new THREE.LineBasicMaterial({ color: outlineColor }),
     ))
-    group.userData = { isFlat: true, type, values, isCircle: true, radius: r }
+    group.userData = { isFlat: true, type, values, isCircle: true, radius: r, sweepDeg }
     return group
   }
 
@@ -303,6 +339,39 @@ function removeChildFromGroup(display, parentId, childId) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+// Fade every material in a group between hidden and the opacity it was built
+// with. Each one keeps its OWN target: a flat shape is a translucent fill under
+// a solid outline, and fading both to one shared number would flatten that
+// relationship for the length of the animation.
+function fadeGroup(group, dir, ms) {
+  const mats = []
+  group.traverse(o => {
+    const m = o.material
+    if (!m) return
+    for (const mat of Array.isArray(m) ? m : [m]) {
+      if (mats.some(e => e.mat === mat)) continue
+      mat.transparent = true
+      mats.push({ mat, target: mat.opacity })
+    }
+  })
+  if (!mats.length) return Promise.resolve()
+  const dur = Math.max(1, animMs(ms))
+  // Set the far end before the first frame is painted, or the shape flashes at
+  // full opacity for one frame before the fade starts.
+  for (const { mat, target } of mats) mat.opacity = dir === 'in' ? 0 : target
+  return new Promise(resolve => {
+    const t0 = performance.now()
+    const tick = () => {
+      const p = Math.min((performance.now() - t0) / dur, 1)
+      const e = dir === 'in' ? p : 1 - p
+      for (const { mat, target } of mats) mat.opacity = target * e
+      if (p < 1) requestAnimationFrame(tick)
+      else resolve()
+    }
+    requestAnimationFrame(tick)
+  })
+}
+
 export function createShape3D(threeRef, id, type, a, b, c, opts = {}) {
   const display = threeRef?.current
   if (!display?.isReady()) return
@@ -338,6 +407,10 @@ export function createShape3D(threeRef, id, type, a, b, c, opts = {}) {
   // A shape built from big numbers is wider than the fixed 2D frustum and used
   // to hang off the edge of the canvas. Widen the view until it fits.
   if (FLAT_TYPES.has(type)) display.fitView2D?.()
+
+  // Nothing on this canvas appears at full strength in one frame. The 3D
+  // solids keep their old instant entrance — this was asked for the flat ones.
+  if (FLAT_TYPES.has(type)) return fadeGroup(group, 'in', 260)
 }
 
 // Auto-detect congruent (equal-length) sides right after a flat shape is
@@ -368,6 +441,22 @@ function autoTickEqualSides(threeRef, id, verts) {
 export function removeShape3D(threeRef, id) {
   // Child objects (highlights, angle arcs) are parented to the shape group
   // and are disposed automatically when the parent group is removed.
+  // A flat shape leaves the way it arrived. The labels hanging off it are DOM
+  // elements with their own fade, so they are started at the same moment and
+  // everything goes together instead of the words outliving the shape.
+  const entry = registry.get(id)
+  const group = threeRef?.current?.getObject?.(id)
+  if (entry?.isFlat && group) {
+    const d = threeRef.current
+    for (let i = 0; i < 20; i++) d.fadeOutLabel3D?.(`sl_${id}_${i}`, animMs(240))
+    for (let i = 0; i < 20; i++) d.fadeOutLabel3D?.(`cmt_${id}_${i}`, animMs(240))
+    d.fadeOutLabel3D?.(`tx_${id}`, animMs(240))
+    return fadeGroup(group, 'out', 240).then(() => finishRemoveShape3D(threeRef, id))
+  }
+  return finishRemoveShape3D(threeRef, id)
+}
+
+function finishRemoveShape3D(threeRef, id) {
   threeRef?.current?.removeObject(id)
   // Labels are tracked separately — remove them explicitly
   const display = threeRef?.current
@@ -411,7 +500,7 @@ export function moveShape3D(threeRef, id, dx, dy, dz = 0, duration = 0.5) {
     const ease = t => t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t
     let prevP  = 0
     function tick() {
-      const t = Math.min((performance.now() - t0) / (duration * 1000), 1)
+      const t = Math.min((performance.now() - t0) / animMs(duration * 1000), 1)
       const p = ease(t)
       group.position.set(
         startX + (endX - startX) * p,
@@ -442,7 +531,7 @@ export function flipShape2D(threeRef, id) {
 
   return new Promise(resolve => {
     const t0  = performance.now()
-    const dur = 320
+    const dur = animMs(320)
     function tick() {
       const t = Math.min((performance.now() - t0) / dur, 1)
       const e = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t
@@ -480,7 +569,7 @@ export function rotateShape2D(threeRef, id, degrees = 90) {
 
   return new Promise(resolve => {
     const t0  = performance.now()
-    const dur = 380
+    const dur = animMs(380)
     function tick() {
       const t = Math.min((performance.now() - t0) / dur, 1)
       const e = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t
@@ -525,7 +614,7 @@ export function highlightShape3D(threeRef, id) {
 
   return new Promise(resolve => {
     const t0 = performance.now()
-    const dur = 550
+    const dur = animMs(550)
     function tick() {
       const t = Math.min((performance.now() - t0) / dur, 1)
       // sin arc: peaks at t=0.4, back to 1 by t=1
@@ -571,7 +660,7 @@ export async function labelSides3D(threeRef, id, customLabels = []) {
   if (!needsUpdate.some(Boolean)) return
 
   // Fade out only the changing slots that already have a label
-  const fadeOutDur = 180
+  const fadeOutDur = animMs(180)
   let anyFaded = false
   for (let i = 0; i < n; i++) {
     if (needsUpdate[i] && display.getLabel3D?.(`sl_${id}_${i}`)) {
@@ -646,7 +735,7 @@ export async function labelSides3D(threeRef, id, customLabels = []) {
       ly + gy + sign * ny * offset,
       0.05,
       text,
-      { color: edgeColor, fontSize, fadeIn: 400 },
+      { color: edgeColor, fontSize, fadeIn: animMs(400) },
     )
 
     if (!entry.storedLabels) entry.storedLabels = []
@@ -686,7 +775,7 @@ function labelEdge3D(display, id, entry, gx, gy, avgEdge, ppu, edgeIndex, text, 
   const sign   = cross > 0 ? -1 : 1
   const offset = avgEdge * 0.14
   const fontSize = Math.round(Math.max(14, Math.min(36, avgEdge * ppu * 0.16)))
-  display.addLabel3D(labelId, lx + gx + sign * nx * offset, ly + gy + sign * ny * offset, 0.05, text, { color, fontSize, fadeIn: 400 })
+  display.addLabel3D(labelId, lx + gx + sign * nx * offset, ly + gy + sign * ny * offset, 0.05, text, { color, fontSize, fadeIn: animMs(400) })
 
   // A measurement is meaningless without seeing what it's measuring — always
   // highlight the actual edge alongside its label, not just a floating number.
@@ -765,7 +854,7 @@ export async function showAreaMeasures3D(threeRef, id, opts = {}) {
     const ex = r * Math.cos(angle), ey = r * Math.sin(angle)
     const lineGroup = makeDashedLineGroup3D([0, 0, 0.06], [ex, ey, 0.06], hex, 0.03)
     addChildToGroup(display, id, `amr_${id}`, lineGroup)
-    display.addLabel3D(`amlbl_${id}`, gx + ex / 2, gy + ey / 2, 0.05, `r = ${parseFloat(r.toFixed(2))}`, { color, fontSize: 24, fadeIn: 400 })
+    display.addLabel3D(`amlbl_${id}`, gx + ex / 2, gy + ey / 2, 0.05, `r = ${parseFloat(r.toFixed(2))}`, { color, fontSize: 24, fadeIn: animMs(400) })
     return
   }
 
@@ -784,7 +873,7 @@ export async function showAreaMeasures3D(threeRef, id, opts = {}) {
   const fontSize = Math.round(Math.max(14, Math.min(36, avgEdge * ppu * 0.16)))
   const withHeightLine = () => {
     const { x, midY } = drawDashedHeightLine3D(display, id, verts, color)
-    display.addLabel3D(`amhlbl_${id}`, x + gx + avgEdge * 0.06, midY + gy, 0.05, `h = ${h}`, { color, fontSize, align: 'left', fadeIn: 400 })
+    display.addLabel3D(`amhlbl_${id}`, x + gx + avgEdge * 0.06, midY + gy, 0.05, `h = ${h}`, { color, fontSize, align: 'left', fadeIn: animMs(400) })
   }
 
   switch (entry.type) {
@@ -866,9 +955,13 @@ export function showEqualTick3D(threeRef, id, edgeIndexRaw, ticksRaw, colorRaw) 
   const nx = -uy, ny = ux                        // unit vector perpendicular
 
   const ticks   = Math.max(1, Math.min(3, Math.round(ticksRaw ?? 1)))
-  const tickLen = Math.min(eLen * 0.3, 0.4)
-  const spacing = tickLen * 0.9
-  const halfT   = 0.035
+  // Marks are notation, not drawing: they have to read as a pair at a glance
+  // without competing with the figure. Short, thin, and set close enough that a
+  // double reads as ONE symbol — at the old spacing (90% of their own length)
+  // two ticks looked like two separate single marks on different sides.
+  const tickLen = Math.min(eLen * 0.18, 0.26)
+  const spacing = tickLen * 0.42
+  const halfT   = 0.022
   const hex     = resolveHex(colorRaw)
   const group   = new THREE.Group()
 
@@ -937,8 +1030,8 @@ export function showAngles3D(threeRef, id, colorRaw, showValues = false) {
   // Remove existing angle arcs (parented to shape group)
   for (let i = 0; i < 20; i++) removeChildFromGroup(display, id, `ang_${id}_${i}`)
 
-  const growDur = 300   // ms: arc sweeps open
-  const stagger = 60    // ms: delay between each vertex arc
+  const growDur = animMs(300)   // ms: arc sweeps open
+  const stagger = animMs(60)    // ms: delay between each vertex arc
   const group = display.getObject(id)
   const gx = group?.position.x ?? 0, gy = group?.position.y ?? 0
 
@@ -1105,7 +1198,7 @@ export function highlightAngle3D(threeRef, id, angleIndex, colorRaw = 'cyan') {
   const fromScale = arcGroup.scale.x
   return new Promise(resolve => {
     const t0  = performance.now()
-    const dur = 520
+    const dur = animMs(520)
     function tick() {
       const t  = Math.min((performance.now() - t0) / dur, 1)
       const s  = Math.sin(t * Math.PI)
@@ -1188,7 +1281,7 @@ function highlightEdgeVolumetric(display, id, entry, edgeIndex, colorRaw) {
   addChildToGroup(display, id, hlId, mesh)
 
   return new Promise(resolve => {
-    const t0 = performance.now(), dur = 380
+    const t0 = performance.now(), dur = animMs(380)
     const ease = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
     function tick() {
       const t = Math.min((performance.now() - t0) / dur, 1)
@@ -1248,7 +1341,7 @@ export function highlightFace3D(threeRef, id, faceIndexRaw, colorRaw = 'orange')
   addChildToGroup(display, id, hlId, mesh)
 
   return new Promise(resolve => {
-    const t0 = performance.now(), dur = 380
+    const t0 = performance.now(), dur = animMs(380)
     function tick() {
       const t = Math.min((performance.now() - t0) / dur, 1)
       mat.opacity = 0.55 * t
@@ -1328,7 +1421,7 @@ export function highlightEdge3D(threeRef, id, edgeIndex, colorRaw = 'orange') {
 
   return new Promise(resolve => {
     const t0  = performance.now()
-    const dur = 420
+    const dur = animMs(420)
     const ease = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
     function tick() {
       const now = performance.now() - t0
@@ -1342,6 +1435,136 @@ export function highlightEdge3D(threeRef, id, edgeIndex, colorRaw = 'orange') {
     }
     requestAnimationFrame(tick)
   })
+}
+
+/**
+ * A polygon given its corners outright.
+ *
+ * S2c builds from a TYPE and side lengths, which covers the shapes a lesson
+ * names ("a trapezoid", "a right triangle"). It cannot express the figure a
+ * textbook problem draws — two triangles sharing a vertex, a quadrilateral
+ * that is nobody's named shape. Those are given by their corners, so this
+ * takes corners: "x,y;x,y;…", in order, not closed (the last joins the first).
+ *
+ * Two points make a segment, three or more a polygon. The result is an
+ * ordinary registry entry — S2l, S2a, S2n, S2s, S2tk and [id]N all work on it.
+ */
+export function createPolygonFromPoints3D(threeRef, id, pointsRaw, opts = {}) {
+  const display = threeRef?.current
+  if (!display?.isReady()) return
+
+  const vertices = (Array.isArray(pointsRaw) ? pointsRaw : String(pointsRaw).split(";"))
+    .map(s => String(s).trim()).filter(Boolean)
+    .map(pair => {
+      const [x, y] = pair.split(",").map(v => Number(String(v).trim()))
+      if (!isFinite(x) || !isFinite(y)) throw new Error(`Point invalide : "${pair}" — attendu "x,y"`)
+      return [r4(x), r4(y)]
+    })
+  if (vertices.length < 2) throw new Error("polygon : au moins 2 points (2 = segment, 3+ = polygone)")
+
+  const hexColor = resolveHex(opts.color ?? 'blue')
+  display.setDisplayMode("2d")
+  const group = buildFlatGroupFromVerts(vertices, hexColor, {
+    fillOpacity: vertices.length === 2 ? 0 : (opts.fillOpacity ?? 0.3),
+  })
+  display.addObject(id, group)
+  registry.set(id, {
+    type: vertices.length === 2 ? 'segment' : 'polygon',
+    isFlat: true, vertices, isCircle: false, radius: null,
+    values: [], opts, edgeColors: {},
+  })
+  display.fitView2D?.()
+}
+
+/**
+ * A shape whose corners are pinned to a shape that already exists.
+ *
+ * createShape3D builds from side lengths and centres the result on itself,
+ * which is exactly wrong for a figure whose parts have to touch: a triangle cut
+ * by a line parallel to one side, a median, a segment along part of an edge.
+ * Two centred shapes can never meet. A snapped shape takes its corners from the
+ * parent instead, so it lands exactly where the problem's numbers put it.
+ *
+ * Each anchor is one of:
+ *   vN     — corner N of the parent
+ *   eN@t   — fraction t (0..1) along parent edge N, from corner N toward N+1
+ *   eN:d   — d units along parent edge N, measured from corner N
+ * Two anchors give a segment, three or more a polygon; either way the result is
+ * an ordinary registry entry, so every other function works on it after.
+ */
+export function snapShape3D(threeRef, id, parentId, anchors, opts = {}) {
+  const display = threeRef?.current
+  if (!display?.isReady()) return
+  const parent = registry.get(parentId)
+  if (!parent?.vertices?.length) throw new Error(`snapShape : forme "${parentId}" introuvable`)
+
+  const list = (Array.isArray(anchors) ? anchors : String(anchors).split(","))
+    .map(a => String(a).trim()).filter(Boolean)
+  if (list.length < 2) throw new Error("snapShape : au moins 2 ancrages (2 = segment, 3+ = polygone)")
+
+  const vertices = list.map(a => {
+    const pt = resolveShapePoint(parentId, a)
+    if (!pt) throw new Error(`Ancrage invalide : "${a}" — attendu vN, eN@fraction ou eN:distance`)
+    return [r4(pt[0]), r4(pt[1])]
+  })
+
+  const hexColor = resolveHex(opts.color ?? 'blue')
+  display.setDisplayMode("2d")
+  // A segment has no inside; filling two points draws nothing anyway, but a
+  // fill opacity left on would tint a 3+ point shape by surprise.
+  const group = buildFlatGroupFromVerts(vertices, hexColor, {
+    fillOpacity: vertices.length === 2 ? 0 : (opts.fillOpacity ?? 0.3),
+  })
+  display.addObject(id, group)
+  registry.set(id, {
+    type: vertices.length === 2 ? 'segment' : 'polygon',
+    isFlat: true, vertices, isCircle: false, radius: null,
+    values: [], opts, edgeColors: {}, snappedTo: parentId,
+  })
+  display.fitView2D?.()
+}
+
+/**
+ * Letters on the CORNERS (A, B, C…), the way a textbook figure names them — as
+ * opposed to labelSides3D, which names the edges between them. A blank or "-"
+ * entry skips that corner, which is what you want wherever two shapes meet: the
+ * shared corner is named once instead of twice on top of itself.
+ */
+export function nameVertices3D(threeRef, id, names = [], opts = {}) {
+  const display = threeRef?.current
+  const entry = registry.get(id)
+  if (!display || !entry?.vertices?.length) return
+
+  const verts = entry.vertices
+  // A SNAPPED shape has every corner sitting on its parent's outline, so "away
+  // from this shape" points straight back INTO the parent — the letters end up
+  // under the figure instead of beside the points they name. Push away from the
+  // parent in that case; a shape standing on its own pushes away from itself.
+  const outFrom = registry.get(entry.snappedTo)?.vertices?.length
+    ? registry.get(entry.snappedTo).vertices
+    : verts
+  const cx = outFrom.reduce((s, v) => s + v[0], 0) / outFrom.length
+  const cy = outFrom.reduce((s, v) => s + v[1], 0) / outFrom.length
+  const color = opts.color
+    ? `#${resolveHex(opts.color).toString(16).padStart(6, '0')}`
+    : '#e8e8e8'
+
+  verts.forEach((v, i) => {
+    const raw = names[i] !== undefined ? String(names[i]).trim() : ''
+    if (!raw || raw === '-') { display.removeLabel3D(`vn_${id}_${i}`); return }
+    let dx = v[0] - cx, dy = v[1] - cy
+    const m = Math.hypot(dx, dy) || 1
+    const off = 0.7
+    display.addLabel3D(`vn_${id}_${i}`,
+      r4(v[0] + (dx / m) * off), r4(v[1] + (dy / m) * off), 0.1,
+      raw, { color, fontSize: opts.fontSize ?? 17 })
+  })
+}
+
+export function unnameVertices3D(threeRef, id) {
+  const display = threeRef?.current
+  if (!display) return
+  for (let i = 0; i < 30; i++) display.removeLabel3D(`vn_${id}_${i}`)
 }
 
 export function addText3D(threeRef, id, text, x, y, opts = {}) {
@@ -1400,7 +1623,7 @@ function animateCirclePerimeterTrace3D(display, parentId, r, startAngle, hex, du
     const t0 = performance.now()
 
     function tick() {
-      const t = Math.min((performance.now() - t0) / (duration * 1000), 1)
+      const t = Math.min((performance.now() - t0) / animMs(duration * 1000), 1)
       const shown = Math.max(1, Math.round(segN * t))
       const group = new THREE.Group()
       for (let i = 0; i < shown; i++) {
@@ -1675,11 +1898,22 @@ function resolveShapePoint(id, ref) {
     return isNaN(idx) ? null : verts[idx % n] ?? null
   }
   if (s.startsWith('e')) {
-    const idx = parseInt(s.slice(1))
-    if (isNaN(idx)) return null
+    // "e1" is the midpoint, as it always was. "e1@0.4" is 40% along the edge
+    // and "e1:7.2" is 7.2 units along it — the two forms snapping needs, so a
+    // shape can be pinned where the problem actually puts the point.
+    const m = /^e(\d+)(?:([@:])(-?\d*\.?\d+))?$/.exec(s)
+    if (!m) return null
+    const idx = Number(m[1])
     const [x1, y1] = verts[idx % n]
     const [x2, y2] = verts[(idx + 1) % n]
-    return [(x1 + x2) / 2, (y1 + y2) / 2]
+    if (!m[2]) return [(x1 + x2) / 2, (y1 + y2) / 2]
+    const dx = x2 - x1, dy = y2 - y1
+    // ':' is a distance, so it has to be divided by the edge's real length to
+    // become the fraction '@' states outright. A zero-length edge would make
+    // that a division by zero — fall back to the start of the edge.
+    const len = Math.hypot(dx, dy)
+    const t = m[2] === '@' ? Number(m[3]) : (len ? Number(m[3]) / len : 0)
+    return [x1 + dx * t, y1 + dy * t]
   }
   return null
 }
@@ -1780,7 +2014,7 @@ export function removeArrow3D(threeRef, id, arrowId) {
 
   return new Promise(resolve => {
     const t0  = performance.now()
-    const dur = 260
+    const dur = animMs(260)
     function tick() {
       const t = Math.min((performance.now() - t0) / dur, 1)
       const opacity = 1 - t * t   // ease-in fade
@@ -1812,6 +2046,6 @@ export function clearHighlights3D(threeRef, id) {
 
 export function setView3D(threeRef, opts = {}) {
   threeRef?.current?.adjustView3D(opts)
-  const dur = (opts.duration ?? 0.8) * 1000
+  const dur = animMs((opts.duration ?? 0.8) * 1000)
   return new Promise(r => setTimeout(r, dur))
 }

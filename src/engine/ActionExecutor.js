@@ -3,13 +3,15 @@ import { gsap } from 'gsap'
 import { EquationState } from './EquationState.js'
 import { MathObject } from './MathObject.js'
 import * as geoEngine   from './geometryEngine.js'
+import * as chartEngine from './chartEngine.js'
+import { setAnimK } from './animSpeed.js'
 import * as graphEngine  from './desmosEngine.js'
 import * as tableEngine  from './tableEngine.js'
 import * as textEngine   from './textEngine.js'
 import * as threeEngine  from './threeEngine.js'
 import { resolveColor }  from './palette.js'
 import { generateScript } from './solveScript.js'
-import { isNum, findReady, applyReady, collectLabels, collectLabelNodeIds, substituteLabel, findPm, choosePmBranch, deepClone } from './exprTree.js'
+import { isNum, isFrac, num, bin, negN, findReady, applyReady, collectLabels, collectLabelNodeIds, substituteLabel, findPm, choosePmBranch, deepClone } from './exprTree.js'
 import { saveValue } from './valueRefs.js'
 import { parseRichEquation } from './parseEquation.js'
 
@@ -72,19 +74,70 @@ function liftToBody(el) {
 // Ghost elements are appended to document.body and don't inherit layout-scoped CSS.
 // We detect the active layout and apply matching inline styles so ghosts match the
 // equation terms they animate alongside.
+// A travelling term is a clone parked on document.body, so it sits OUTSIDE the
+// equation: it gets neither the panel's font size nor the scale the equation was
+// shrunk by to fit. It used to be given a hardcoded size per layout, which was
+// fine while an equation had exactly one size — it does not any more, and the
+// clone flew across visibly bigger or smaller than the term it came from.
+//
+// So the size is READ off a real term that is on screen right now. Whatever the
+// layout, whatever the current scale, the clone matches what it left. The
+// computed size is layout px, which the transform does not touch, so it is
+// multiplied back by the scale the equation is actually being drawn at.
+// (Font size rather than a transform: GSAP owns transform on these clones.)
 function _ghostStyles() {
-  if (document.querySelector('.lesson-layout--single-equation')) {
-    return {
-      cell: { fontSize: '3.2rem' },
-      op:   { fontSize: '2.4rem', padding: '0 10px' },
-    }
+  const cell = document.querySelector('.equation-display .term-cell')
+  if (!cell) return null
+  const S  = eqScale()
+  const cs = getComputedStyle(cell)
+  const px = parseFloat(cs.fontSize) || 0
+  if (!px) return null
+
+  const op    = document.querySelector('.equation-display .term-op')
+  const opCs  = op ? getComputedStyle(op) : null
+  const opPx  = opCs ? parseFloat(opCs.fontSize) || px * 0.75 : px * 0.75
+  const opPad = opCs ? parseFloat(opCs.paddingLeft) || 0 : 0
+
+  return {
+    cell: { fontSize: `${px * S}px` },
+    op:   { fontSize: `${opPx * S}px`, padding: `0 ${opPad * S}px` },
   }
-  return null
 }
 
 // Ghosts represent a value in flight, not a resting term on the equation —
 // reserved light blue, plain text, no bordered pill.
 const GHOST_BLUE = '#60a5fa'
+
+// The auto-solve's answer ring is a fixed-position div on document.body, not a
+// child of the equation panel — so hiding that panel leaves it floating over
+// whatever took its place. Anything that takes the panel over drops it first.
+// Whatever scale the equation was shrunk to in order to fit. Overlays measured
+// in raw pixels — an arc's height, the gap under a group, a font size — have to
+// shrink with it or they drift off the terms they belong to. Element rects are
+// already post-transform, so only these derived constants need it.
+function eqScale() {
+  const el = document.querySelector('.equation-fit')
+  const v = el && parseFloat(getComputedStyle(el).getPropertyValue('--eq-scale'))
+  return Number.isFinite(v) && v > 0 ? v : 1
+}
+
+function dropResultHighlight() {
+  document.querySelectorAll('.final-result-highlight').forEach(el => el.remove())
+}
+
+// Everything a solve leaves AROUND the equation, not inside it: the answer
+// banner, the coefficient bubble, the formula panel it opened. None of it is a
+// child of the equation panel, so hiding that panel strands all of it on top of
+// whatever replaced it — a quadratic's ANSWER bar and COEFFICIENTS box were
+// still sitting over a long division. The author's own text boxes are left
+// alone: only what the solve itself created goes.
+const SOLVE_ARTIFACT_IDS = ['quad-abc', 'quad-formula', 'pi-explainer']
+function dropSolveArtifacts(setUI, setComments, textRef) {
+  dropResultHighlight()
+  setUI?.(u => ({ ...u, answer: null }))
+  setComments?.(cs => (cs ?? []).filter(c => !SOLVE_ARTIFACT_IDS.includes(c.id)))
+  for (const id of SOLVE_ARTIFACT_IDS) textEngine.removeBox(textRef, id)
+}
 
 function makeTermGhost(sign, body) {
   const wrap = document.createElement('div')
@@ -196,11 +249,20 @@ function makeGhostForTerm(sign, term) {
 // this, get to the end" — NOT "skip whatever is left", which would leave the
 // next beat drawing on top of shapes that were never created. So every
 // remaining step still runs; it just runs at a speed nobody waits for.
-const HURRY_FACTOR = 10
+// 10x still read as "waiting, but faster" on a long solve: a beat is a gsap
+// tween plus two or three waits, and a dozen beats of that is seconds even
+// divided by ten. At 30x a hurried beat lands in a frame or two, which is
+// what "I have seen enough" is asking for. gsap still sets every final value,
+// so nothing is skipped — it is only the time nobody wanted that goes.
+const HURRY_FACTOR = 30
 let _hurry = false
 export function setHurry(on) {
   _hurry = !!on
   gsap.globalTimeline.timeScale(on ? ANIM_SCALE * HURRY_FACTOR : ANIM_SCALE)
+  // The timeline only reaches gsap. Comment boxes, their connector lines,
+  // the geometry tweens and the pie charts time themselves in CSS or in
+  // their own rAF loop, and none of them saw a hurry before this line.
+  setAnimK(on ? 1 / HURRY_FACTOR : 1)
 }
 export function isHurrying() { return _hurry }
 
@@ -227,6 +289,7 @@ export function cancelAllAnimations() {
   // Cancelling ends any hurry too — the next run starts at normal speed.
   _hurry = false
   gsap.globalTimeline.timeScale(ANIM_SCALE)
+  setAnimK(1)
   // Remove all body-overlay elements (ghosts, dividers, sqrt symbols, arrows)
   document.querySelectorAll('._anim-overlay, ._lifted-to-body').forEach(el => el.remove())
   // Clear any GSAP inline styles left on equation cells (outlines, scale, opacity, transforms)
@@ -248,13 +311,20 @@ export function cancelAllAnimations() {
 // state — no replay, no re-derivation) until the user releases it.
 let _subStepGate = null
 export function setSubStepGate(fn) { _subStepGate = fn }
-export async function subStep() { if (_subStepGate) await _subStepGate() }
+// opts.force asks the gate to PARK rather than merely offer a stepping point:
+// an ordinary gated action passes straight through during normal playback
+// (the budget is unlimited), which is right for a solve that should play, and
+// wrong for a step whose whole purpose is to hold the answer back.
+export async function subStep(opts) { if (_subStepGate) await _subStepGate(opts) }
 
 export async function executeScript(actions, snapshot, equationRef, setState, setUI, geoRef = null, graphRef = null, tableRef = null, setComments = null, textRef = null, speed = 1, opts = {}, calcRef = null, arithRef = null, signal = null, multRef = null, clockRef = null, numbersRef = null, mdasRef = null, kidRefs = {}) {
   const state = snapshot ? EquationState.fromSnapshot(snapshot) : null
   for (const action of actions) {
     if (signal?.cancelled) return
     if (opts.skipTitle && action.type === 'showTitle') continue
+    // A gated action waits for the reader before it runs — the same gate the
+    // auto-solve parks on, so ‹ › step through these exactly as they do a solve.
+    if (action.gated) await subStep({ force: action.stop === true })
     await runAction(action, state, equationRef, setState, setUI, geoRef, graphRef, tableRef, setComments, textRef, speed, calcRef, arithRef, multRef, clockRef, numbersRef, mdasRef, kidRefs)
     if (signal?.cancelled) return
     await frame()
@@ -262,8 +332,26 @@ export async function executeScript(actions, snapshot, equationRef, setState, se
 }
 
 // ── Runner ────────────────────────────────────────────────────────────────────
+// The steps that turn an expression on display into a problem being solved.
+// None of them can run without a second side to work against, which is why the
+// "= 0" the parser used to force on every equation is added on the first of
+// these instead.
+//
+// Combining, reordering and distributing are deliberately NOT here: they
+// rearrange one side and say nothing about an equality. Treating them as
+// solves put "= 0" next to a lesson that was only simplifying an expression —
+// "18/3 + 2/3" is asking for one fraction, not for a root.
+const SOLVES = new Set([
+  'sendToOtherSide', 'autoSendToOtherSide', 'divideBothSides', 'multiplyBothSides',
+  'racineDesBords', 'disparitionExposant', 'applyInverseTrig',
+  'full-solve-current', 'chooseQuadraticBranch', 'restoreQuadraticBranch',
+])
+
+
 async function runAction(action, state, equationRef, setState, setUI, geoRef, graphRef, tableRef, setComments, textRef, speed = 1, calcRef = null, arithRef = null, multRef = null, clockRef = null, numbersRef = null, mdasRef = null, kidRefs = {}) {
-  const { pizzaRef, counterRef, numberlineRef, threeRef } = kidRefs
+  // Extra displays ride in this bundle rather than becoming yet more positional
+  // parameters on a signature that already has eighteen.
+  const { pizzaRef, counterRef, numberlineRef, threeRef, divisionRef, setDivisionUp } = kidRefs
   const refs    = () => equationRef.current?.cellRefs ?? { left: [], right: [] }
   const graphApi = () => graphRef?.current?.calculator ?? null
   // eslint-disable-next-line no-shadow
@@ -294,7 +382,11 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       // which IS its own .term-cell). gsap already accepts either shape;
       // only this plain DOM property read needs to branch on it.
       const beforeEls   = Array.isArray(before) ? before : [before]
-      const hasOwnColor = beforeEls.length > 0 && beforeEls.every(el => el.style.color)
+      // A cell an earlier beat already unmounted comes back null in this array.
+      // Only these two raw DOM reads ever touched it — everything else (gsap)
+      // already skips a null target — so guarding them is the whole fix. The
+      // animation itself is unchanged.
+      const hasOwnColor = beforeEls.length > 0 && beforeEls.every(el => el && el.style.color)
       // .term-cell's own base CSS rule permanently carries
       // `animation: termEnter ... both` (its mount pop-in) — a CSS animation
       // always wins the cascade over an inline style for the properties it
@@ -304,7 +396,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       // nested in a product) still carries this rule, so the opacity fade
       // below would otherwise be silently overridden every frame — the
       // value would appear to swap instantly instead of fading.
-      beforeEls.forEach(el => { el.style.animation = 'none' })
+      beforeEls.forEach(el => { if (el) el.style.animation = 'none' })
       if (!hasOwnColor) {
         await gsap.to(before, { color: '#60a5fa', duration: 0.35, ease: 'power2.out' }).then()
       }
@@ -319,7 +411,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     const after = getAfterEl()
     if (after) {
       const afterEls = Array.isArray(after) ? after : [after]
-      afterEls.forEach(el => { el.style.animation = 'none' })
+      afterEls.forEach(el => { if (el) el.style.animation = 'none' })
       gsap.set(after, { opacity: 0, scale: 0.5 })
       await gsap.to(after, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(1.8)' }).then()
     }
@@ -338,6 +430,130 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
   // out instantly) means every sibling after it — a closing paren, the next
   // operator — slides left smoothly as a natural side effect of flex layout,
   // at the exact same speed, in the exact same tween. No separate reflow step.
+  // Same motion as flyTogether, but it does NOT take the nodes out of the DOM.
+  // flyTogether ends with secondary.remove(), which is safe where the term COUNT
+  // does not change — the classic combine rewrites a value in place. Here the
+  // second fraction really is removed from the state, so React tries to unmount
+  // a node that is already gone and throws NotFoundError, taking the rest of the
+  // page down with it. Leaving the node be and letting the commit remove it is
+  // the same picture with none of that.
+  const flyInto = async (anchor, secondary) => {
+    anchor.style.animation = 'none'
+    secondary.style.animation = 'none'
+    await gsap.to([anchor, secondary], { color: '#60a5fa', duration: 0.25, ease: 'power2.out' }).then()
+    await wait(0.2)
+    // No ring on the anchor. Which one is the landing spot is already obvious
+    // from the fact that the other one moves toward it.
+
+    // The operator that has to go is the one BETWEEN the two chips, and which
+    // side of the secondary that is depends on which chip is flying. Always
+    // taking the one in front of it worked while the anchor was on the left; the
+    // moment the right-hand chip became the anchor — the convention everywhere
+    // now — the minus in "3,56 − 1,2" was left untouched, hanging in mid-air
+    // while the number it belonged to melted away, and then vanishing on its own
+    // at the next commit.
+    const before   = anchor.compareDocumentPosition(secondary) & Node.DOCUMENT_POSITION_FOLLOWING
+    const sibling  = before ? secondary.previousElementSibling : secondary.nextElementSibling
+    const operator = (sibling?.classList?.contains('term-op') || sibling?.classList?.contains('exp-op')) ? sibling : null
+    const ar = anchor.getBoundingClientRect()
+    const sr = secondary.getBoundingClientRect()
+    const tx = ar.left + ar.width / 2 - (sr.left + sr.width / 2)
+    const ty = ar.top + ar.height / 2 - (sr.top + sr.height / 2)
+    secondary.style.overflow = 'hidden'
+    if (operator) operator.style.overflow = 'hidden'
+    await Promise.all([
+      gsap.to(secondary, {
+        x: tx, y: ty, opacity: 0,
+        width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0, marginRight: 0,
+        duration: 0.55, ease: 'power2.inOut',
+      }).then(),
+      operator
+        ? gsap.to(operator, {
+            opacity: 0, width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0, marginRight: 0,
+            duration: 0.55, ease: 'power2.inOut',
+          }).then()
+        : Promise.resolve(),
+    ])
+  }
+
+  // n! taken apart the way it is defined — 5! = 4!·5, 4! = 3!·4 — one factor
+  // per beat, until the product is written out in full. Shared by the
+  // dedicated step and by the solve, because a solve that skipped straight to
+  // 120 would be teaching the answer and not the notation.
+  const unpackFactorials = async (term) => {
+    if (!term?.expr) return false
+    // The factorial still worth opening: one whose argument is 2 or more.
+    // 1! and 0! are 1 by definition and unpacking them shows nothing.
+    const findFact = (node) => {
+      if (!node || typeof node !== 'object') return null
+      if (node.t === 'fact' && node.arg?.t === 'num' && Number.isInteger(node.arg.v) && node.arg.v >= 2) return node
+      for (const k of ['a', 'b', 'arg', 'base']) {
+        const hit = findFact(node[k])
+        if (hit) return hit
+      }
+      return null
+    }
+
+    const wrapEl = () => getWrap(refs(), term.side, term.cellIndex)
+    let guard = 0
+    for (let node = findFact(term.expr); node && guard < 24; node = findFact(term.expr), guard++) {
+      const n = node.arg.v
+      const peeledId = crypto.randomUUID()
+      // Rewritten IN PLACE, so everything around it keeps its identity and its
+      // element: only the factorial itself becomes "(n-1)! × n".
+      const inner = { t: 'fact', id: crypto.randomUUID(), arg: { t: 'num', id: crypto.randomUUID(), v: n - 1 } }
+      const peeled = { t: 'num', id: peeledId, v: n }
+      delete node.arg
+      node.t = 'bin'
+      node.op = '*'
+      node.a = inner
+      node.b = peeled
+      flushSync(() => setState(state.snapshot()))
+
+      // The factor that just came out arrives with its × — nothing else on the
+      // line changes, so those two are the only things that move.
+      const el = wrapEl()?.querySelector('[data-expr-id="' + peeledId + '"]')
+      const op = el?.previousElementSibling
+      const born = [el, op?.classList?.contains('term-op') ? op : null].filter(Boolean)
+      if (born.length) {
+        born.forEach(e => { e.style.animation = 'none' })
+        gsap.set(born, { opacity: 0, scale: 0.6 })
+        // eslint-disable-next-line no-await-in-loop
+        await gsap.to(born, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(1.8)' }).then()
+      }
+      // eslint-disable-next-line no-await-in-loop
+      await wait(0.55)
+    }
+
+    // What is left reads "1! × 2 × 3 × …". 1! is 1 by definition, and writing
+    // that 1 out is the last thing the definition has to say.
+    const lastFact = (node) => {
+      if (!node || typeof node !== 'object') return null
+      if (node.t === 'fact') return node
+      for (const k of ['a', 'b', 'arg', 'base']) {
+        const hit = lastFact(node[k])
+        if (hit) return hit
+      }
+      return null
+    }
+    const one = lastFact(term.expr)
+    if (one) {
+      const v = one.arg?.t === 'num' ? one.arg.v : 1
+      const keptId = one.id
+      delete one.arg
+      one.t = 'num'
+      one.v = v <= 1 ? 1 : v
+      flushSync(() => setState(state.snapshot()))
+      const el = wrapEl()?.querySelector('[data-expr-id="' + keptId + '"]')
+      if (el) {
+        el.style.animation = 'none'
+        await gsap.to(el, { scale: 1.2, duration: 0.16, ease: 'back.out(2.5)', yoyo: true, repeat: 1 }).then()
+      }
+      await wait(0.4)
+    }
+    return true
+  }
+
   const flyTogether = async (anchor, secondary) => {
     // Kill any still-running CSS mount animation (termEnter) on both chips —
     // without this the anchor/secondary can render at a stale mid-animation
@@ -358,7 +574,16 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     // 3. Travel + shrink + fade, all at once, still in flow — and the
     // operator right in front of it (e.g. "+") fades away in that SAME
     // tween, since it has no meaning once the two numbers merge.
-    const operator = secondary.previousElementSibling
+    // The operator that has to go is the one BETWEEN the two chips, and which
+    // side of the secondary that is depends on which chip is flying. Always
+    // taking the one in front of it worked while the anchor was on the left; the
+    // moment the right-hand chip became the anchor — the convention everywhere
+    // now — the minus in "3,56 − 1,2" was left untouched, hanging in mid-air
+    // while the number it belonged to melted away, and then vanishing on its own
+    // at the next commit.
+    const before   = anchor.compareDocumentPosition(secondary) & Node.DOCUMENT_POSITION_FOLLOWING
+    const sibling  = before ? secondary.previousElementSibling : secondary.nextElementSibling
+    const operator = (sibling?.classList?.contains('term-op') || sibling?.classList?.contains('exp-op')) ? sibling : null
     if (operator) operator.style.overflow = 'hidden'
 
     const anchorRect    = anchor.getBoundingClientRect()
@@ -418,7 +643,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     const after = getAfterEl()
     if (after) {
       const cells = Array.isArray(after) ? after : [after]
-      cells.forEach(c => { c.style.animation = 'none' })
+      cells.forEach(c => { if (c) c.style.animation = 'none' })
     }
     await wait(0.4)
   }
@@ -492,8 +717,26 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     // that's about to change, same as the number chip(s) inside; without
     // them, applying sin(45) tinted only "45" blue and left "sin(" ")"
     // looking untouched, like they weren't part of the operation at all.
-    return host.matches('.term-cell') ? host
-      : [...host.querySelectorAll('.term-cell, .fn-name, .pg-open, .pg-close')]
+    // An exponent that is an expression has no chips — its numbers and letters
+    // are .exp-leaf text — and a step on it animates those the same way.
+    return host.matches('.term-cell, .exp-leaf') ? host
+      : [...host.querySelectorAll('.term-cell, .exp-leaf, .fn-name, .pg-open, .pg-close')]
+  }
+
+  // An equation written without "=" is a thing being SHOWN. These steps are the
+  // ones that turn it into a problem — none of them can run without a second
+  // side to work against — so the "= 0" that used to be forced on every equation
+  // at parse time is added here, at the one moment it is actually needed. The
+  // side is already empty; dropping the flag is what lets the panel draw the 0.
+  //
+  // Except when there is nothing to isolate. A one-sided line with no unknown
+  // in it — 24,56 × 10² — is an arithmetic to work out, not a problem to solve:
+  // there is no x to send anywhere, so the second side it was handed could only
+  // ever read "= 0" beside the answer.
+  if (state?.oneSided && SOLVES.has(action.type)) {
+    const hasUnknown = [...state.left, ...state.right].some(t =>
+      t.variable || t.symbolicLabel || (t.expr && collectLabels(t.expr).size > 0))
+    if (hasUnknown || action.type !== 'full-solve-current') state.oneSided = false
   }
 
   switch (action.type) {
@@ -506,10 +749,127 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       break
     }
 
+    // ── Chart panel (fraction circles) ──────────────────────────────────────
+
+    // ── Equation annotations ────────────────────────────────────────────────
+
+    case 'eq-annotate': {
+      await equationRef.current?.annotate({
+        id: action.id, side: action.side, from: action.from, to: action.to,
+        part: action.part, text: action.text, color: action.color,
+      })
+      break
+    }
+
+    case 'eq-annotate-remove': {
+      await equationRef.current?.removeAnnotation(action.id)
+      break
+    }
+
+    case 'eq-annotate-clear': {
+      equationRef.current?.clearAnnotations()
+      await wait(0.15)
+      break
+    }
+
+    case 'eq-arrow': {
+      await equationRef.current?.addArrow({
+        id: action.id, side: action.side, from: action.from, to: action.to,
+        text: action.text, place: action.place, color: action.color,
+      })
+      break
+    }
+
+    case 'eq-arrow-remove': {
+      await equationRef.current?.removeArrow(action.id)
+      break
+    }
+
+    case 'eq-arrow-clear': {
+      await equationRef.current?.clearArrows({ fade: true })
+      break
+    }
+
+    case 'eq-arrow-chain': {
+      if (!state) break
+      const side  = state.oneSided || action.side !== 'right' ? 'left' : 'right'
+      const cells = (side === 'right' ? state.right : state.left).length
+      const last  = Math.min(cells - 1, action.to ?? cells - 1)
+      // A wave along the row: each hop starts while the one before it is still
+      // drawing, so the chain reads as one movement rather than a queue.
+      const hops = []
+      for (let i = Math.max(0, action.from ?? 0); i < last; i++) {
+        hops.push(equationRef.current?.addArrow({
+          id: `${action.id}-${i}`, side, from: i, to: i + 1,
+          text: action.text, place: action.place, color: action.color,
+        }))
+        // eslint-disable-next-line no-await-in-loop
+        await wait(0.3)
+      }
+      await Promise.all(hops)
+      break
+    }
+
+    case 'chart-tree': {
+      await chartEngine.createTree(kidRefs.chartRef, action.id, action.opts ?? {})
+      break
+    }
+    case 'chart-tree-path': {
+      await chartEngine.highlightTreePath(kidRefs.chartRef, action.id, action.path)
+      break
+    }
+
+    case 'chart-venn': {
+      await chartEngine.createVenn(kidRefs.chartRef, action.id, action.opts ?? {})
+      break
+    }
+    case 'chart-venn-highlight': {
+      await chartEngine.highlightVenn(kidRefs.chartRef, action.id, action.expr, action.color)
+      break
+    }
+
+    case 'chart-number-sets': {
+      await chartEngine.createNumberSets(kidRefs.chartRef, action.id, action.opts ?? {})
+      break
+    }
+
+    case 'chart-pie': {
+      await chartEngine.createPie(kidRefs.chartRef, action.id, action.num, action.den, action.opts ?? {})
+      break
+    }
+
+    case 'chart-pie-set': {
+      await chartEngine.setPieValue(kidRefs.chartRef, action.id, action.num, action.den)
+      break
+    }
+
+    case 'chart-pie-mode': {
+      await chartEngine.setPieMode(kidRefs.chartRef, action.id, action.mode)
+      break
+    }
+    case 'chart-remove': {
+
+      await Promise.all(idsOf(action).map(id => chartEngine.removeChart(kidRefs.chartRef, id)))
+      break
+    }
+
     case 'ggb-create-polygon': {
       const { id, shapeType, values, opts } = action
       geoEngine.createPolygon(geoRef, id, shapeType, values, opts ?? {})
       await wait(0.5)
+      break
+    }
+
+    case 'ggb-snap-shape': {
+      const { id, parentId, anchors, opts } = action
+      geoEngine.snapShape(geoRef, id, parentId, anchors, opts ?? {})
+      await wait(0.5)
+      break
+    }
+
+    case 'ggb-name-vertices': {
+      geoEngine.nameVertices(geoRef, action.id, action.names ?? [], action.opts ?? {})
+      await wait(0.4)
       break
     }
 
@@ -638,12 +998,34 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     // ── 3D geometry actions ───────────────────────────────────────────────────
 
     case 'ggb-3d-create': {
-      threeEngine.createShape3D(threeRef, action.id, action.shape, action.a, action.b, action.c, action.opts ?? {})
+      await threeEngine.createShape3D(threeRef, action.id, action.shape, action.a, action.b, action.c, action.opts ?? {})
       break
     }
 
+case 'ggb-2d-polygon': {
+      threeEngine.createPolygonFromPoints3D(threeRef, action.id, action.points, action.opts ?? {})
+      await wait(0.5)
+      break
+    }
+
+    
+case 'ggb-2d-snap': {
+      threeEngine.snapShape3D(threeRef, action.id, action.parentId, action.anchors, action.opts ?? {})
+      await wait(0.5)
+      break
+    }
+
+    case 'ggb-2d-name-vertices': {
+      threeEngine.nameVertices3D(threeRef, action.id, action.names ?? [], action.opts ?? {})
+      await wait(0.4)
+      break
+    }
+
+    
     case 'ggb-3d-remove': {
-      threeEngine.removeShape3D(threeRef, action.id)
+      // Together, not one after another: several shapes named in one step are
+      // one clearing-out, and fading them in turn reads as a queue.
+      await Promise.all(idsOf(action).map(id => threeEngine.removeShape3D(threeRef, id)))
       break
     }
 
@@ -912,6 +1294,17 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       break
     }
 
+    case 'ggb-angle-between': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.angleBetween(calc, action.id, action.a, action.b, action.opts ?? {})
+      break
+    }
+    case 'ggb-remove-angle': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.removeAngle(calc, action.id)
+      break
+    }
+
     case 'ggb-draw-angle': {
       const calc = graphApi(); if (!calc) break
       await graphEngine.drawAngle(calc, action.id, action.ax, action.ay, action.bx, action.by, action.cx, action.cy, action.opts ?? {})
@@ -926,11 +1319,435 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
 
     // ── Equation actions ─────────────────────────────────────────────────────
 
+    // ── One TERM, not the equation ────────────────────────────────────────
+    // Everything else that scales here acts on both sides, because that is
+    // what keeps an equation true. This does the opposite thing: it rewrites a
+    // single term into an equal form — 6 into 6/1, 6/1 into 18/3 — which is a
+    // statement about that term, not a move on the equation. Both sides stay
+    // untouched, and the value never changes.
+    // ── Scientific notation, written out ──────────────────────────────────────
+    // 24,56 × 10² is 2456, and the reason is that the exponent counts how many
+    // places the comma moves. So the comma moves — one place per beat, with the
+    // exponent ticking down beside it — instead of the answer simply replacing
+    // the question. When the comma runs off the end of the digits a zero is laid
+    // down for it to step onto, which is the other half of the same rule.
+    // ── n! , taken apart one factor at a time ─────────────────────────────────
+    // 5! is not a number a reader can see INTO — it is notation, and the whole
+    // lesson is what it stands for. So it is unpacked the way it is defined:
+    // 5! = 4!·5, and 4! = 3!·4, until there is no factorial left and the product
+    // is written out in full. Each beat peels exactly one factor off the front
+    // and sets it down on the right, so the two forms are on screen together and
+    // the reader can see they are the same thing.
+    case 'factorial-expand': {
+      if (!state) break
+      const arr  = action.side === 'right' ? state.right : state.left
+      const term = arr[action.index]
+      if (!term?.expr) {
+        console.warn('[factorial-expand] no expression at ' + action.side + '[' + action.index + ']')
+        break
+      }
+
+      await unpackFactorials(term)
+      break
+    }
+
+    case 'sci-expand': {
+      if (!state) break
+      const arr  = action.side === 'right' ? state.right : state.left
+      const term = arr[action.index]
+      if (!term) { console.warn(`[sci-expand] no term at ${action.side}[${action.index}]`); break }
+      const e = term.expr
+      // Where the exponent should END. 0 is the original behaviour — write the
+      // number out in full — and stays the default, so existing lessons are
+      // untouched. Any other value stops the comma early, in either direction:
+      // to add 2,34 × 10² and 4,45 × 10⁴, the second is first rewritten as
+      // 445 × 10², on the same power of ten, and only then can they combine.
+      const target = Number.isFinite(Number(action.target)) ? Math.round(Number(action.target)) : 0
+      const isSci = e && e.t === 'bin' && e.op === '*' && e.a.t === 'num' &&
+                    e.b.t === 'pow' && e.b.base.t === 'num' && e.b.base.v === 10 &&
+                    Number.isFinite(e.b.exp) && e.b.exp !== target
+      if (!isSci) {
+        console.warn('[sci-expand] needs a term written as m × 10^n whose exponent is not already the target')
+        break
+      }
+
+      const wrap  = getWrap(refs(), term.side, term.cellIndex)
+      const group = wrap?.querySelector('.expr-group')
+      const mant  = group?.querySelector(':scope > .term-cell')
+      const mul   = group?.querySelector(':scope > .term-op--mul')
+      const powEl = group?.querySelector(':scope > .expr-group')
+      const expEl = powEl?.querySelector('.term-exp')
+      if (!mant) { console.warn('[sci-expand] the mantissa is not on screen'); break }
+
+      const DEC = term.decimalComma ? ',' : '.'
+      const SUPS = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' }
+      const sup = (v) => String(v).split('').map(c => SUPS[c] ?? c).join('')
+
+      const raw  = String(Math.abs(e.a.v))
+      const dot  = raw.indexOf('.')
+      const digits = raw.replace('.', '').split('')
+      let point  = dot < 0 ? digits.length : dot
+      let n      = e.b.exp
+
+      // Each digit is its own element from the start, so the separator has
+      // somewhere to move BETWEEN. A rewritten text node would put the comma in
+      // its new place without ever crossing anything.
+      const mkDigit = (ch) => {
+        const s = document.createElement('span')
+        s.className = 'sci-digit'
+        s.textContent = ch
+        return s
+      }
+
+      const digitEls = digits.map(mkDigit)
+      const sepEl = document.createElement('span')
+      sepEl.className = 'term-sep'
+      sepEl.textContent = DEC
+      // The cell drew the number as three children — integer, separator, decimal —
+      // and paid the 3px cell gap twice for it. With the gap off, that spacing is
+      // given back to the separator alone, so the number is exactly as wide the
+      // instant this step takes the cell over as it was the instant before.
+      sepEl.style.margin = '0 3px'
+
+      // .term-cell is a flex row with a 3px gap, which a single text node never
+      // paid for and six digit spans do — the number jumped 15px wider the moment
+      // it was split up. The gap goes while this step owns the cell.
+      const prevGap = mant.style.gap
+      mant.style.gap = '0px'
+
+      const relayout = () => {
+        mant.textContent = ''
+        digitEls.forEach((d, k) => {
+          if (k === point) mant.appendChild(sepEl)
+          mant.appendChild(d)
+        })
+        if (point >= digitEls.length) mant.appendChild(sepEl)
+      }
+      relayout()
+
+    // The panel centres its content, so the equation re-centred every time a
+    // digit was laid down or the comma changed place — a shuffle sideways a
+    // second, right beside the thing being followed. For the length of this
+    // step it is anchored by its LEFT edge instead: one style change, set once,
+    // after which the number simply grows to the right and nothing re-centres.
+    // Reserving the space up front instead made the number widen at the start
+    // as if digits had been hidden, and compensating per frame with a transform
+    // was fighting the layout rather than choosing one.
+      // Both the panel AND the side inside it centre what they hold, so
+      // anchoring only the outer one still left the term sliding 16px the
+      // moment a digit was added. Each container on the way down to the term is
+      // switched to left-aligned and given the exact padding that reproduces
+      // where it already was — measured after the switch, because a box that
+      // shrink-wraps its content has no such offset until it stops.
+      const anchorOf = (el) => {
+        const first = el?.firstElementChild
+        if (!el || !first) return null
+        const was  = first.getBoundingClientRect().left
+        const prev = { justify: el.style.justifyContent, width: el.style.width, pad: el.style.paddingLeft }
+        el.style.width = '100%'
+        el.style.justifyContent = 'flex-start'
+        el.style.paddingLeft = '0px'
+        el.style.paddingLeft = `${was - first.getBoundingClientRect().left}px`
+        return { el, prev, first }
+      }
+      const stage   = wrap.closest('.equation-display')
+      const anchors = [stage, wrap.parentElement].map(anchorOf).filter(Boolean)
+
+      // The exponent counts down through different digits, and ³ ² ¹ ⁰ are not
+      // all the same width — a two-pixel wobble a beat, which is exactly the
+      // thing this step is trying not to do. Its box is set to the widest of the
+      // values it will actually show and left there.
+      if (expEl) {
+        const was = expEl.textContent
+        let widest = 0
+        // Every value between where the exponent starts and where it stops —
+        // no longer 0..n, now that it need not end at 0.
+        for (let k = Math.min(n, target); k <= Math.max(n, target); k++) {
+          expEl.textContent = sup(k)
+          widest = Math.max(widest, expEl.getBoundingClientRect().width)
+        }
+        expEl.textContent = was
+        expEl.style.display = 'inline-block'
+        expEl.style.width = `${Math.ceil(widest)}px`
+        expEl.style.textAlign = 'center'
+      }
+
+      const rectsOf = (els) => els.map(el => el.getBoundingClientRect())
+
+      while (n !== target) {
+        const dir = n > target ? 1 : -1
+
+        // A zero is laid down BEFORE the comma steps onto it, so the reader sees
+        // what the comma is moving past rather than a digit appearing from under
+        // it after the fact.
+        // A zero is laid down BEFORE the comma steps onto it, so the reader sees
+        // what the comma is moving past rather than a digit appearing from under
+        // it after the fact.
+        let fresh = null
+        if (dir > 0 && point + 1 > digitEls.length) {
+          fresh = mkDigit('0')
+          digitEls.push(fresh)
+        } else if (dir < 0 && point - 1 === 0) {
+          fresh = mkDigit('0')
+          digitEls.unshift(fresh)
+          point += 1
+        }
+        if (fresh) {
+          relayout()
+          gsap.set(fresh, { opacity: 0, scale: 0.5 })
+          // eslint-disable-next-line no-await-in-loop
+          await gsap.to(fresh, { opacity: 1, scale: 1, duration: 0.32, ease: 'back.out(2)' }).then()
+          // A beat to look at the zero before the comma steps onto it.
+          // eslint-disable-next-line no-await-in-loop
+          await wait(0.22)
+        }
+
+        const moving = [...digitEls, sepEl]
+        const before = rectsOf(moving)
+        point += dir
+        n     -= dir
+        relayout()
+        const after = rectsOf(moving)
+        moving.forEach((el, k) => gsap.set(el, { x: before[k].left - after[k].left }))
+
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.all([
+          gsap.to(moving, { x: 0, duration: 0.5, ease: 'power2.inOut' }).then(),
+          expEl
+            ? gsap.to(expEl, { scale: 1.35, duration: 0.22, ease: 'power2.out', yoyo: true, repeat: 1,
+                onRepeat: () => { expEl.textContent = sup(n) } }).then()
+            : Promise.resolve(),
+        ])
+
+        // Each place is a separate step of the rule, so it gets a beat of its
+        // own. Run together they read as one long slide and the count of places
+        // — which is the whole thing the exponent is telling you — is lost.
+        // eslint-disable-next-line no-await-in-loop
+        await wait(0.4)
+      }
+
+      // × 10⁰ multiplies by one. It has done its work and it goes. Stopped at
+      // any other exponent the × 10ᵏ is still part of the number and stays —
+      // only a comma left dangling at the end ("445,") is taken away.
+      const gone = target === 0 ? [mul, powEl].filter(Boolean) : []
+      if (point >= digitEls.length) gone.push(sepEl)
+      if (gone.length) {
+        gone.forEach(el => { el.style.overflow = 'hidden' })
+        await gsap.to(gone, {
+          opacity: 0, width: 0, marginLeft: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0,
+          duration: 0.4, ease: 'power2.inOut',
+        }).then()
+      }
+
+      // Out of the layout entirely, not merely zero-width: a flex gap survives a
+      // width of 0, so 30px of empty room stayed behind and the equation jumped
+      // that far the moment React dropped these for real. Taking them out now
+      // means the release below is measured against the FINAL layout and covers
+      // the whole distance in its one move.
+      gone.forEach(el => { el.style.display = 'none' })
+
+      // Before the commit, not after: React re-creates the side when the term
+      // changes shape, and every inline style holding the anchor goes with it —
+      // so a release that ran afterwards was releasing something the browser had
+      // already snapped back. By now the × 10⁰ is collapsed to nothing, so its
+      // removal at the commit costs no width and nothing moves again.
+      // Centring goes back on, and the one move it costs is animated the same way
+      // every other move in this file is: measure where it was, put the real
+      // styles back, measure where it landed, and slide it from one to the other.
+      // Tweening the padding itself did not work — the value animated but the
+      // layout it belonged to had already been replaced, so the whole move
+      // arrived as a snap.
+      if (anchors.length) {
+        // Measured on the TERM, not on the container that holds it: releasing the
+        // anchor can leave a full-width side exactly where it was while the term
+        // inside it slides across, and it is the term the reader is watching.
+        const target = anchors[anchors.length - 1].el
+        const was = wrap.getBoundingClientRect().left
+        anchors.forEach(({ el, prev }) => {
+          el.style.justifyContent = prev.justify
+          el.style.width          = prev.width
+          el.style.paddingLeft    = prev.pad
+        })
+        const dx = was - wrap.getBoundingClientRect().left
+        if (Math.abs(dx) > 0.5) {
+          gsap.set(target, { x: dx })
+          await gsap.to(target, { x: 0, duration: 0.45, ease: 'power2.inOut' }).then()
+        }
+      }
+
+      // The value comes from the digits on screen, not from m × 10^n: 24.56 × 100
+      // is 2456.0000000000005 in binary floating point, and that is what would
+      // have been written under an animation that just showed 2456.
+
+      const whole = digitEls.map(d => d.textContent).join('')
+      const text  = point >= whole.length ? whole : whole.slice(0, point) + '.' + whole.slice(point)
+      if (target === 0) {
+        term.expr        = null
+        term.coefficient = Number(text)
+        term.variable    = null
+        term.degree      = 0
+      } else {
+        // Still m × 10ᵏ — the same shape the parser builds for "445 x 10^2", so a
+        // later step (another shift, a combine) reads it exactly like a typed one.
+        const uid = () => crypto.randomUUID()
+        term.expr = {
+          t: 'bin', id: uid(), op: '*',
+          a: { t: 'num', id: uid(), v: Number(text) },
+          b: { t: 'pow', id: uid(), base: { t: 'num', id: uid(), v: 10 }, exp: target },
+        }
+        // The shape did not change, so React would REUSE the mantissa cell —
+        // whose children this step replaced by hand with one span per digit —
+        // and patch text nodes it no longer owns. A new id (terms are keyed by
+        // it) makes it mount a clean cell instead.
+        term.id = uid()
+      }
+      flushSync(() => setState(state.snapshot()))
+
+      // The committed term is a brand new element, and .term-cell carries a
+      // mount animation — which played here as a blink, the number vanishing
+      // and snapping back for one beat. The value on screen did not change, so
+      // neither should anything else.
+      const settled = getCellInner(getWrap(refs(), term.side, term.cellIndex))
+      if (settled) settled.style.animation = 'none'
+
+
+      break
+    }
+
+    case 'term-op': {
+      if (!state) break
+      const arr = action.side === 'right' ? state.right : state.left
+      const term = arr[action.index]
+      if (!term) { console.warn(`[term-op] no term at ${action.side}[${action.index}]`); break }
+
+      const numNode = (v) => ({ t: 'num', id: crypto.randomUUID(), v })
+      const wrapEl  = () => getWrap(refs(), term.side, term.cellIndex)
+      const halves  = (w) => (w ? [...w.querySelectorAll('.expr-fraction-row .term-cell')].slice(0, 2) : [])
+      const barEl    = (w) => w?.querySelector('.frac-bar') ?? null
+
+      if (action.op === 'over') {
+        // The 6 does not vanish and come back as a numerator — it BECOMES one.
+        // It lights up, travels up into place, and the bar and the 1 arrive
+        // underneath it. Replacing the term wholesale broke the one thing the
+        // step is teaching: that this is the same 6.
+        const before = getCellInner(wrapEl())
+        if (before) {
+          before.style.animation = 'none'
+          // No tint. The move IS the explanation — the number rising into the
+          // numerator says everything colouring it would have said, and one more
+          // blue thing on screen only competes with the marks that mean something.
+          await wait(0.15)
+        }
+        const fromRect = before?.getBoundingClientRect() ?? null
+
+        term.expr = { t: 'bin', id: crypto.randomUUID(), op: '/', a: numNode(Math.abs(term.coefficient ?? 0)), b: numNode(1) }
+        term.coefficient = 1
+        term.variable = null
+        term.degree = 0
+        flushSync(() => setState(state.snapshot()))
+
+        const w = wrapEl()
+        const [num, den] = halves(w)
+        const bar = barEl(w)
+        // The denominator and the bar are what is NEW, so they are the only
+        // things that fade in. The numerator slides from wherever the whole
+        // number stood a moment ago.
+        if (den) gsap.set(den, { opacity: 0, y: -6 })
+        if (bar) gsap.set(bar, { opacity: 0, scaleX: 0.2 })
+        if (num && fromRect) {
+          const r = num.getBoundingClientRect()
+          num.style.animation = 'none'
+          gsap.set(num, { y: fromRect.top - r.top, x: fromRect.left - r.left })
+          await gsap.to(num, { x: 0, y: 0, duration: 0.45, ease: 'power3.out' }).then()
+        }
+        await Promise.all([
+          bar ? gsap.to(bar, { opacity: 1, scaleX: 1, duration: 0.3, ease: 'power2.out' }).then() : Promise.resolve(),
+          den ? gsap.to(den, { opacity: 1, y: 0, duration: 0.35, ease: 'back.out(1.6)', delay: 0.08 }).then() : Promise.resolve(),
+        ])
+        await wait(0.3)
+      } else if (action.op === 'amplify') {
+        const k = Number(action.value)
+        const isFrac = term.expr && term.expr.t === 'bin' && term.expr.op === '/' &&
+                       term.expr.a.t === 'num' && term.expr.b.t === 'num'
+        if (!isFrac || !isFinite(k) || k === 0) {
+          console.warn('[term-op] amplify needs a numeric fraction and a non-zero k')
+          break
+        }
+        // Show the work: a "×k" beside each half. Multiplying both by the same
+        // number IS the idea of an equivalent fraction.
+        const w0 = wrapEl()
+        const marks = halves(w0).map(c => {
+          const r  = c.getBoundingClientRect()
+          const el = document.createElement('div')
+          el.className = '_anim-overlay eq-times-mark'
+          el.textContent = `×${k}`
+          el.style.cssText = `position:fixed; left:${r.right + 8}px; top:${r.top + r.height / 2}px;`
+            + 'transform:translateY(-50%); opacity:0;'
+          document.body.appendChild(el)
+          return el
+        })
+        if (marks.length) {
+          await gsap.to(marks, { opacity: 1, duration: 0.3, ease: 'power2.out', stagger: 0.1 }).then()
+          await wait(0.55)
+        }
+
+        const { a, b } = term.expr
+        term.expr = {
+          t: 'bin', id: crypto.randomUUID(), op: '/',
+          a: numNode(parseFloat((a.v * k).toFixed(6))),
+          b: numNode(parseFloat((b.v * k).toFixed(6))),
+        }
+        flushSync(() => setState(state.snapshot()))
+
+        // The numbers change IN PLACE with a pop — nothing leaves and comes
+        // back — and the ×k blurs away in the same breath, because it has
+        // just been spent.
+        const parts = halves(wrapEl())
+        parts.forEach(c => { c.style.animation = 'none' })
+        await Promise.all([
+          parts.length
+            ? gsap.fromTo(parts, { scale: 0.75 }, { scale: 1, duration: 0.4, ease: 'back.out(2.2)' }).then()
+            : Promise.resolve(),
+          marks.length
+            ? gsap.to(marks, { opacity: 0, filter: 'blur(6px)', duration: 0.32, ease: 'power2.in' }).then()
+            : Promise.resolve(),
+        ])
+        marks.forEach(el => el.remove())
+        await wait(0.25)
+      } else {
+        console.warn(`[term-op] unknown op "${action.op}"`)
+      }
+      break
+    }
+
     case 'renderEquation': {
+      // Annotations address cells by index, and a new equation renumbers them —
+      // so they go with the equation they were describing.
+      equationRef.current?.clearAnnotations()
+      // Arrows join cells by index too.
+      equationRef.current?.clearArrows?.()
       if (!state) break
       document.querySelectorAll('.final-result-highlight').forEach(el => el.remove())
+      // No cross-fade here, and none is possible: eq-create hands App a SNAPSHOT
+      // that is applied before this script ever runs, so by the time we get here
+      // the new equation is already on screen. Fading "the old one" out therefore
+      // faded out the new one and brought it straight back — the flash at the
+      // start of every page. Replacing one equation with a visibly different one
+      // needs the old to leave BEFORE the snapshot lands, which is a different
+      // mechanism than this.
       setState(state.snapshot())
       await wait(0.35)
+
+      // A mixed number went up as written — "6 2/3", no operator. Now the "+"
+      // arrives, so the reader sees the two notations are one and the same
+      // before any step operates on them.
+      const held = [...state.left, ...state.right].filter(t => t.mixedJoin)
+      if (held.length) {
+        await wait(0.5)
+        held.forEach(t => { t.mixedJoin = false })
+        setState(state.snapshot())
+        await wait(0.4)
+      }
       break
     }
 
@@ -968,6 +1785,11 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     // continues from exactly that point instead of being rebuilt from Δ.
     case 'chooseQuadraticBranch': {
       if (!state) break
+      // Relabelling x to x₁ makes the left side wider, so the ring drawn around
+      // the previous result no longer fits what is under it. restoreQuadraticBranch
+      // (the x → x₂ half) already dropped it here; this half did not, which is
+      // why x₁ ended up with a border cutting through it and x₂ did not.
+      document.querySelectorAll('.final-result-highlight').forEach(el => el.remove())
       const { newLabel, sign } = action
       const leftTerm  = state.left[0]
       const rightTerm = state.right.find(t => t.expr)
@@ -1034,6 +1856,34 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     }
     case 'pause': {
       await wait(action.seconds ?? 1.5)
+      break
+    }
+
+    // ── Polynomial long division ─────────────────────────────────────────────
+    // Draws the tableau set up but unsolved, then parks on the sub-step gate.
+    // The reader sees the problem before the method, and each click brings down
+    // one subtraction — same gate the auto-solve uses, so ‹ › work identically.
+    case 'division-create': {
+      dropSolveArtifacts(setUI, setComments, textRef)
+      divisionRef?.current?.create(action.work)
+      setDivisionUp?.(true)
+      await wait(0.5)
+      break
+    }
+    case 'division-reveal': {
+      divisionRef?.current?.reveal(action.step, action.part)
+      await wait(0.55)
+      break
+    }
+    case 'division-quotient': {
+      divisionRef?.current?.revealQuotient()
+      await wait(0.4)
+      break
+    }
+    case 'division-clear': {
+      divisionRef?.current?.clearAll()
+      setDivisionUp?.(false)
+      await wait(0.1)
       break
     }
 
@@ -1315,10 +2165,98 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     case 'autoCombine': {
       if (!state) break
       let animated = false
+
+      // Fractions FIRST, and as fractions. The generic pass below adds terms by
+      // their numeric value, which turns 18/3 + 2/3 into 6.667 — arithmetically
+      // true and pedagogically useless in a lesson whose whole subject is the
+      // fraction. Two fractions over the same denominator add by their
+      // numerators and keep that denominator, which is the rule being taught.
+      //
+      // It plays as the ordinary combine does: the second flies into the first
+      // and the two become one. A fade-out-fade-in would have said "these were
+      // replaced" where the point is that they were ADDED.
+      for (const side of ['left', 'right']) {
+        const arr = side === 'left' ? state.left : state.right
+        const isNumFrac = (t) => t.expr && t.expr.t === 'bin' && t.expr.op === '/' &&
+                                 t.expr.a.t === 'num' && t.expr.b.t === 'num'
+        const byDen = new Map()
+        for (const t of arr) {
+          if (!isNumFrac(t)) continue
+          const d = t.expr.b.v
+          if (!byDen.has(d)) byDen.set(d, [])
+          byDen.get(d).push(t)
+        }
+        for (const [den, group] of byDen) {
+          if (group.length < 2) continue
+          animated = true
+          const num = group.reduce((s, t) => s + (t.sign === '-' ? -1 : 1) * t.expr.a.v, 0)
+          // The anchor is the one that STAYS PUT, and it is the term the others
+          // travel toward — rightmost on the left side, leftmost on the right,
+          // the same convention every other combine in this panel follows. It
+          // reads as "these are being gathered into that one"; picking the first
+          // term regardless made the survivor jump across the panel instead.
+          group.sort((x, y) => x.cellIndex - y.cellIndex)
+          const keep   = side === 'left' ? group[group.length - 1] : group[0]
+          const others = group.filter(t => t !== keep)
+
+          for (const t of others) {
+            const anchor    = getWrap(refs(), keep.side, keep.cellIndex)
+            const secondary = getWrap(refs(), t.side, t.cellIndex)
+            if (!anchor || !secondary) continue
+            // eslint-disable-next-line no-await-in-loop
+            await flyInto(anchor, secondary)
+          }
+          const anchor = getWrap(refs(), keep.side, keep.cellIndex)
+
+          // The anchor already shows the answer before React commits, so the
+          // swap itself is never seen — same trick the ordinary combine uses.
+          const numCell = anchor?.querySelector('.expr-fraction-row .term-cell')
+          if (numCell) numCell.textContent = String(Math.abs(num))
+          // The numerator is the ONLY thing that changes in this whole move —
+          // 5 and 8 arrive and 13 is what is left. A 0.15s nudge was easy to
+          // miss, so it lands the way every other fraction step lands: a real
+          // pop out of nothing, same curve and same length, so the sum reads as
+          // an arrival rather than a digit quietly swapping itself out.
+          // eslint-disable-next-line no-await-in-loop
+          if (numCell) {
+            numCell.style.animation = 'none'
+            // eslint-disable-next-line no-await-in-loop
+            await gsap.fromTo(numCell, { scale: 1 },
+              { scale: 1.22, duration: 0.22, ease: 'power2.out', yoyo: true, repeat: 1 }).then()
+          }
+
+          for (const t of others) state.remove(t.id)
+          keep.sign = num < 0 ? '-' : '+'
+          keep.expr = {
+            t: 'bin', id: crypto.randomUUID(), op: '/',
+            a: { t: 'num', id: crypto.randomUUID(), v: Math.abs(num) },
+            b: { t: 'num', id: crypto.randomUUID(), v: den },
+          }
+          // eslint-disable-next-line no-await-in-loop
+          flushSync(() => setState(state.snapshot()))
+          // React reuses the DOM nodes of the side it just re-rendered, and the
+          // one that flew away still carried opacity:0 and width:0 from that
+          // tween. Whichever node the surviving term lands on, it inherits them
+          // and the answer is invisible. Wipe what the animation wrote.
+          gsap.set(allWraps(refs()), { clearProps: 'opacity,width,paddingLeft,paddingRight,marginLeft,marginRight,x,y,transform,overflow,scale,boxShadow' })
+          // The anchor kept the blue of the merge and the ring that marked it as
+          // the landing spot; both belong to a move that is now finished.
+          const merged = getWrap(refs(), keep.side, keep.cellIndex)
+          if (merged) {
+            // eslint-disable-next-line no-await-in-loop
+            await gsap.to(merged, { boxShadow: '0 0 0 0px transparent', scale: 1, color: '', duration: 0.35, ease: 'power2.out' }).then()
+          }
+          // eslint-disable-next-line no-await-in-loop
+          await wait(0.3)
+        }
+      }
       for (const side of ['left', 'right']) {
         for (const degree of [1, 0]) {
           // Exclude fraction terms — they can't be naively combined with plain constants
-          let terms = state.findByDegree(degree, side).filter(t => !t.isFraction && !t.symbolicLabel)
+          // Expression terms are excluded for the same reason fraction terms are:
+          // their "value" is the tree, not the coefficient. Adding 1/2 and 1/3 as
+          // coefficients gave 1 + 1 = 2 — a wrong answer, silently.
+          let terms = state.findByDegree(degree, side).filter(t => !t.isFraction && !t.symbolicLabel && !t.expr)
           if (terms.length < 2) continue
           animated = true
           const arr       = side === 'left' ? state.left : state.right
@@ -1329,7 +2267,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
             const reordered = degree > 0 ? [...terms, ...others] : [...others, ...terms]
             // eslint-disable-next-line no-await-in-loop
             await runAction({ type: 'reorderEquation', [side]: reordered.map(t => t.id) }, state, equationRef, setState, setUI, geoRef, graphRef, tableRef, setComments, textRef, speed, calcRef, arithRef, multRef, clockRef, numbersRef, mdasRef, kidRefs)
-            terms = state.findByDegree(degree, side).filter(t => !t.isFraction && !t.symbolicLabel)
+            terms = state.findByDegree(degree, side).filter(t => !t.isFraction && !t.symbolicLabel && !t.expr)
           }
           const freshArr    = side === 'left' ? state.left : state.right
           const combinedVal = terms.reduce((s, t) => s + t.value, 0)
@@ -1416,7 +2354,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
           const bottom = Math.max(...rects.map(rc => rc.bottom))
           anchorR = { left, right, top, bottom, width: right - left, height: bottom - top }
         } else {
-          const sideEl = document.querySelector(`.equation-side[data-side="${toSide}"]`)
+  const sideEl = document.querySelector(`.equation-side[data-side="${toSide}"]`)
           anchorR = sideEl?.getBoundingClientRect() ?? srcWrapR
         }
       }
@@ -2280,9 +3218,10 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       if (!setComments) break
       // Fade out, then unmount — nothing on screen disappears between two
       // frames. Same two-phase removal the text boxes use.
-      setComments(prev => prev.map(c => c.id === action.id ? { ...c, leaving: true } : c))
+      const leaving = new Set(idsOf(action))
+      setComments(prev => prev.map(c => leaving.has(c.id) ? { ...c, leaving: true } : c))
       await wait(0.3)
-      setComments(prev => prev.filter(c => !(c.id === action.id && c.leaving)))
+      setComments(prev => prev.filter(c => !(leaving.has(c.id) && c.leaving)))
       break
     }
 
@@ -2380,7 +3319,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     // Both wait out the fade rather than the old 0.15s, so the next step does
     // not start on top of a card that is still on screen.
     case 'text-remove': {
-      textEngine.removeBox(textRef, action.id)
+      for (const id of idsOf(action)) textEngine.removeBox(textRef, id)
       await wait(0.3)
       break
     }
@@ -2671,6 +3610,307 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     }
 
     // ── Distribute parentheses ────────────────────────────────────────────────
+    // Everything inside the bracket adds up to one number, so it does — the
+    // same way terms combine anywhere else on this panel: the rightmost one
+    // holds still and the others travel into it. Only then does the multiplier
+    // outside have something to multiply.
+    // ── The rule of three ─────────────────────────────────────────────────────
+    // Not a symmetric cross but a CHAIN, because that is the order the work is
+    // actually done in: from a/b = c/d with one unknown, two of the four
+    // multiply, the third divides, and the answer lands on the fourth. So three
+    // lines are drawn in that order — × then ÷ then = — and each one writes its
+    // own piece of the working underneath in grey as it lands.
+    //
+    // Which is which comes from where the unknown sits. The four make two cross
+    // pairs, {a,d} and {b,c}. The unknown is in one of them, and its partner
+    // there is what multiplies it — so that partner is the DIVISOR. The other
+    // pair is the product. Works from any of the four corners.
+    //
+    // NOTHING MOVES: the fractions stay where they were written, and every piece
+    // of the working is placed at its final spot from the start, so a piece
+    // arriving never nudges the ones already there. The equation is not touched.
+    case 'cross-multiply': {
+      if (!state) break
+      const leftT  = state.left[0]
+      const rightT = state.right[0]
+      const isRatio = (t) => t?.expr?.t === 'bin' && t.expr.op === '/' &&
+        ['num', 'label'].includes(t.expr.a.t) && ['num', 'label'].includes(t.expr.b.t)
+      if (state.left.length !== 1 || state.right.length !== 1 || !isRatio(leftT) || !isRatio(rightT)) {
+        console.warn('[cross-multiply] needs a proportion — one fraction each side, as in "2/3 = |x|/12"')
+        break
+      }
+
+      const r0    = refs()
+      const lWrap = getWrap(r0, 'left', 0)
+      const rWrap = getWrap(r0, 'right', 0)
+      const halvesOf = (w) => (w ? [...w.querySelectorAll('.expr-fraction-row .term-cell')].slice(0, 2) : [])
+      const [aEl, bEl] = halvesOf(lWrap)
+      const [cEl, dEl] = halvesOf(rWrap)
+      if (!aEl || !bEl || !cEl || !dEl) break
+
+      const comma = leftT.decimalComma || rightT.decimalComma
+      const cell = {
+        a: { node: leftT.expr.a,  el: aEl },
+        b: { node: leftT.expr.b,  el: bEl },
+        c: { node: rightT.expr.a, el: cEl },
+        d: { node: rightT.expr.b, el: dEl },
+      }
+      const txt = (k) => cell[k].node.t === 'label'
+        ? cell[k].node.name
+        : (comma ? String(Number(cell[k].node.v.toFixed(6))).replace('.', ',')
+          : String(Number(cell[k].node.v.toFixed(6))))
+
+      const PARTNER = { a: 'd', d: 'a', b: 'c', c: 'b' }
+      const U = ['a', 'b', 'c', 'd'].find(k => cell[k].node.t === 'label')
+      if (!U) { console.warn('[cross-multiply] no unknown — write one of the four as |x|'); break }
+      const X = PARTNER[U]                                   // the divisor
+      const rest = ['a', 'b', 'c', 'd'].filter(k => k !== U && k !== X)
+      // The chain starts on the LEFT fraction and crosses to the right, the way
+      // it is read.
+      const M1 = rest.find(k => k === 'a' || k === 'b') ?? rest[0]
+      const M2 = rest.find(k => k !== M1)
+
+      const NS  = 'http://www.w3.org/2000/svg'
+      const svg = document.createElementNS(NS, 'svg')
+      svg.classList.add('_anim-overlay')
+      svg.style.cssText = [
+        'position:fixed', 'top:0', 'left:0', 'width:100vw', 'height:100vh',
+        'pointer-events:none', 'z-index:9999', 'overflow:visible',
+      ].join(';')
+      document.body.appendChild(svg)
+
+      const mid = (e) => {
+        const r = e.getBoundingClientRect()
+        return [r.left + r.width / 2, r.top + r.height / 2]
+      }
+      const boxes = [lWrap, rWrap].map(w => w.getBoundingClientRect())
+      const baseY = Math.max(...boxes.map(b => b.bottom)) + 58
+      const midX  = (boxes[0].left + boxes[1].right) / 2
+      // One colour per STEP, and the line, its sign and its piece of the answer
+      // all wear it. The three signs sit close together in the middle of the
+      // figure, so without that they read as one cluster of symbols and there is
+      // no telling which × belongs to which line, or which half of the answer it
+      // produced. The colour is the only thing that ties the three together.
+      const STEP = ['#f97316', '#a855f7', '#60a5fa']   // × orange · ÷ purple · = blue
+
+      // One link of the chain: a line from one value to the next, with the sign
+      // it stands for beside it. The sign is pushed off the line perpendicular,
+      // and consecutive links push to opposite sides so two of them crossing
+      // never stack their signs in the same spot.
+      const link = (from, to, mark, side, color) => {
+        const [x1, y1] = mid(cell[from].el), [x2, y2] = mid(cell[to].el)
+        const line = document.createElementNS(NS, 'line')
+        line.setAttribute('x1', x1); line.setAttribute('y1', y1)
+        line.setAttribute('x2', x2); line.setAttribute('y2', y2)
+        line.setAttribute('stroke', color)
+        line.setAttribute('stroke-width', '3')
+        line.setAttribute('stroke-linecap', 'round')
+        const len = Math.hypot(x2 - x1, y2 - y1) || 1
+        line.style.strokeDasharray  = String(len)
+        line.style.strokeDashoffset = String(len)
+        svg.appendChild(line)
+        const nx = -(y2 - y1) / len, ny = (x2 - x1) / len
+        const s = document.createElementNS(NS, 'text')
+        s.setAttribute('x', (x1 + x2) / 2 + nx * 34 * side)
+        s.setAttribute('y', (y1 + y2) / 2 + ny * 34 * side)
+        s.setAttribute('text-anchor', 'middle')
+        s.setAttribute('dominant-baseline', 'central')
+        s.setAttribute('fill', color)
+        s.setAttribute('font-size', '28')
+        s.setAttribute('font-weight', '700')
+        s.style.opacity = '0'
+        s.textContent = mark
+        svg.appendChild(s)
+        return [line, s]
+      }
+
+      // The working is positioned from the assembled line, not appended piece
+      // after piece, so writing the second half never shifts the first.
+      const CH = 17
+      const parts = [`${txt(U)} =`, `${txt(M1)}·${txt(M2)}`, `÷ ${txt(X)}`]
+      const widths = parts.map(s => s.length * CH)
+      const total  = widths.reduce((s, w) => s + w, 0) + CH * (parts.length - 1)
+      let cursor = midX - total / 2
+      // parts are [answer, product, divisor] but they ARRIVE in the order the
+      // steps happen — product, divisor, answer — so each one is coloured by the
+      // step that writes it, not by its position in the line.
+      const PIECE_STEP = [2, 0, 1]
+      const pieces = parts.map((s, k) => {
+        const t = document.createElementNS(NS, 'text')
+        t.setAttribute('x', cursor + widths[k] / 2)
+        t.setAttribute('y', baseY)
+        t.setAttribute('text-anchor', 'middle')
+        t.setAttribute('dominant-baseline', 'central')
+        t.setAttribute('fill', STEP[PIECE_STEP[k]])
+        t.setAttribute('font-size', '29')
+        t.setAttribute('font-weight', '700')
+        t.setAttribute('font-family', "'Fira Code','Cascadia Code',monospace")
+        t.style.opacity = '0'
+        t.textContent = s
+        svg.appendChild(t)
+        t.setAttribute('data-r3-piece', ['ans', 'prod', 'div'][k])
+        cursor += widths[k] + CH
+        return t
+      })
+
+      // The two answers are worked out now and carried on the overlay, because
+      // the steps that reveal them are separate actions with no reference to
+      // any of this.
+      const numOf = (k) => Number(String(txt(k)).replace(',', '.'))
+      const fmt = (v) => Number.isFinite(v)
+        ? (comma ? String(Number(v.toFixed(6))).replace('.', ',') : String(Number(v.toFixed(6))))
+        : '?'
+      const product = numOf(M1) * numOf(M2)
+      svg.setAttribute('data-r3', '1')
+      svg.setAttribute('data-r3-product', fmt(product))
+      svg.setAttribute('data-r3-final', fmt(product / numOf(X)))
+      svg.setAttribute('data-r3-midx', String(midX))
+
+      const beat = async (line, sign, piece, opacity) => {
+        await gsap.to(line, { strokeDashoffset: 0, duration: 0.6, ease: 'power2.out' }).then()
+        await Promise.all([
+          gsap.to(sign,  { opacity: 1, duration: 0.28, ease: 'power2.out' }).then(),
+          gsap.to(piece, { opacity, duration: 0.34, ease: 'power2.out' }).then(),
+        ])
+        await wait(0.55)
+      }
+
+      // 1. the two that multiply
+      const [l1, s1] = link(M1, M2, '×', 1, STEP[0])
+      await beat(l1, s1, pieces[1], 0.8)
+      // 2. on to the one that divides
+      const [l2, s2] = link(M2, X, '÷', -1, STEP[1])
+      await beat(l2, s2, pieces[2], 0.8)
+      // 3. and it lands on the unknown
+      const [l3, s3] = link(X, U, '=', 1, STEP[2])
+      await beat(l3, s3, pieces[0], 0.9)
+
+      // Full strength: it stopped being working and became the answer. Then it
+      // stops — the overlay is cleared by cancelAllAnimations when the next step
+      // runs, and the equation itself was never touched.
+      await gsap.to(pieces, { opacity: 1, duration: 0.3, ease: 'power2.out' }).then()
+      await wait(0.5)
+      break
+    }
+
+    // The arithmetic, held back until the reader asks for it. Marked gated in
+    // the step, so the page parks here and › runs it — the reader gets to look
+    // at x = 2·12 ÷ 3 and work it out before being told.
+    // The arithmetic, done ON THE LINE that was just written and one operation
+    // at a time, the way any other equation is solved here: the product first,
+    // then the division. A second line reading "x = 8" underneath would be an
+    // answer appearing beside the working rather than the working becoming the
+    // answer.
+    //
+    // Each piece is an SVG text anchored at its middle, so rewriting one
+    // changes nothing but itself — the others do not shift to take up the
+    // slack. The line is re-centred once at the very end, when there is
+    // nothing left to change.
+    case 'rule-of-three-solve': {
+      const svg = document.querySelector('[data-r3]')
+      if (!svg) break
+      const piece = (k) => svg.querySelector(`[data-r3-piece="${k}"]`)
+      const pop = (el) => gsap.to(el, {
+        scale: 1.25, duration: 0.16, ease: 'back.out(2.5)', yoyo: true, repeat: 1,
+        transformOrigin: 'center',
+      }).then()
+
+      if (action.phase === 1) {
+        const prod = piece('prod')
+        if (!prod) break
+        prod.textContent = svg.getAttribute('data-r3-product')
+        await pop(prod)
+        await wait(0.4)
+        break
+      }
+
+      // Phase 2: the division. The divisor leaves and the number it divided
+      // becomes the answer, in the same beat — that IS the operation.
+      const prod = piece('prod')
+      const div  = piece('div')
+      const ans  = piece('ans')
+      if (!prod || !div) break
+      await gsap.to(div, { opacity: 0, duration: 0.3, ease: 'power2.in' }).then()
+      prod.textContent = svg.getAttribute('data-r3-final')
+      await Promise.all([
+        pop(prod),
+        gsap.to(prod, { fill: '#60a5fa', duration: 0.3, ease: 'power2.out' }).then(),
+      ])
+      await wait(0.45)
+
+      // Now, and only now, the line closes up — one deliberate move with
+      // nothing left to disturb it.
+      if (ans) {
+        const CH = 17
+        const wAns  = ans.textContent.length * CH
+        const wProd = prod.textContent.length * CH
+        const midX  = Number(svg.getAttribute('data-r3-midx')) || Number(ans.getAttribute('x'))
+        const total = wAns + CH + wProd
+        await Promise.all([
+          gsap.to(ans,  { attr: { x: midX - total / 2 + wAns / 2 }, duration: 0.45, ease: 'power2.inOut' }).then(),
+          gsap.to(prod, { attr: { x: midX + total / 2 - wProd / 2 }, duration: 0.45, ease: 'power2.inOut' }).then(),
+        ])
+      }
+      await wait(0.4)
+      break
+    }
+
+    case 'combineInParens': {
+      if (!state) break
+      const group = state.findById(action.id)
+      if (!group) break
+      const inner = group.innerTerms ?? []
+      if (inner.length < 2) break
+
+      const wrap  = getWrap(refs(), group.side, group.cellIndex)
+      const parts = wrap ? [...wrap.querySelectorAll('.pg-inner-term')] : []
+      // The outer bracket of a bracket-times-bracket uses .pg-outer-val, so
+      // these are the inner ones and only the inner ones.
+      const innerParts = parts.filter(p => p.querySelector('.pg-inner-val'))
+
+      if (innerParts.length >= 2) {
+        const anchor = innerParts[innerParts.length - 1]
+        // The sign in front of the anchor belongs to the operation being
+        // carried out, so it leaves with the term that is being folded in.
+        const anchorOp = anchor.querySelector('.term-op')
+        const ar = anchor.getBoundingClientRect()
+        await Promise.all(innerParts.slice(0, -1).map(p => {
+          const pr = p.getBoundingClientRect()
+          p.style.overflow = 'hidden'
+          return gsap.to(p, {
+            x: ar.left + ar.width / 2 - (pr.left + pr.width / 2),
+            opacity: 0, width: 0, marginLeft: 0, marginRight: 0,
+            duration: 0.5, ease: 'power2.inOut',
+          }).then()
+        }).concat(anchorOp
+          ? [gsap.to(anchorOp, { opacity: 0, width: 0, marginLeft: 0, marginRight: 0, duration: 0.5, ease: 'power2.inOut' }).then()]
+          : []))
+
+        // The answer is written into the surviving chip before React commits,
+        // so the swap itself is never seen — the same trick the ordinary
+        // combine uses.
+        const cell = anchor.querySelector('.pg-inner-val')
+        const v    = inner[0].variable ?? ''
+        const deg  = inner[0].degree >= 2 ? String(inner[0].degree) : ''
+        const abs  = Math.abs(action.value)
+        if (cell) {
+          cell.textContent = (abs === 1 && v ? '' : String(Number(abs.toFixed(6)))) + v + deg
+          await gsap.to(cell, { scale: 1.18, duration: 0.15, ease: 'back.out(2.5)', yoyo: true, repeat: 1 }).then()
+        }
+      }
+
+      group.innerTerms = [{
+        id: crypto.randomUUID(),
+        sign: action.value < 0 ? '-' : '+',
+        coefficient: Math.abs(action.value),
+        variable: inner[0].variable ?? null,
+        degree: inner[0].degree,
+      }]
+      flushSync(() => setState(state.snapshot()))
+      await wait(0.35)
+      break
+    }
+
     case 'distributeParentheses': {
       if (!state) break
       const { id, side, insertIdx, expandedTerms } = action
@@ -2684,6 +3924,123 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       // .term-cell chips, siblings inside .expr-group, so querySelector
       // would just match the first chip instead of scoping the whole group.
       const groupCell = groupWrap ? groupWrap.querySelector('.expr-group') : null
+
+      // ── A bracket times a bracket ────────────────────────────────────────
+      // The path below cannot serve this one: it turns each inner term into its
+      // product IN PLACE, which works only while there are as many products as
+      // slots. (3x+2)(2x-2) makes four products for two slots, so the group
+      // would jump straight to the answer with nothing shown in between.
+      //
+      // Instead the products are written out underneath, in grey, one per
+      // arrow — the reader sees where each one came from before the brackets
+      // are given up.
+      if (group.outerTerms && groupWrap && groupCell) {
+        const outerEls = [...groupCell.querySelectorAll('.pg-outer-val')]
+        const innerEls = [...groupCell.querySelectorAll('.pg-inner-val')]
+
+        // The running calculation, centred under the group and low enough that
+        // the arcs above it never reach down into it.
+        const S = eqScale()
+        const gRect = groupWrap.getBoundingClientRect()
+        const line  = document.createElement('div')
+        line.className = '_anim-overlay eq-distrib-line'
+        line.style.cssText = [
+          'position:fixed',
+          `left:${gRect.left + gRect.width / 2}px`, `top:${gRect.bottom + 26 * S}px`,
+          'transform:translateX(-50%)',
+          'display:flex', 'align-items:baseline', 'gap:0.34em',
+          `font-size:${1.5 * S}rem`, 'font-weight:500', 'color:#8892a4',
+          'pointer-events:none', 'z-index:40', 'white-space:nowrap',
+        ].join(';')
+        document.body.appendChild(line)
+
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        svg.classList.add('_anim-overlay')
+        svg.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;overflow:visible'
+        // Same arrowhead the ordinary distribute draws — these are the same
+        // gesture and must not look like a different one.
+        const defs   = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
+        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker')
+        marker.setAttribute('id', 'xdist-arrowhead')
+        marker.setAttribute('markerWidth', '8')
+        marker.setAttribute('markerHeight', '8')
+        marker.setAttribute('refX', '7')
+        marker.setAttribute('refY', '3')
+        marker.setAttribute('orient', 'auto')
+        const tip = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+        tip.setAttribute('d', 'M0,0 L0,6 L8,3 z')
+        tip.setAttribute('fill', '#60a5fa')
+        marker.appendChild(tip)
+        defs.appendChild(marker)
+        svg.appendChild(defs)
+        document.body.appendChild(svg)
+
+        let k = 0
+        for (let i = 0; i < outerEls.length; i++) {
+          for (let j = 0; j < innerEls.length; j++) {
+            const from = outerEls[i], to = innerEls[j]
+            const term = expandedTerms[k++]
+            if (!from || !to || !term) continue
+
+            // the pair this arrow joins, lit while it is drawn
+            // eslint-disable-next-line no-await-in-loop
+            await gsap.to([from, to], { color: '#60a5fa', duration: 0.25 }).then()
+
+            // Arcs OVER the brackets, exactly like the ordinary distribute:
+            // same anchor points, same lift, same colour and weight. Dipping
+            // below made them read as a different operation, and put them on
+            // top of the working line.
+            const a = from.getBoundingClientRect(), b = to.getBoundingClientRect()
+            const x1 = a.left + a.width / 2, y1 = a.top + a.height * 0.25
+            const x2 = b.left + b.width / 2, y2 = b.top + b.height * 0.25
+            const arcLift = Math.max(52 * S, a.height * 0.85)
+            const arcY = Math.min(y1, y2) - arcLift
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+            path.setAttribute('d', `M${x1},${y1} Q${(x1 + x2) / 2},${arcY} ${x2},${y2}`)
+            path.setAttribute('stroke', '#60a5fa')
+            path.setAttribute('stroke-width', '2.5')
+            path.setAttribute('fill', 'none')
+            path.setAttribute('marker-end', 'url(#xdist-arrowhead)')
+            svg.appendChild(path)
+            const len = Math.hypot(x2 - x1, y2 - y1) * 1.4 + 60
+            path.style.strokeDasharray = String(len)
+            path.style.strokeDashoffset = String(len)
+            // eslint-disable-next-line no-await-in-loop
+            await gsap.to(path, { strokeDashoffset: 0, duration: 0.5, ease: 'power2.out' }).then()
+
+            // its product joins the grey line underneath
+            const chip = document.createElement('span')
+            chip.textContent = (k > 1 ? (term.sign === '-' ? '− ' : '+ ') : (term.sign === '-' ? '−' : '')) +
+                               cellLabel(Math.abs(term.coefficient), term.variable, term.degree)
+            chip.style.opacity = '0'
+            line.appendChild(chip)
+            // eslint-disable-next-line no-await-in-loop
+            await gsap.to(chip, { opacity: 1, duration: 0.45, ease: 'power2.out' }).then()
+            // eslint-disable-next-line no-await-in-loop
+            await Promise.all([
+              gsap.to([from, to], { color: '', duration: 0.3 }).then(),
+              gsap.to(path, { opacity: 0.25, duration: 0.3 }).then(),
+            ])
+            // eslint-disable-next-line no-await-in-loop
+            await wait(0.5)
+          }
+        }
+
+        // Only now do the brackets go, replaced by what was written underneath.
+        await gsap.to(svg, { opacity: 0, duration: 0.3 }).then()
+        await gsap.to(groupCell, { opacity: 0, duration: 0.4, ease: 'power2.in' }).then()
+        await gsap.to(line, { opacity: 0, duration: 0.35 }).then()
+        svg.remove()
+        line.remove()
+
+        state.remove(id)
+        expandedTerms.forEach((t, i) =>
+          state.insertAt(new MathObject(t), side, (insertIdx ?? 0) + i)
+        )
+        setState(state.snapshot())
+        await wait(0.35)
+        break
+      }
 
       if (groupWrap && groupCell) {
         // ── Phase 1: Pulse-outline the coefficient ──────────────────────────
@@ -2740,7 +4097,7 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
             const tx     = tRect.left + tRect.width  / 2
             const ty     = tRect.top  + tRect.height * 0.25
             const midX   = (srcX + tx) / 2
-            const arcLift = Math.max(52, coeffRect.height * 0.85)
+            const arcLift = Math.max(52 * eqScale(), coeffRect.height * 0.85)
             const arcY   = Math.min(srcY, ty) - arcLift
             return `M${srcX},${srcY} Q${midX},${arcY} ${tx},${ty}`
           })
@@ -2864,12 +4221,288 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       // itself, no per-equation-shape script), reveal it, collapse it to a
       // number, repeat until one number remains, then fold that number into
       // an ordinary term so it feeds combine/send/divide like any other.
+      // ── Phase 0a: fractions on a side are brought together ────────────────
+      // "1/2 + 1/3" arrives as two separate TERMS, because the parser splits a
+      // side on its top-level +/-. Two things have to happen, in this order.
+      //
+      // First the denominators are made equal, visibly: a "×3" and a "×2" beside
+      // the two fractions, then the numbers change in place — the step the
+      // lesson is actually about.
+      //
+      // Then the addition itself is handed to autoCombine, which already adds
+      // same-denominator fractions the ordinary way: one term is the anchor, the
+      // other FLIES into it and the two become one. Reproducing that here would
+      // have been a second, slightly different version of the same motion.
+      for (const side of ['left', 'right']) {
+        const arr = side === 'left' ? state.left : state.right
+        if (arr.length < 2) continue
+        const isNumFrac = (t) => t.expr && isFrac(t.expr)
+        const fracs = arr.filter(isNumFrac)
+        if (fracs.length < 2 || fracs.length !== arr.length) continue
+
+        const dens = fracs.map(t => t.expr.b.v)
+        if (new Set(dens).size > 1) {
+          const g = (x, y) => { x = Math.abs(x); y = Math.abs(y); while (y) { [x, y] = [y, x % y] } return x || 1 }
+          const L = dens.reduce((acc, d) => Math.abs(acc * d) / g(acc, d), 1)
+
+          // eslint-disable-next-line no-await-in-loop
+          await subStep()
+          const marks = []
+          for (const t of fracs) {
+            const k = L / t.expr.b.v
+            if (k === 1) continue
+            const blk = getWrap(refs(), t.side, t.cellIndex)?.querySelector('.expr-fraction')
+            for (const c of [...(blk?.querySelectorAll('.term-cell') ?? [])].slice(0, 2)) {
+              const r  = c.getBoundingClientRect()
+              const el = document.createElement('div')
+              el.className = '_anim-overlay eq-times-mark'
+              el.textContent = `×${k}`
+              el.style.cssText = `position:fixed; left:${r.right + 6}px; top:${r.top + r.height / 2}px;`
+                + 'transform:translateY(-50%); opacity:0;'
+              document.body.appendChild(el)
+              marks.push(el)
+            }
+          }
+          if (marks.length) {
+            // eslint-disable-next-line no-await-in-loop
+            await gsap.to(marks, { opacity: 1, duration: 0.4, ease: 'power2.out', stagger: 0.12 }).then()
+            // eslint-disable-next-line no-await-in-loop
+            await wait(1.1)
+          }
+          for (const t of fracs) {
+            const k = L / t.expr.b.v
+            t.expr.a.v *= k
+            t.expr.b.v *= k
+          }
+          flushSync(() => setState(state.snapshot()))
+          const cells = fracs.flatMap(t =>
+            [...(getWrap(refs(), t.side, t.cellIndex)?.querySelectorAll('.expr-fraction .term-cell') ?? [])])
+          cells.forEach(c => { c.style.animation = 'none' })
+          // eslint-disable-next-line no-await-in-loop
+          await Promise.all([
+            cells.length
+              ? gsap.fromTo(cells, { scale: 1 },
+                  { scale: 1.18, duration: 0.2, ease: 'power2.out', yoyo: true, repeat: 1 }).then()
+              : Promise.resolve(),
+            marks.length
+              ? gsap.to(marks, { opacity: 0, filter: 'blur(6px)', duration: 0.32, ease: 'power2.in' }).then()
+              : Promise.resolve(),
+          ])
+          marks.forEach(el => el.remove())
+          // eslint-disable-next-line no-await-in-loop
+          await wait(0.75)
+        }
+
+        // eslint-disable-next-line no-await-in-loop
+        await subStep()
+        // eslint-disable-next-line no-await-in-loop
+        await runAction({ type: 'autoCombine' }, state, equationRef, setState, setUI, geoRef, graphRef, tableRef, setComments, textRef, speed, calcRef, arithRef, multRef, clockRef, numbersRef, mdasRef, kidRefs)
+      }
+
+      // A side that MIXES a fraction with a plain number ("1/2 + 3") has no two
+      // fractions to gather, so it is folded into one expression tree instead
+      // and the generic walker adds it as a rational.
+      for (const side of ['left', 'right']) {
+        const arr = side === 'left' ? state.left : state.right
+        if (arr.length < 2) continue
+        const plain = (t) => !t.variable && !t.symbolicLabel && !t.varParts && !t.isFraction && (t.degree ?? 0) === 0
+        if (!arr.every(plain)) continue
+        if (!arr.some(t => t.expr && isFrac(t.expr))) continue
+
+        let tree = null
+        for (const t of arr) {
+          const leaf = t.expr ?? num(Math.abs(t.coefficient ?? 0))
+          tree = tree === null
+            ? (t.sign === '-' ? negN(leaf) : leaf)
+            : bin(t.sign === '-' ? '-' : '+', tree, leaf)
+        }
+        const keepColor = arr.find(t => t.color)?.color ?? null
+        const newId = crypto.randomUUID()
+        for (const t of [...arr]) state.remove(t.id)
+        state.insertAt(new MathObject({
+          id: newId, sign: '+', expr: tree,
+          coefficient: 1, variable: null, degree: 0, color: keepColor,
+        }), side, 0)
+      }
+      flushSync(() => setState(state.snapshot()))
+
       for (const term of [...state.left, ...state.right].filter(t => t.expr)) {
+        // A factorial is unpacked BEFORE anything is evaluated. 5! is notation,
+        // not a number the reader can see into, and a solve that answered 120
+        // without ever writing 1·2·3·4·5 would be teaching nothing to the person
+        // who needed the step. Once it is a product, the walker below reduces it
+        // like any other.
+        // eslint-disable-next-line no-await-in-loop
+        await unpackFactorials(term)
+
         const wrap  = () => getWrap(refs(), term.side, term.cellIndex)
         const elFor = id => exprCellsFor(wrap(), id)
 
+        // ── Unlike denominators are made alike FIRST, and visibly ───────────
+        // 1/2 + 1/3 is not "5/6" in one move. The step being taught is the one
+        // that rewrites both halves over 6 — so a "×3" and a "×2" appear beside
+        // them and the numbers change in place, exactly the way the manual
+        // amplify step does it. The addition only happens afterwards, and by
+        // then it is the easy part: same denominator, add the numerators.
+        const equalizeDenominators = async (node) => {
+          const g = (x, y) => { x = Math.abs(x); y = Math.abs(y); while (y) { [x, y] = [y, x % y] } return x || 1 }
+          const L  = Math.abs(node.a.b.v * node.b.b.v) / g(node.a.b.v, node.b.b.v)
+          const k1 = L / node.a.b.v, k2 = L / node.b.b.v
+          await subStep()
+
+          const blocks = [...(wrap()?.querySelectorAll('.expr-fraction') ?? [])].slice(0, 2)
+          const marks  = []
+          blocks.forEach((blk, i) => {
+            const k = i === 0 ? k1 : k2
+            if (k === 1) return
+            for (const c of [...blk.querySelectorAll('.term-cell')].slice(0, 2)) {
+              const r  = c.getBoundingClientRect()
+              const el = document.createElement('div')
+              el.className = '_anim-overlay eq-times-mark'
+              el.textContent = `×${k}`
+              el.style.cssText = `position:fixed; left:${r.right + 6}px; top:${r.top + r.height / 2}px;`
+                + 'transform:translateY(-50%); opacity:0;'
+              document.body.appendChild(el)
+              marks.push(el)
+            }
+          })
+          if (marks.length) {
+            await gsap.to(marks, { opacity: 1, duration: 0.3, ease: 'power2.out', stagger: 0.08 }).then()
+            await wait(0.6)
+          }
+
+          node.a.a.v *= k1; node.a.b.v *= k1
+          node.b.a.v *= k2; node.b.b.v *= k2
+          flushSync(() => setState(state.snapshot()))
+
+          const parts = [...(wrap()?.querySelectorAll('.expr-fraction .term-cell') ?? [])]
+          parts.forEach(c => { c.style.animation = 'none' })
+          await Promise.all([
+            parts.length
+              ? gsap.fromTo(parts, { scale: 0.78 }, { scale: 1, duration: 0.4, ease: 'back.out(2.2)' }).then()
+              : Promise.resolve(),
+            marks.length
+              ? gsap.to(marks, { opacity: 0, filter: 'blur(6px)', duration: 0.32, ease: 'power2.in' }).then()
+              : Promise.resolve(),
+          ])
+          marks.forEach(el => el.remove())
+          await wait(0.4)
+        }
+
+        // ── One × becomes two ───────────────────────────────────────────────
+        // Multiplying fractions is TWO multiplications, and a single × sitting
+        // between the two blocks says nothing about which numbers pair up. So
+        // it splits: one × rises onto the numerator line, one drops onto the
+        // denominator line, and 2/3 · 4/5 reads as "2·4 over 3·5" before it
+        // becomes 8/15.
+        const splitTimes = async () => {
+          const blocks = [...(wrap()?.querySelectorAll('.expr-fraction') ?? [])]
+          const opEl   = [...(wrap()?.querySelectorAll('.term-op') ?? [])]
+            .find(o => o.textContent.trim() === '×')
+          const rows = blocks[0] ? [...blocks[0].querySelectorAll('.expr-fraction-row')] : []
+          if (blocks.length < 2 || !opEl || rows.length < 2) return
+
+          await subStep()
+          const opR = opEl.getBoundingClientRect()
+          // The two × are the SAME × as the one that was there — same size, same
+          // weight, same colour, and centred on the exact spot it occupied.
+          // Borrowing .eq-times-mark's own look made them small and hanging off
+          // to the left, which read as annotation rather than as the operator.
+          const opCS = getComputedStyle(opEl)
+          const marks = rows.slice(0, 2).map(row => {
+            const r  = row.getBoundingClientRect()
+            const el = document.createElement('div')
+            el.className = '_anim-overlay eq-times-mark'
+            el.textContent = '×'
+            el.style.cssText = `position:fixed; left:${opR.left + opR.width / 2}px; top:${opR.top + opR.height / 2}px;`
+              + 'transform:translate(-50%, -50%); opacity:0;'
+              + `font-size:${opCS.fontSize}; font-weight:${opCS.fontWeight};`
+              + `color:${opCS.color}; line-height:1;`
+            document.body.appendChild(el)
+            el._targetY = r.top + r.height / 2
+            return el
+          })
+          await Promise.all([
+            gsap.to(opEl, { opacity: 0, duration: 0.28, ease: 'power2.in' }).then(),
+            ...marks.map(el => gsap.to(el, {
+              opacity: 1,
+              top: el._targetY,
+              duration: 0.6,
+              ease: 'power2.out',
+            }).then()),
+          ])
+          await wait(1.5)
+          // Removed here rather than restored: the resolve that follows fades
+          // this whole group out anyway, so bringing the single × back would be
+          // one flicker on the way to the answer.
+          await gsap.to(marks, { opacity: 0, duration: 0.25, ease: 'power2.in' }).then()
+          marks.forEach(el => el.remove())
+        }
+
+        // ── Dividing by a fraction is multiplying by its upside-down ────────
+        // "3/4 ÷ 4/5" is not resolved straight to 15/16. The move being taught
+        // is the flip: the second fraction turns over and the ÷ becomes a ×,
+        // and only then is it an ordinary multiplication. So the two halves
+        // physically trade places and the sign changes with them.
+        const invertAndMultiply = async (node) => {
+          await subStep()
+          const secondBlock = () => [...(wrap()?.querySelectorAll('.expr-fraction') ?? [])][1]
+          const halves = (blk) => (blk ? [...blk.querySelectorAll('.term-cell')].slice(0, 2) : [])
+
+          // Where the two halves sit BEFORE the flip.
+          const wasRects = halves(secondBlock()).map(c => c.getBoundingClientRect())
+
+          // The swap is committed FIRST, then each half is put back where its
+          // number used to be and allowed to travel to its new home — a FLIP.
+          // Animating before the commit made the last frame a jump: the half
+          // that had just slid down snapped back up to take its new place, so
+          // the move ended exactly where it should have looked smoothest.
+          node.op = '*'
+          const t = node.b.a; node.b.a = node.b.b; node.b.b = t
+          flushSync(() => setState(state.snapshot()))
+
+          const cells = halves(secondBlock())
+          const newOp = [...(wrap()?.querySelectorAll('.term-op') ?? [])]
+            .find(o => o.textContent.trim() === '×')
+          if (newOp) gsap.set(newOp, { opacity: 0, scale: 0.7 })
+
+          if (cells.length === 2 && wasRects.length === 2) {
+            cells.forEach((c, i) => {
+              c.style.animation = 'none'
+              // Each half comes from where the OTHER one was.
+              const from = wasRects[1 - i]
+              const now  = c.getBoundingClientRect()
+              gsap.set(c, { x: from.left - now.left, y: from.top - now.top })
+            })
+            await Promise.all([
+              ...cells.map(c => gsap.to(c, { x: 0, y: 0, duration: 0.9, ease: 'power2.inOut' }).then()),
+              // The × arrives while they are still crossing, so the sign change
+              // and the flip read as one move rather than two.
+              newOp
+                ? gsap.to(newOp, { opacity: 1, scale: 1, duration: 0.5, delay: 0.35, ease: 'back.out(2)' }).then()
+                : Promise.resolve(),
+            ])
+          } else if (newOp) {
+            await gsap.to(newOp, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(2)' }).then()
+          }
+          await wait(0.85)
+        }
+
         let ready = findReady(term.expr)
         while (ready) {
+          if (ready.t === 'bin' && ready.op === '/' && isFrac(ready.a) && isFrac(ready.b)) {
+            // eslint-disable-next-line no-await-in-loop
+            await invertAndMultiply(ready)
+            ready = findReady(term.expr)
+            continue
+          }
+          if (ready.t === 'bin' && (ready.op === '+' || ready.op === '-') &&
+              isFrac(ready.a) && isFrac(ready.b) && ready.a.b.v !== ready.b.b.v) {
+            // eslint-disable-next-line no-await-in-loop
+            await equalizeDenominators(ready)
+            ready = findReady(term.expr)
+            continue
+          }
           // eslint-disable-next-line no-await-in-loop
           await subStep()
           const id = ready.id
@@ -2881,7 +4514,22 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
           // vanished instead of transitioning. Target the fraction block
           // directly and give it the same plain fade → commit → pop as
           // every other single-value resolve (e.g. divideBothSides).
-          const isTopLevelFraction = id === term.expr.id && ready.t === 'bin' && ready.op === '/'
+          if (ready.t === 'bin' && ready.op === '*' && isFrac(ready.a) && isFrac(ready.b)) {
+            // No `continue` — the tree is untouched, this only SHOWS what the
+            // multiplication about to happen is made of.
+            // eslint-disable-next-line no-await-in-loop
+            await splitTimes()
+          }
+
+          // Any operation with a fraction in it takes this path too, not just a
+          // lone top-level one. combineReveal counts UP to the numeric value it
+          // is given, and the numeric value of 5/6 is 0.833… — so merging two
+          // fractions flashed a decimal on screen before React swapped in the
+          // fraction. The decimal is exactly what this whole change exists to
+          // keep off the board.
+          const involvesFraction = ready.t === 'bin' && (isFrac(ready.a) || isFrac(ready.b))
+          const isTopLevelFraction = involvesFraction ||
+            (id === term.expr.id && ready.t === 'bin' && ready.op === '/')
           if (isTopLevelFraction) {
             // Custom (not the shared revealStep) so the numerator and
             // denominator chips tint blue too, not just the bar — .frac-bar
@@ -2893,29 +4541,119 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
             // overridden by this generic "about to change" cue, only by an
             // actual combine with another term.
             const hasOwnColor = !!term.color
-            const fracBlock = wrap()?.querySelector('.expr-fraction')
+            // Every fraction taking part goes together — an addition has two of
+            // them, and fading only the first left the other sitting there.
+            const fracBlocks = [...(wrap()?.querySelectorAll('.expr-fraction') ?? [])]
             // eslint-disable-next-line no-await-in-loop
-            if (fracBlock) {
-              const numDenEls = [...fracBlock.querySelectorAll('.term-cell')]
+            if (fracBlocks.length) {
+              const numDenEls = fracBlocks.flatMap(b => [...b.querySelectorAll('.term-cell')])
               if (!hasOwnColor) {
                 // eslint-disable-next-line no-await-in-loop
-                await gsap.to([fracBlock, ...numDenEls], { color: '#60a5fa', duration: 0.35, ease: 'power2.out' }).then()
+                await gsap.to([...fracBlocks, ...numDenEls], { color: '#60a5fa', duration: 0.35, ease: 'power2.out' }).then()
               }
               // eslint-disable-next-line no-await-in-loop
               await wait(0.75)
+
+              // Two fractions combine the way "3 + 4" combines: the second one
+              // TRAVELS into the first and the answer appears where the first
+              // stood. Fading both out and popping a new one in said "these
+              // were replaced" — which is not what happened, and on a reused
+              // DOM node it read as one term shrinking and growing back.
+              if (fracBlocks.length >= 2) {
+                const [anchorBlk, flyerBlk] = fracBlocks
+                const ra = anchorBlk.getBoundingClientRect()
+                const rb = flyerBlk.getBoundingClientRect()
+                flyerBlk.style.animation = 'none'
+                // The anchor takes the hit as the other lands — the same 1.16
+                // nudge combineTerms gives it. Fired and NOT awaited: a later
+                // tween on the anchor's scale overwrites this one, and gsap
+                // never settles the promise of a tween it killed, so awaiting
+                // it hung the whole solve on the frame it was replaced.
+                gsap.to(anchorBlk, {
+                  scale: 1.16, duration: 0.11, delay: 0.5,
+                  ease: 'back.out(2.5)', yoyo: true, repeat: 1,
+                })
+                // eslint-disable-next-line no-await-in-loop
+                await gsap.to(flyerBlk, {
+                  x: (ra.left - rb.left) + (ra.width - rb.width) / 2,
+                  y: ra.top - rb.top,
+                  opacity: 0,
+                  duration: 0.62, ease: 'power2.inOut',
+                }).then()
+                // The anchor STAYS. Only its numbers change — it is the same
+                // fraction, now holding the answer. Hiding it and fading a new
+                // one in said "this one was removed", which is not what
+                // happened: 2/3 did not go anywhere, it became 6/12.
+              }
+              // A lone fraction resolving on its own does NOT fade out either —
+              // it is the same block, changing.
+            }
+            // The answer is written into the cells that are ALREADY on screen,
+            // and React is only told afterwards.
+            //
+            // Committing first does not work however quietly it is done:
+            // collapsing "2/3 · 3/4" into "6/12" moves the fraction from the
+            // nested ExprNode path to ExprTerm's top-level one, so React
+            // unmounts that block and mounts a different one. That is a delete
+            // and a respawn, and no amount of killing termEnter changes it.
+            //
+            // So the result is worked out on a THROWAWAY copy of the node, the
+            // two digits are written straight into the live cells, and they pop
+            // right there. Only then is the real tree collapsed and the state
+            // pushed — by which point React's render matches what is already on
+            // screen, so its swap is invisible.
+            const preview = deepClone(ready)
+            applyReady(preview)
+            const liveCells = [...(wrap()?.querySelector('.expr-fraction')
+              ?.querySelectorAll('.term-cell') ?? [])].slice(0, 2)
+            const inPlace = preview.t === 'bin' && preview.op === '/' && liveCells.length === 2
+            if (inPlace) {
+              liveCells[0].textContent = String(Math.abs(preview.a.v))
+              liveCells[1].textContent = String(Math.abs(preview.b.v))
+              liveCells.forEach(c => { c.style.animation = 'none' })
+              // The new digits are on screen first, on their own, and the pop
+              // comes after them — it emphasises a number the reader has
+              // already seen change, instead of landing on the same frame.
               // eslint-disable-next-line no-await-in-loop
-              await gsap.to(fracBlock, { opacity: 0, scale: 0.6, duration: 0.35, ease: 'power2.in' }).then()
+              await wait(0.18)
+              // eslint-disable-next-line no-await-in-loop
+              await gsap.fromTo(liveCells, { scale: 1 },
+                { scale: 1.18, duration: 0.2, ease: 'power2.out', yoyo: true, repeat: 1 }).then()
             }
             applyReady(ready)
             flushSync(() => setState(state.snapshot()))
-            const after = elFor(id)
+            // Nothing React just mounted gets to play its termEnter pop.
+            for (const c of document.querySelectorAll('.term-cell, .expr-fraction')) {
+              c.style.animation = 'none'
+            }
+            // React reuses the same DOM node for the fraction block, so the
+            // fade-out's inline opacity/scale ends up sitting on the RESULT and
+            // the answer never comes back.
+            //
+            // Only the blocks that are NOT about to pop get cleared, though.
+            // Snapping the popping one to full size first made the move read
+            // backwards — shrink out, flash big, shrink again, grow — instead of
+            // the answer simply arriving. It goes straight from the fade-out
+            // into its own pop.
+            const nowBlocks = [...(wrap()?.querySelectorAll('.expr-fraction') ?? [])]
+            // The result of a fraction op can be a fraction again — (2/3)/(3/4)
+            // is 8/9 — and a fraction has no per-node chip, so elFor(id) finds
+            // nothing on its own.
+            // Already done in place above — there is nothing left to animate.
+            const after = inPlace ? null : (elFor(id) ?? nowBlocks[0])
+            nowBlocks.filter(b => b !== after).forEach(b => gsap.set(b, { opacity: 1, scale: 1 }))
+            // Belt and braces: the outgoing fade no longer touches scale, so
+            // anything still carrying one came from an earlier step.
+            if (after) gsap.set(after, { scale: 1 })
             if (after) {
-              gsap.set(after, { opacity: 0, scale: 0.5 })
+              // Nothing to fade back in — the block never left. It is visible,
+              // at full size, and its digits have just changed; all it does is
+              // pop to say so.
+              gsap.set(after, { opacity: 1, scale: 1 })
               if (hasOwnColor) {
-                // Its own color already applies via React (term.color never
-                // changed) — just pop in, no color animation at all.
                 // eslint-disable-next-line no-await-in-loop
-                await gsap.to(after, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(1.8)' }).then()
+                await gsap.fromTo(after, { scale: 1 },
+                  { scale: 1.18, duration: 0.2, ease: 'power2.out', yoyo: true, repeat: 1 }).then()
               } else {
                 // Color is never snapped with gsap.set — it fades in together
                 // with the pop (both tweened, starting from whatever color is
@@ -2923,7 +4661,8 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
                 // "appears white then jumps blue".
                 // eslint-disable-next-line no-await-in-loop
                 await Promise.all([
-                  gsap.to(after, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(1.8)' }).then(),
+                  gsap.fromTo(after, { scale: 1 },
+                    { scale: 1.18, duration: 0.2, ease: 'power2.out', yoyo: true, repeat: 1 }).then(),
                   gsap.to(after, { color: '#60a5fa', duration: 0.4, ease: 'power2.out' }).then(),
                 ])
                 // eslint-disable-next-line no-await-in-loop
@@ -2951,6 +4690,65 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
           ready = findReady(term.expr)
         }
 
+        // ── Reducing is its OWN step ──────────────────────────────────────
+        // 6/12 does not simply arrive as 1/2. Dividing both halves by the same
+        // number is the whole of one lesson, so it is shown the way amplify
+        // shows its ×k: a "÷g" beside each half, then the two numbers change in
+        // place. Nothing above ever reduces silently, which is what keeps this
+        // step worth watching.
+        if (isFrac(term.expr)) {
+          const g = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b] } return a || 1 }
+          const d = g(term.expr.a.v, term.expr.b.v)
+          if (d > 1) {
+            // eslint-disable-next-line no-await-in-loop
+            await subStep()
+            const w0    = wrap()
+            const block = w0?.querySelector('.expr-fraction')
+            const cells = block ? [...block.querySelectorAll('.term-cell')].slice(0, 2) : []
+            const marks = cells.map(c => {
+              const r  = c.getBoundingClientRect()
+              const el = document.createElement('div')
+              el.className = '_anim-overlay eq-times-mark'
+              el.textContent = `÷${d}`
+              el.style.cssText = `position:fixed; left:${r.right + 8}px; top:${r.top + r.height / 2}px;`
+                + 'transform:translateY(-50%); opacity:0;'
+              document.body.appendChild(el)
+              return el
+            })
+            if (marks.length) {
+              // eslint-disable-next-line no-await-in-loop
+              await gsap.to(marks, { opacity: 1, duration: 0.4, ease: 'power2.out', stagger: 0.14 }).then()
+              // eslint-disable-next-line no-await-in-loop
+              await wait(1.1)
+            }
+            term.expr.a.v /= d
+            term.expr.b.v /= d
+            // A denominator of 1 is not a fraction any more — it is the number.
+            if (term.expr.b.v === 1) {
+              const v = term.expr.a.v
+              for (const k of Object.keys(term.expr)) { if (k !== 'id') delete term.expr[k] }
+              term.expr.t = 'num'
+              term.expr.v = v
+            }
+            flushSync(() => setState(state.snapshot()))
+            const parts = [...(wrap()?.querySelectorAll('.expr-fraction .term-cell') ?? [])].slice(0, 2)
+            parts.forEach(c => { c.style.animation = 'none' })
+            // eslint-disable-next-line no-await-in-loop
+            await Promise.all([
+              parts.length
+                ? gsap.fromTo(parts, { scale: 1 },
+                    { scale: 1.18, duration: 0.2, ease: 'power2.out', yoyo: true, repeat: 1 }).then()
+                : Promise.resolve(),
+              marks.length
+                ? gsap.to(marks, { opacity: 0, filter: 'blur(6px)', duration: 0.32, ease: 'power2.in' }).then()
+                : Promise.resolve(),
+            ])
+            marks.forEach(el => el.remove())
+            // eslint-disable-next-line no-await-in-loop
+            await wait(0.8)
+          }
+        }
+
         // Still has an unresolved label, or the root is a ± branch point not
         // yet chosen — leave it exactly as revealed so far (e.g. √Δ already
         // shows its decimal value even though "−b ± 7" itself stays put).
@@ -2976,6 +4774,39 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         flushSync(() => setState(state.snapshot()))
         const foldedInner = getCellInner(findWrapById(refs(), state, newId))
         if (foldedInner) foldedInner.style.animation = 'none'
+      }
+
+      // ── Phase 0b1b: "2 · x" is the term 2x ────────────────────────────────
+      // A term can arrive as a product of a number and a label — 2 · x — from an
+      // expression tree the reveal loop cannot reduce, because the label has no
+      // value to reduce it with. Everything downstream that isolates an unknown
+      // works on a coefficient and a variable, so such a term stopped the solve
+      // dead. They are the same term written two ways; folding it here lets the
+      // division that follows do its ordinary job.
+      for (const side of ['left', 'right']) {
+        const arr = side === 'left' ? state.left : state.right
+        for (const t of [...arr]) {
+          const e = t.expr
+          if (!e || e.t !== 'bin' || e.op !== '*') continue
+          const pair = e.a.t === 'num' && e.b.t === 'label' ? [e.a, e.b]
+            : e.a.t === 'label' && e.b.t === 'num' ? [e.b, e.a]
+              : null
+          if (!pair) continue
+          const [n, lab] = pair
+          const signed = (t.sign === '-' ? -1 : 1) * n.v
+          const pos = arr.indexOf(t)
+          const newId = crypto.randomUUID()
+          state.remove(t.id)
+          state.insertAt(new MathObject({
+            id: newId, sign: signed < 0 ? '-' : '+', coefficient: Math.abs(signed),
+            variable: lab.name, degree: 1, color: t.color ?? null, decimalComma: t.decimalComma,
+          }), side, pos)
+          flushSync(() => setState(state.snapshot()))
+          // Same silent commit as the fold above it: the value on screen does not
+          // change, only how the term is stored, so it must not pop.
+          const inner = getCellInner(findWrapById(refs(), state, newId))
+          if (inner) inner.style.animation = 'none'
+        }
       }
 
       // ── Phase 0b2: an expr-tree term stuck as "label / number" ────────────
@@ -3040,11 +4871,47 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
             const argLabel = trigStuck.expr.arg.name
             const argColor = trigStuck.expr.arg.color
             await subStep()
+
+            // Show the OPERATION, not just its answer. A bare revealStep here
+            // faded 0.8 out and 53.13 in, which tells the reader nothing about
+            // where the angle came from — the sine simply turned into a number.
+            // So play the same beat the standalone eq-apply-inverse-trig plays:
+            // wrap BOTH sides in arcsin( … ), hold long enough to read it, and
+            // only then let arcsin(sin(θ)) collapse to θ and arcsin(0.8) to the
+            // angle. Same maths, same final state — the step is just visible now.
+            const LABEL  = `arc${trigName}(`
+            const opIds  = [crypto.randomUUID(), crypto.randomUUID(),
+                            crypto.randomUUID(), crypto.randomUUID()]
+            const mkOp   = (id, text) => new MathObject({
+              id, isOperator: true, text, sign: '+', coefficient: 0, variable: null, degree: 0,
+            })
+            // Lengths BEFORE the inserts — both arrays are live, and the closing
+            // paren has to land after the content, not after the opening one.
+            const trigLen = trigArr.length, numLen = otherArr2.length
+            state.insertAt(mkOp(opIds[0], LABEL), trigStuck.side,  0)
+            state.insertAt(mkOp(opIds[1], ')'),   trigStuck.side,  trigLen + 1)
+            state.insertAt(mkOp(opIds[2], LABEL), otherTerm2.side, 0)
+            state.insertAt(mkOp(opIds[3], ')'),   otherTerm2.side, numLen + 1)
+            flushSync(() => setState(state.snapshot()))
+
+            const opEls = opIds
+              .map(id => { const t = state.findById(id); return t ? getWrap(refs(), t.side, t.cellIndex) : null })
+              .filter(Boolean)
+            if (opEls.length) {
+              gsap.set(opEls, { opacity: 0 })
+              // eslint-disable-next-line no-await-in-loop
+              await gsap.to(opEls, { opacity: 1, duration: 0.35, ease: 'back.out(1.5)', stagger: 0.06 }).then()
+            }
+            // eslint-disable-next-line no-await-in-loop
+            await wait(0.9)
+
             // eslint-disable-next-line no-await-in-loop
             await revealStep(
-              () => [getCellInner(getWrap(refs(), trigStuck.side, trigStuck.cellIndex)),
+              () => [...opEls,
+                     getCellInner(getWrap(refs(), trigStuck.side, trigStuck.cellIndex)),
                      getCellInner(getWrap(refs(), otherTerm2.side, otherTerm2.cellIndex))],
               () => {
+                opIds.forEach(id => state.remove(id))
                 trigStuck.expr = { t: 'label', id: crypto.randomUUID(), name: argLabel, color: argColor }
                 otherTerm2.sign = angleDeg >= 0 ? '+' : '-'
                 otherTerm2.coefficient = Math.abs(angleDeg)
@@ -3117,6 +4984,13 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
         await subStep()
         // eslint-disable-next-line no-await-in-loop
         await runAction(sub, state, equationRef, setState, setUI, geoRef, graphRef, tableRef, setComments, textRef, speed, calcRef, arithRef, multRef, clockRef, numbersRef, mdasRef, kidRefs)
+        // A beat between mini-steps. This loop used to run them back to back,
+        // so the whole solve was paced only by whatever waits each action
+        // happened to contain internally — several have almost none, and those
+        // stretches went past far too fast to follow. One pause here paces the
+        // entire solve, and it still obeys a hurry like every other wait.
+        // eslint-disable-next-line no-await-in-loop
+        await wait(0.45)
       }
 
       // ── Highlight + pop the final result, in the reserved color ──────────
@@ -3134,14 +5008,20 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
           !t.variable && !t.isFraction && !t.factors && t.symbolicLabel === undefined &&
           (t.side === 'left' ? state.left : state.right).length === 1
         )
-        const rect = equationRef?.current?.getCellRects?.({ side: 'both' })?.[0]
         // Every cell in the equation turns blue — not just the result side —
         // so "x = 5" ends with BOTH "x" and "5" tinted, not just the answer.
         const allInners = resultTerm && [...state.left, ...state.right]
           .map(t => getCellInner(getWrap(refs(), t.side, t.cellIndex)))
           .filter(Boolean)
-        if (resultTerm && allInners.length && rect) {
+        if (resultTerm && allInners.length) {
           await subStep()
+          // Measured AFTER the gate, never before it. The gate parks until the
+          // reader clicks, and the equation can change while it waits — in the
+          // quadratic solve the label goes from "x" to "x₁" right there. A rect
+          // taken before the wait described the previous equation, so the ring
+          // was drawn to the old width and cut straight through the new label.
+          const rect = equationRef?.current?.getCellRects?.({ side: 'both' })?.[0]
+          if (!rect) break
           document.querySelectorAll('.final-result-highlight').forEach(el => el.remove())
           const box = document.createElement('div')
           box.className = 'final-result-highlight _anim-overlay'
@@ -3750,9 +5630,30 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 
+/** Every .term-wrap of a side, straight from the DOM.
+ *
+ * EquationDisplay empties its ref arrays during render and refills them when
+ * React re-attaches the ref callbacks. A render that starts and is thrown away
+ * leaves them empty, and then EVERY animation that looks a cell up here got
+ * null and quietly did nothing: replaceVariable collected no elements so the
+ * values swapped at full opacity with no fade out, applyInverseTrig had no
+ * positions to measure so its FLIP never moved anything, and revealStep read
+ * .style off a null and threw. The cells are in the DOM either way — the ref
+ * arrays are bookkeeping, not the truth — so read them from it when the
+ * bookkeeping is empty. Index order is the render order, the same order the
+ * ref callbacks fill. */
+function wrapsFromDom(side) {
+  const sideEl = document.querySelector(`.equation-side[data-side="${side}"]`)
+  return sideEl ? [...sideEl.querySelectorAll(':scope > .term-wrap')] : []
+}
+
+// Every id a removal step was given. A step written with one id still has
+// exactly one here, so nothing that predates this reads any differently.
+const idsOf = (action) => (Array.isArray(action.ids) && action.ids.length ? action.ids : [action.id])
+
 /** .term-wrap at [side][index] — the GSAP-animated flex item. */
 function getWrap(cellRefs, side, index) {
-  return cellRefs[side]?.[index] ?? null
+  return cellRefs[side]?.[index] ?? wrapsFromDom(side)[index] ?? null
 }
 
 /** .term-cell inside the wrapper — the visual box. A term whose WHOLE
@@ -3773,7 +5674,8 @@ function getDegreeInners(state, cellRefs, degree, side) {
 }
 
 function allWraps(cellRefs) {
-  return [...(cellRefs.left ?? []), ...(cellRefs.right ?? [])].filter(Boolean)
+  const fromRefs = [...(cellRefs.left ?? []), ...(cellRefs.right ?? [])].filter(Boolean)
+  return fromRefs.length ? fromRefs : [...wrapsFromDom('left'), ...wrapsFromDom('right')]
 }
 
 function allInners(cellRefs) {

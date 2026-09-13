@@ -24,19 +24,24 @@
 // it works" path, so no loop.
 
 import { FUNCS, LAYOUTS, FUNC_META, CLR } from './codec.js'
+import { resolveLayout, PANELS_FOR_LAYOUT } from '../data/panels.js'
 import { PALETTE } from '../engine/palette.js'
 
 // Which display panels each layout actually shows. A geometry step on a layout
 // with no geo panel is the class of error that produced a runtime crash.
+// Which panels a layout shows, keyed by layout NAME. Derived from panels.js —
+// the same table the app itself lays a page out with — instead of kept by hand
+// here. The hand-written version had no row for text-3d: geometry moved to the
+// Three display and that layout never got a legacy short code, so every page
+// asking for text + a shape was reported as an unknown layout AND skipped every
+// panel check below. Only the single-purpose displays, which have no panel
+// spec of their own, still need a row written out.
+const PANEL_KIND = { 0: 'text', 1: 'graph', 2: 'table', 3: 'equation', 4: 'geo', 5: 'geo' }
 const PANELS = {
-  sg: ['graph'],                sG: ['geo'],      s3: ['geo'],
-  sq: ['table'],                se: ['equation'], sc: ['calc'],
-  sT: ['text'],                 sm: ['mult'],     sk: ['clock'],
-  sn: ['numbers'],              sM: ['text'],
-  tg: ['text', 'graph'],        tG: ['text', 'geo'],
-  tq: ['text', 'table'],        te: ['text', 'equation'],
-  ge: ['graph', 'equation'],    Ge: ['geo', 'equation'],
-  qe: ['table', 'equation'],
+  'single-calc': ['calc'], 'single-mult': ['mult'], 'single-clock': ['clock'],
+  'single-numbers': ['numbers'], 'text-mdas': ['text'],
+  ...Object.fromEntries(Object.entries(PANELS_FOR_LAYOUT).map(
+    ([name, digits]) => [name, [...new Set(digits.map(d => PANEL_KIND[d]).filter(Boolean))]])),
 }
 
 // Panel a function needs, by compact-code prefix. Mirrors moduleForCode in
@@ -54,7 +59,10 @@ function panelForCode(code) {
 }
 
 // Codes that CREATE a referenceable shape, and the arg index holding its id.
-const SHAPE_CREATORS = { S2c: 0, S3c: 0, gp: 0 }
+// S2p and S2s make a shape as surely as S2c does — one from coordinates, the
+// other pinned to a shape that already exists. Leaving them out made every
+// step that referred to their id look like it pointed at nothing.
+const SHAPE_CREATORS = { S2c: 0, S2p: 0, S2s: 0, S3c: 0, gp: 0, gs: 0 }
 // Codes that REFERENCE a shape by id, and the arg index holding it.
 const SHAPE_REFS = {
   S2l: 0, S2a: 0, S2h: 0, S2E: 0, S2A: 0, S2m: 0, S2x: 0, S2f: 0, S2r: 0,
@@ -80,8 +88,12 @@ const COLOR_NAMES = new Set([...Object.keys(PALETTE), ...CLR, 'blue', 'teal', 'a
 // Layout may be given as a compact code (te) or a full name (text-equation);
 // exercise pages legitimately have none at all.
 const LAYOUT_NAMES = new Set(Object.values(LAYOUTS))
-const layoutCodeOf = (l) => (LAYOUTS[l] ? l
-  : Object.keys(LAYOUTS).find(k => LAYOUTS[k] === l) ?? null)
+// A page names its PANELS now ("04"), a compact code ("te"), or the full name.
+// All three answer with the name, which is what PANELS is keyed by.
+const layoutNameOf = (l) =>
+  LAYOUTS[l] ?? resolveLayout(l) ?? (LAYOUT_NAMES.has(l) ? l : null)
+
+const EA_PARTS = new Set(['', 'whole', 'coeff', 'var', 'int', 'sep', 'dec'])
 
 function defsFor(code) {
   const funcId = FUNCS[code]
@@ -203,8 +215,8 @@ export function repairLesson(compact) {
 
     // Exercise pages carry no layout; both the compact code and the full name
     // appear in the wild.
-    let curLayout = layoutCode ? layoutCodeOf(layoutCode) : null
-    if (layoutCode && !curLayout && !LAYOUT_NAMES.has(layoutCode)) {
+    let curLayout = layoutCode ? layoutNameOf(layoutCode) : null
+    if (layoutCode && !curLayout) {
       warnings.push(`p${pi}: unknown layout "${layoutCode}"`)
     }
 
@@ -233,6 +245,19 @@ export function repairLesson(compact) {
         fixed.push(`p${pi}s${si} ${code}: args were nested — unwrapped ${JSON.stringify(vals[0])}`)
         vals = vals[0]
       }
+      // eA takes SEVEN arguments and the note is the SIXTH: part sits between
+      // the cell range and the note, and the model keeps stepping over it — the
+      // note lands in part and the colour in text, so the step underlines
+      // nothing and writes a colour number under the equation. part only ever
+      // holds "", "whole", "coeff" or "var", so a part carrying a sentence is
+      // unambiguous: shift from there on one place right and put the empty part
+      // back. Reported as a fix, not a warning, because the intent is certain.
+      if (code === 'eA' && vals.length >= 5 && !EA_PARTS.has(String(vals[4]))) {
+        fixed.push(`p${pi}s${si} eA: part held ${JSON.stringify(vals[4])} — that is the note. ` +
+                   'Shifted it into text and left part empty.')
+        vals = [...vals.slice(0, 4), '', ...vals.slice(4)].slice(0, defs.length)
+      }
+
 
       // Arguments past the last input are dropped by expandStep without a
       // sound. That silence is how a documented signature can disagree with
@@ -290,7 +315,7 @@ export function repairLesson(compact) {
       // follow the CURRENT layout — not the one the page started on. Missing
       // this flagged every valid lesson that evolves its layout mid-page.
       if (code === 'sL' && vals[0]) {
-        curLayout = layoutCodeOf(String(vals[0])) ?? curLayout
+        curLayout = layoutNameOf(String(vals[0])) ?? curLayout
         return [code, ...vals]
       }
 

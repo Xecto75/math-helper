@@ -7,6 +7,11 @@
 const RATES = {
   'claude-haiku-4-5-20251001': { in: 1.00, out:  5.00 },
   'claude-sonnet-4-6':         { in: 3.00, out: 15.00 },
+  // Gemini 3 Flash introductory rate, in effect until 2026-12-31; it doubles
+  // to 1.50 / 7.50 on 2027-01-01. Left as one line to change on that date.
+  'gemini-3.7-flash':          { in: 0.75, out:  3.75 },
+  'gemini-3.6-flash':          { in: 1.50, out:  7.50 },
+  'gemini-3.5-flash':          { in: 0.50, out:  3.00 },
 }
 
 // An unpriced model bills at the most expensive rate we know rather than $0 —

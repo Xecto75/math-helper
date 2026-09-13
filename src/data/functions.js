@@ -24,7 +24,7 @@ export const CATEGORIES = [
       {
         id:          'eq-create',
         label:       'Create Equation',
-        description: 'Display an equation for the first time',
+        description: 'Display an equation for the first time. An exponent can be a letter or an expression (2^n, a_1 * r^(n-1)), a_1 is written as a₁, and terms separated by semicolons (3 ; 7 ; 11) are a list with no + between them.',
         status:      'ready',
         inputs: [
           {
@@ -132,11 +132,182 @@ export const CATEGORIES = [
         inputs:      [],
       },
       {
+        id:          'eq-term-op',
+        label:       'Transform One Term',
+        description: 'Rewrite a SINGLE term into an equal form, leaving the rest of the equation alone — this is not a move on the equation, it is a statement about one term, so both sides stay untouched and the value never changes. "n over 1" writes 6 as 6/1 so it has a denominator to work with; "amplify" multiplies a fraction\'s numerator and denominator by the same number, which is how two fractions are brought to a common denominator (6/1 amplified by 3 is 18/3).',
+        status:      'ready',
+        inputs: [
+          { id: 'side',  label: 'Side', type: 'select', default: 'left',
+            options: [{ value: 'left', label: 'Left of =' }, { value: 'right', label: 'Right of =' }] },
+          { id: 'index', label: 'Term index (0 = first of that side)', type: 'number', default: 0 },
+          { id: 'op',    label: 'Transformation', type: 'select', default: 'over',
+            options: [
+              { value: 'over',    label: 'Write as a fraction over 1 (6 → 6/1)' },
+              { value: 'amplify', label: 'Multiply numerator and denominator by k' },
+            ] },
+          { id: 'value', label: 'k (amplify only)', type: 'text', default: '' },
+        ],
+      },
+      {
+        id:          'eq-sci-expand',
+        label:       'Write Out Scientific Notation',
+        description: 'Turn a term written as m × 10^n into the plain number it stands for, by MOVING THE COMMA one place per beat while the exponent counts down — 24,56 × 10² becomes 245,6 then 2456. A zero is laid down whenever the comma runs off the end of the digits, and a negative exponent walks it the other way (24,56 × 10⁻² → 0,2456). Write the term as "24,56 * 10^2" (or "24,56 x 10^2") in Create Equation first. Set a target exponent to stop early instead — in either direction: 4,45 × 10⁴ with target 2 becomes 445 × 10², which is how two terms are put on the same power of ten before they are added.',
+        status:      'ready',
+        inputs: [
+          { id: 'side',  label: 'Side', type: 'select', default: 'left',
+            options: [{ value: 'left', label: 'Left of =' }, { value: 'right', label: 'Right of =' }] },
+          { id: 'index', label: 'Term index (0 = first of that side)', type: 'number', default: 0 },
+          { id: 'target', label: 'Stop at exponent (blank = 0, write it out in full)', type: 'text', default: '', placeholder: 'e.g. 2  →  4,45 × 10⁴ becomes 445 × 10²' },
+        ],
+      },
+      {
+        id:          'eq-factorial',
+        label:       'Expand a Factorial (n!)',
+        description: "Take a factorial apart the way it is defined, one factor per beat: 5! becomes 4!·5, then 3!·4·5, down to 1·2·3·4·5. Each beat peels one factor off the front and sets it down on the right, so the notation and what it stands for are on screen together. Write the factorial in Create Equation with a plain \"!\" — \"5!\" or \"5! = x\". Follow with Full Solve to multiply it out.",
+        status:      'ready',
+        inputs: [
+          { id: 'side',  label: 'Side', type: 'select', default: 'left',
+            options: [{ value: 'left', label: 'Left of =' }, { value: 'right', label: 'Right of =' }] },
+          { id: 'index', label: 'Term index (0 = first of that side)', type: 'number', default: 0 },
+        ],
+      },
+      {
+        id:          'eq-cross-multiply',
+        label:       'Rule of Three',
+        description: "The rule of three. Draws the CROSS over the equals sign of a proportion — each numerator to the other denominator, one line at a time, each carrying the × it stands for — and writes the working underneath in grey as each line lands: first a·d, then = b·c, then a last line that divides by whatever was multiplying the unknown. Then it STOPS: › works out the arithmetic and writes the answer underneath. Nothing on screen moves and the equation is not replaced. Write the unknown in |pipes| when it is a NUMERATOR (2/3 = |x|/12), or x/12 is read as the single term (1/12)x and there is no ratio left to cross; a denominator needs no pipes (2/3 = 4/x is fine).",
+        status:      'ready',
+        inputs: [
+          { id: 'equation', label: 'Proportion (blank = cross the equation already on screen)',
+            type: 'text', default: '2/3 = |x|/12', placeholder: '2/3 = |x|/12' },
+        ],
+      },
+      {
+        id:          'eq-annotate',
+        label:       'Annotate Part of the Equation',
+        description: 'Underline part of the equation and write a note under it — for a formula being EXPLAINED rather than solved (y = ax + b: what a is, what b is). Cells are counted per side from 0, so in "y = ax + b" the right side is 0 = ax and 1 = b. "To" blank annotates that one cell; give it a bigger index to underline a run of them. "Part" narrows it to the coefficient or the variable inside a cell — the a or the x of ax. Overlapping annotations stack on their own lines automatically.',
+        status:      'ready',
+        inputs: [
+          { id: 'annotId', label: 'Annotation ID', type: 'text', default: 'a1' },
+          { id: 'side',    label: 'Side', type: 'select', default: 'right',
+            options: [{ value: 'right', label: 'Right of =' }, { value: 'left', label: 'Left of =' }] },
+          { id: 'from',    label: 'First cell (0 = first term of that side)', type: 'number', default: 0 },
+          { id: 'to',      label: 'Last cell (blank = just the first)', type: 'text', default: '' },
+          { id: 'part',    label: 'Part of the cell', type: 'select', default: 'whole',
+            options: [
+              { value: 'whole', label: 'The whole term' },
+              { value: 'coeff', label: 'Coefficient only (the a of ax)' },
+              { value: 'var',   label: 'Variable only (the x of ax)' },
+              { value: 'int',   label: 'Whole part of a decimal (the 35 of 35,234)' },
+              { value: 'sep',   label: 'Decimal separator only (the comma)' },
+              { value: 'dec',   label: 'Decimal part (the 234 of 35,234)' },
+            ] },
+          { id: 'text',    label: 'Note', type: 'text', default: 'la pente' },
+          // Left blank on purpose: 'blue' is not a PALETTE name, so it fell through
+          // resolveColor as the CSS keyword and painted #0000FF. Empty means the
+          // equation panel chooses — the reserved blue when this is the only
+          // annotation, a lesson colour when it has to stand apart from another.
+          { id: 'color',   label: 'Color (blank = automatic)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id:          'eq-annotate-clear',
+        label:       'Remove Annotation(s)',
+        description: 'Fade one annotation out by its ID, or all of them when the ID is left blank. Creating a new equation clears them on its own — the cells they point at are renumbered.',
+        status:      'ready',
+        inputs: [
+          { id: 'annotId', label: 'Annotation ID (blank = all)', type: 'text', default: '' },
+        ],
+      },
+      {
+        id:          'eq-sequence',
+        label:       'Generate a Sequence',
+        description: 'Write out a sequence from its first term and its step, computed instead of typed: arithmetic adds d each time (3, 7, 11, 15 with d = 4), geometric multiplies by r (2, 6, 18, 54 with r = 3). The terms go up as a list, with "…" after them if you want, and the arrows between them carry the step on their own (+4, ×3). Points on the graph also places (n, aₙ) for every term on a graph panel of the same page, starting at rank n = First rank.',
+        status:      'ready',
+        inputs: [
+          { id: 'kind',   label: 'Kind', type: 'select', default: 'arithmetic',
+            options: [{ value: 'arithmetic', label: 'Arithmetic (+ d)' }, { value: 'geometric', label: 'Geometric (× r)' }] },
+          { id: 'first',  label: 'First term', type: 'text', default: '3' },
+          { id: 'step',   label: 'Step (d or r)', type: 'text', default: '4' },
+          { id: 'count',  label: 'Number of terms', type: 'number', default: 5, min: 2, max: 12 },
+          { id: 'dots',   label: 'Add "…" at the end', type: 'select', default: 'yes',
+            options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] },
+          { id: 'arrows', label: 'Arrows', type: 'select', default: 'above',
+            options: [{ value: 'above', label: 'Above the terms' }, { value: 'below', label: 'Below the terms' }, { value: 'none', label: 'None' }] },
+          { id: 'points', label: 'Points on the graph', type: 'select', default: 'no',
+            options: [{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes: (n, aₙ) for every term' }] },
+          { id: 'rank',   label: 'First rank n', type: 'number', default: 1 },
+          { id: 'color',  label: 'Color (blank = reserved blue)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id:          'eq-arrow',
+        label:       'Arrow Between Two Terms',
+        description: 'Draw a curved arrow from one term to another with a note at its middle: how the terms of a sequence are linked, 3 → 7 → 11 with each hop marked "+4", and one long arrow under the row for "+n × 4". Write the sequence in Create Equation as a LIST, items separated by semicolons: "u_0 ; u_1 ; u_2 ; u_3 ; … ; u_n" or "3 ; 7 ; 11 ; 15". No + is drawn between the items, u_0 is written as u₀, and "…" (or "...") is an item of its own that an arrow can reach. Cells are counted from 0, left to right. The note can hold math: "$+n \\times r$".',
+        status:      'ready',
+        inputs: [
+          { id: 'arrowId', label: 'Arrow ID', type: 'text', default: 'f1' },
+          { id: 'side',    label: 'Side', type: 'select', default: 'left',
+            options: [{ value: 'left', label: 'Left of = (or a line with no =)' }, { value: 'right', label: 'Right of =' }] },
+          { id: 'from',    label: 'From cell (0 = first term)', type: 'number', default: 0 },
+          { id: 'to',      label: 'To cell', type: 'number', default: 1 },
+          { id: 'text',    label: 'Note at the middle', type: 'text', default: '+r' },
+          { id: 'place',   label: 'Where', type: 'select', default: 'above',
+            options: [{ value: 'above', label: 'Above the terms' }, { value: 'below', label: 'Below the terms' }] },
+          { id: 'color',   label: 'Color (blank = reserved blue)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id:          'eq-arrow-chain',
+        label:       'Arrows Between Every Term',
+        description: 'Link a whole sequence in one step: one arrow from each term to the next, all with the same note ("+4", "×2"), drawn left to right. First and Last narrow it to part of the row; Last blank runs to the last term. Each arrow gets the ID plus its position (hop-0, hop-1, …), so one can still be removed on its own. Write the sequence as a list first: "3 ; 7 ; 11 ; 15" or "u_0 ; u_1 ; … ; u_n".',
+        status:      'ready',
+        inputs: [
+          { id: 'arrowId', label: 'ID prefix', type: 'text', default: 'hop' },
+          { id: 'side',    label: 'Side', type: 'select', default: 'left',
+            options: [{ value: 'left', label: 'Left of = (or a line with no =)' }, { value: 'right', label: 'Right of =' }] },
+          { id: 'from',    label: 'First cell (0 = first term)', type: 'number', default: 0 },
+          { id: 'to',      label: 'Last cell (blank = the last term)', type: 'text', default: '' },
+          { id: 'text',    label: 'Note on every arrow', type: 'text', default: '+r' },
+          { id: 'place',   label: 'Where', type: 'select', default: 'above',
+            options: [{ value: 'above', label: 'Above the terms' }, { value: 'below', label: 'Below the terms' }] },
+          { id: 'color',   label: 'Color (blank = reserved blue)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id:          'eq-arrow-clear',
+        label:       'Remove Arrow(s)',
+        description: 'Fade one arrow out by its ID, or all of them when the ID is left blank. Creating a new equation clears them on its own, since the cells they join are renumbered.',
+        status:      'ready',
+        inputs: [
+          { id: 'arrowId', label: 'Arrow ID (blank = all)', type: 'text', default: '' },
+        ],
+      },
+      {
         id:          'quadratic-solve',
         label:       'Quadratic Solve',
         description: 'Solve ax² + bx + c = 0 step-by-step: highlights a, b, c, shows the quadratic formula with substituted values, discriminant, and both solutions.',
         status:      'ready',
         inputs:      [],
+      },
+      {
+        id:          'eq-polynomial-divide',
+        label:       'Polynomial Long Division',
+        description: 'Divide one polynomial by another and lay it out as the school tableau — dividend on the left, divisor and quotient on the right. Takes over the equation panel: a page shows an equation or a division, and either replaces the other. Draws the setup, then waits — each click brings down one subtraction, to the end.',
+        status:      'ready',
+        inputs: [
+          {
+            id: 'poly', label: 'Polynomial to divide', type: 'text',
+            default: '8x^3 - 4x^2 + 8x - 12',
+            placeholder: 'e.g. 8x^3 - 4x^2 + 8x - 12',
+            help: 'One variable. Write exponents with ^ and separate terms with + / −. Gaps are fine: x^3 - 8 works.',
+          },
+          {
+            id: 'divisor', label: 'Divide by', type: 'text',
+            default: 'x - 1',
+            placeholder: 'e.g. x - 1',
+            help: 'Same variable as above, any degree. A remainder that does not come out to zero is shown as one.',
+          },
+        ],
       },
       {
         id:          'eq-racine-des-bords',
@@ -188,22 +359,8 @@ export const CATEGORIES = [
     defaultOpen: false,
     functions: [
       {
-        id: 'table-create', label: 'Create Table',
-        description: 'Simplest way to make a table — give one 2D array, size is auto-detected (no need to also specify rows/cols). Any cell is referenceable elsewhere via [gridId]r<row>c<col>, 0-indexed (see eq-replace-variable), including after table-change-value edits it.',
-        status: 'ready', useTable: true,
-        inputs: [
-          { id: 'data', label: 'Data (2D array)', type: 'text',
-            default: '[[2,2,3],[5,5,6],[4,4,4]]',
-            placeholder: '[[2,2,3],[5,5,6],[4,4,4]]' },
-          { id: 'headerRow', label: 'First row is a header', type: 'select', default: 'false',
-            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
-          { id: 'gridId', label: 'Table ID', type: 'text', default: 'table1' },
-          { id: 'color',  label: 'Line color (optional)', type: 'color-name', default: '' },
-        ],
-      },
-      {
         id: 'tab-create-grid', label: 'createGrid',
-        description: 'Create an animated grid with values',
+        description: 'Create an animated grid with values. headerRow styles the top row as headings, headerCol the left column — turn both on for a table that compares two axes (a times table, a pair of dice). Any cell is referenceable elsewhere via [gridId]r<row>c<col>, 0-indexed.',
         status: 'ready', useTable: true,
         inputs: [
           { id: 'gridId',    label: 'Grid ID',  type: 'text',   default: 'grid1', placeholder: 'grid1' },
@@ -211,10 +368,13 @@ export const CATEGORIES = [
           { id: 'rows',      label: 'Rows',     type: 'number', default: 4,   min: 1, max: 20 },
           { id: 'headerRow', label: 'Header row', type: 'select', default: 'true',
             options: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }] },
+          { id: 'headerCol', label: 'Header column', type: 'select', default: 'false',
+            options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
           { id: 'values',    label: 'Values (rows by |, cols by ,)',
             type: 'text',
             default: 'Name,Age,Score|Alice,25,95|Bob,30,87|Carol,22,91',
             placeholder: 'A,B,C|1,2,3|4,5,6' },
+          { id: 'color', label: 'Line color (optional)', type: 'color-name', default: '' },
         ],
       },
       {
@@ -306,6 +466,119 @@ export const CATEGORIES = [
     ],
   },
 
+  // ── Charts ────────────────────────────────────────────────────────────────
+  // Same panel as Tables, nothing else in common: a table is a grid you fill
+  // in, a chart is a quantity you draw. A page shows one or the other.
+  {
+    id: 'charts',
+    label: 'Charts',
+    defaultOpen: false,
+    functions: [
+      {
+        id: 'chart-pie', label: 'Fraction Circle (pie)',
+        description: 'A circle cut into `den` equal slices with `num` of them filled, and the fraction written under it as plain text. The numerator MAY be bigger than the denominator: 8/3 draws two whole circles and two thirds of a third. The value can be changed later with chart-pie-set, which sweeps to the new one.',
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'chartId', label: 'Chart ID', type: 'text',   default: 'pie1' },
+          { id: 'num',     label: 'Numerator (may exceed the denominator)', type: 'number', default: 3 },
+          { id: 'den',     label: 'Denominator (total slices)', type: 'number', default: 8, min: 1 },
+          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
+          { id: 'label',   label: 'Label above (optional)', type: 'text', default: '' },
+          { id: 'mode',    label: 'Written as', type: 'select', default: 'fraction',
+            options: [
+              { value: 'fraction', label: 'Fraction (3/8)' },
+              { value: 'percent',  label: 'Percentage (37.5%)' },
+              { value: 'decimal',  label: 'Decimal (0.375)' },
+            ] },
+        ],
+      },
+      {
+        id: 'chart-pie-set', label: 'Change Fraction Value',
+        description: 'Sweep an existing fraction circle to a new value. Leave a field blank to keep it — blank denominator means "same slices, different count filled". The fill animates through the in-between values, so 3/8 → 5/8 is seen filling.',
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'chartId', label: 'Chart ID', type: 'text', default: 'pie1' },
+          { id: 'num',     label: 'New numerator (blank = keep)', type: 'text', default: '5' },
+          { id: 'den',     label: 'New denominator (blank = keep)', type: 'text', default: '' },
+        ],
+      },
+      {
+        id: 'chart-pie-mode', label: 'Fraction ⇄ Percentage ⇄ Decimal',
+        description: 'Rewrite an existing fraction circle as a percentage, a decimal, or back to a fraction. The drawing does not move — only the number under it is rewritten, cross-faded in place — because it is the same quantity in all three. "toggle" walks the cycle fraction → percentage → decimal → fraction.',
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'chartId', label: 'Chart ID', type: 'text', default: 'pie1' },
+          { id: 'mode',    label: 'Show as', type: 'select', default: 'percent',
+            options: [
+              { value: 'percent',  label: 'Percentage' },
+              { value: 'fraction', label: 'Fraction' },
+              { value: 'decimal',  label: 'Decimal' },
+              { value: 'toggle',   label: 'Toggle' },
+            ] },
+        ],
+      },
+      {
+        id:          'chart-number-sets',
+        label:       'Number Sets (nested)',
+        description: 'The number sets drawn inside one another — ℝ ⊃ ℚ ⊃ 𝔻 ⊃ ℤ ⊃ ℕ — with a few example numbers sitting in the band that belongs to each. The nesting is the point: it shows that every natural number is also an integer, every integer also a decimal, which a list of definitions never does. Leave Sets blank for the standard five; give it one row per ring, outermost first, as "symbol|name|example,example".',
+        status:      'ready', useTable: true,
+        inputs: [
+          { id: 'chartId', label: 'Chart ID', type: 'text', default: 'sets1' },
+          { id: 'sets',    label: 'Sets (blank = ℝ ℚ 𝔻 ℤ ℕ; one per line)', type: 'textarea', default: '' },
+        ],
+      },
+      {
+        id: 'chart-tree', label: 'Possibility Tree',
+        description: "A possibility tree: one column per stage of the experiment, one path per outcome, and the complete outcomes listed in a last column. Counting the leaves IS the multiplication rule — three coins give 2·2·2 = 8 — which a list of eight strings never shows. Outcomes are comma separated. For stages that differ, separate them with \"|\": \"P,F | 1,2,3,4,5,6\" is a coin then a die. With no \"|\" the same outcomes are repeated Stages times. Any number of outcomes per stage, not just two.",
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'stages', label: 'Outcomes per stage', type: 'text', default: 'P,F', placeholder: 'P,F   ·   P,F | 1,2,3,4,5,6' },
+          { id: 'count', label: 'Stages (when they are all the same)', type: 'number', default: 3 },
+          { id: 'headers', label: 'Column titles (optional)', type: 'text', default: '', placeholder: '1re pièce, 2e pièce, 3e pièce' },
+          { id: 'results', label: 'Results column', type: 'select', default: '1',
+            options: [{ value: '1', label: 'Show' }, { value: '0', label: 'Hide' }] },
+          { id: 'chartId', label: 'Chart ID', type: 'text', default: 'tree1' },
+        ],
+      },
+      {
+        id: 'chart-tree-path', label: 'Tree — Follow One Outcome',
+        description: "Follow ONE outcome through an existing tree, branch by branch — the branches on the path light up as they are walked and everything else dims. Write the outcome the way it reads in the results column (\"PFP\"), or with separators if the labels are words (\"rouge,bleu\"). An empty path clears the highlight and puts every branch back.",
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'path', label: 'Outcome', type: 'text', default: 'PFP', placeholder: 'PFP' },
+          { id: 'chartId', label: 'Chart ID', type: 'text', default: 'tree1' },
+        ],
+      },
+      {
+        id: 'chart-venn', label: 'Venn Diagram',
+        description: 'A Venn diagram of 2 or 3 sets inside a universe box. It draws the diagram EMPTY — shade regions with Venn Highlight, one step per region. More than 3 is not possible: four circles cannot give every combination of memberships its own region.',
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'sets', label: 'Set names', type: 'text', default: 'A,B', placeholder: 'A,B  ·  A,B,C' },
+          { id: 'chartId', label: 'Chart ID', type: 'text', default: 'venn1' },
+        ],
+      },
+      {
+        id: 'chart-venn-highlight', label: 'Venn Highlight',
+        description: "Shade the region an expression names: A∩B, A∪B, A', A∩B', (A∪B)', A∩B∩C… Write ∩ or &, ∪ or U, ' for the complement, () to group. The region already shaded cross-fades into the new one, so several of these on one diagram walk through the cases. An empty expression clears the shading.",
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'expr', label: 'Region', type: 'text', default: 'A∩B', placeholder: "A∩B · A∪B · A' · (A∪B)'" },
+          { id: 'color', label: 'Color (optional)', type: 'color-name', default: '' },
+          { id: 'chartId', label: 'Chart ID', type: 'text', default: 'venn1' },
+        ],
+      },
+      {
+        id: 'chart-remove', label: 'Remove Chart',
+        description: 'Fade a chart out and drop it.',
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'chartId', label: 'Chart ID — "a|b" for several', type: 'text', default: 'pie1' },
+        ],
+      },
+    ],
+  },
+
   // ── Graphiques ────────────────────────────────────────────────────────────
   // Desmos graphing engine functions — each independently testable.
   {
@@ -316,10 +589,10 @@ export const CATEGORIES = [
       {
         id: 'graph-plot-function',
         label: 'plotFunction',
-        description: 'Plot f(x) on the graph — label "f(x) = …" (or g/h/…) shown automatically unless hidden. Wrap a variable in |pipes| (e.g. |a|x+|b|) to turn it into a slider. Its expression is reusable elsewhere via [id]expr (text, e.g. "f(x) = [f1]expr" in a text-create).',
+        description: 'Plot f(x) on the graph — label "f(x) = …" (or g/h/…) shown automatically unless hidden. Wrap a variable in |pipes| (e.g. |a|x+|b|) to turn it into a slider. Its expression is reusable elsewhere via [id]expr (text, e.g. "f(x) = [f1]expr" in a text-create). An inequality ("x > -2", "2x - y >= 3") plots as a shaded region instead of a curve — dashed boundary when strict, solid when it includes equality. floor(x) is the step (greatest-integer) function, so "|a|*floor(|b|*(x-|h|))+|k|" draws the staircase with a slider on each parameter; ceil and round work the same way. Restrict a curve to part of the line with \\{ \\} — "-x\\{x<-5\\}" draws y = -x only where x < -5, and "\\{x<-5:-x,x<=0:1,x^2\\}" is a whole piecewise function in one step.',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'expr', label: 'f(x)', type: 'text', default: 'x^2 - 2*x - 1', placeholder: 'e.g.: x^2 + 1' },
+          { id: 'expr', label: 'f(x)', type: 'text', default: 'x^2 - 2*x - 1', placeholder: 'e.g.: x^2 + 1  ·  x > -2  ·  floor(x)' },
           { id: 'id',   label: 'ID (optional)', type: 'text', default: '', placeholder: 'auto' },
           { id: 'hideLabel', label: 'Hide label', type: 'select', default: '0',
             options: [
@@ -370,9 +643,20 @@ export const CATEGORIES = [
           { id: 'x', label: 'x', type: 'text', default: '2', placeholder: '2  or  sqrt(3)/2  or  pi/4' },
           { id: 'y', label: 'y', type: 'text', default: '3', placeholder: '-sqrt(3)/2  or  pi  etc.' },
           { id: 'id',         label: 'Point ID (blank = auto)', type: 'text', default: '', placeholder: 'e.g. pA' },
-          { id: 'funcId',     label: 'Color from func (optional)', type: 'text', default: '', placeholder: 'e.g. f → curve color, darker' },
+          { id: 'funcId',     label: 'Color from func (optional)', type: 'text', default: '', placeholder: 'e.g. f → same color as that curve' },
+          { id: 'color',      label: 'Color (optional)', type: 'color-name', default: '' },
           { id: 'label',      label: 'Label (| = new line)', type: 'text', default: '', placeholder: 'e.g. Vertex|(2, -1)' },
           { id: 'showCoords', label: 'Show coords outside', type: 'text', default: 'false', placeholder: 'true / false' },
+          { id: 'style', label: 'Point style', type: 'select', default: 'filled',
+            options: [
+              { value: 'filled', label: 'Filled \u25cf (default)' },
+              { value: 'open',   label: 'Open \u25cb \u2014 endpoint NOT included' },
+            ] },
+          { id: 'hideLabel', label: 'Hide label', type: 'select', default: '0',
+            options: [
+              { value: '0', label: 'Show (default)' },
+              { value: '1', label: 'Hide \u2014 bare dot' },
+            ] },
         ],
       },
       {
@@ -423,7 +707,7 @@ export const CATEGORIES = [
       {
         id: 'graph-add-segment',
         label: 'addSegment',
-        description: 'Draw a FINITE line segment between two points (not an infinite line). Reusable elsewhere via [id]x1/[id]y1/[id]x2/[id]y2/[id]len (see eq-replace-variable).',
+        description: 'Draw a FINITE line segment between two points (not an infinite line). Reusable elsewhere via [id]x1/[id]y1/[id]x2/[id]y2/[id]len (see eq-replace-variable). Set Arrow to draw a VECTOR (arrow at the end) or a both-ends measure arrow. A Name is written beside its middle, and a vector\'s name gets its arrow on top (AB with → over it). Using the same ID again changes that segment in place: new ends slide there, a new name simply replaces the old one.',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'x1', label: 'x1', type: 'number', default: 0 },
@@ -432,6 +716,13 @@ export const CATEGORIES = [
           { id: 'y2', label: 'y2', type: 'number', default: 0 },
           { id: 'color', label: 'Color (optional)', type: 'color-name', default: '' },
           { id: 'id', label: 'ID', type: 'text', default: 'seg1' },
+          { id: 'arrow', label: 'Arrow', type: 'select', default: 'none',
+            options: [
+              { value: 'none', label: 'None (segment)' },
+              { value: 'end',  label: 'At the end (vector)' },
+              { value: 'both', label: 'Both ends' },
+            ] },
+          { id: 'name', label: 'Name (optional: u, AB, u_1)', type: 'text', default: '' },
         ],
       },
       {
@@ -572,11 +863,11 @@ export const CATEGORIES = [
       {
         id: 'graph-show-projection',
         label: 'showProjection',
-        description: 'Draw dashed projection lines from an existing point (created with addPoint) to both axes',
+        description: 'Draw dashed projection lines from an existing point (created with addPoint) to both axes. Given a VECTOR instead (the ID of an addSegment drawn with an arrow), it draws the vector\'s components: a dashed Δx leg from the tail, then a Δy leg up to the tip, labelled "Δx = 4" and "Δy = 3" when values are shown.',
         status: 'ready', useGraph: true,
         inputs: [
-          { id: 'pointId',    label: 'Point ID', type: 'text', default: '', placeholder: 'same ID used in addPoint' },
-          { id: 'showValues', label: 'Show values on axes', type: 'text', default: 'false', placeholder: 'true / false' },
+          { id: 'pointId',    label: 'Point or vector ID', type: 'text', default: '', placeholder: 'ID used in addPoint or addSegment' },
+          { id: 'showValues', label: 'Show values (x and y on the axes, or Δx and Δy on a vector)', type: 'text', default: 'false', placeholder: 'true / false' },
         ],
       },
       {
@@ -632,8 +923,27 @@ export const CATEGORIES = [
           { id: 'by', label: 'B y (vertex)', type: 'number', default: 0 },
           { id: 'cx', label: 'C x', type: 'number', default: 3 },
           { id: 'cy', label: 'C y', type: 'number', default: 4 },
-          { id: 'color', label: 'Color', type: 'color-name', default: 'yellow', placeholder: 'yellow / #hex' },
+          { id: 'color', label: 'Color', type: 'color-name', default: '', placeholder: 'blue (default) / #hex' },
         ],
+      },
+      {
+        id: 'graph-angle-between',
+        label: 'angleBetween',
+        description: 'Mark the angle between two segments or vectors, by their IDs — the arc sits on the endpoint they share (two vectors from the origin meet there), or where their lines cross if they never touch. Auto square if 90°.',
+        status: 'ready', useGraph: true,
+        inputs: [
+          { id: 'a', label: 'Segment / vector 1', type: 'text', default: 'seg1' },
+          { id: 'b', label: 'Segment / vector 2', type: 'text', default: 'seg2' },
+          { id: 'color', label: 'Color', type: 'color-name', default: '', placeholder: 'blue (default) / #hex' },
+          { id: 'id', label: 'ID', type: 'text', default: 'ang1' },
+        ],
+      },
+      {
+        id: 'graph-remove-angle',
+        label: 'removeAngle',
+        description: 'Remove an angle mark by its ID',
+        status: 'ready', useGraph: true,
+        inputs: [{ id: 'id', label: 'ID', type: 'text', default: 'ang1' }],
       },
       {
         id: 'graph-transform-function',
@@ -736,7 +1046,7 @@ export const CATEGORIES = [
         useText: true,
         description: 'Remove an entire text box',
         inputs: [
-          { id: 'boxId', label: 'Box ID', type: 'text', default: 'box1' },
+          { id: 'boxId', label: 'Box ID — "a|b" for several', type: 'text', default: 'box1' },
         ],
       },
       {
@@ -875,7 +1185,7 @@ export const CATEGORIES = [
         useAll: true,
         description: 'Fade out a single comment by its ID, leaving every other comment on screen — needs an ID set when the comment was created',
         inputs: [
-          { id: 'cmtId', label: 'Comment ID', type: 'text', default: '', placeholder: 'ID set when created' },
+          { id: 'cmtId', label: 'Comment ID — "a|b" for several', type: 'text', default: '', placeholder: 'ID set when created' },
         ],
       },
       {
@@ -1080,9 +1390,11 @@ export const CATEGORIES = [
               { value: 'right-triangle',  label: 'Right Triangle' },
               { value: 'rectangle',       label: 'Rectangle' },
               { value: 'square',          label: 'Square' },
-              { value: 'circle',          label: 'Circle' },
+              { value: 'circle',          label: 'Circle / sector (b = degrees)' },
               { value: 'parallelogram',   label: 'Parallelogram' },
               { value: 'trapeze',         label: 'Trapezoid' },
+              { value: 'trapeze-right',   label: 'Right Trapezoid' },
+              { value: 'rhombus',         label: 'Rhombus (diagonals)' },
               { value: 'pentagon',        label: 'Pentagon' },
               { value: 'hexagon',         label: 'Hexagon' },
               { value: 'octagon',         label: 'Octagon' },
@@ -1094,6 +1406,37 @@ export const CATEGORIES = [
           { id: 'b',     label: 'Side 2 / Height (optional)', type: 'number', default: '' },
           { id: 'c',     label: 'Side 3 (optional)',          type: 'number', default: '' },
           { id: 'color', label: 'Color', type: 'color-name', default: 'blue' },
+        ],
+      },
+      {
+        id: 'geo3d-polygon-points', label: 'Polygon from Points',
+        description: 'A shape given by its corners instead of a type and side lengths — for the figure a problem actually draws, which is usually nobody\'s named shape. Points are "x,y;x,y;…" in order, not closed. 2 points = segment, 3+ = polygon.',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'poly1' },
+          { id: 'points',  label: 'Corners (x,y;x,y;…)', type: 'text', default: '0,0;4,0;2,3.46', placeholder: '0,0;4,0;2,3.46' },
+          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id: 'geo3d-snap-shape', label: 'Snap Shape onto Another',
+        description: 'Build a shape from points ON an existing shape — a triangle cut inside a triangle, a median, a segment. Anchors: vN = corner N · eN@0.4 = 40% along edge N · eN:7.2 = 7.2 units along edge N (edge N runs from corner N to corner N+1). 2 anchors = segment, 3+ = polygon.',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'shapeId',  label: 'New shape ID', type: 'text', default: 'inner' },
+          { id: 'parentId', label: 'Snap onto (shape ID)', type: 'text', default: 'big' },
+          { id: 'anchors',  label: 'Anchors (comma-separated)', type: 'text', default: 'v2,e1:7.2,e2:5', placeholder: 'v2,e1:7.2,e2:5' },
+          { id: 'color',    label: 'Color (optional)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id: 'geo3d-name-vertices', label: 'Name Corners',
+        description: 'Put letters on the CORNERS (A, B, C…) instead of the edges. Blank or "-" skips a corner — use it where two shapes meet so the shared corner is named once.',
+        status: 'ready', use3D: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'big' },
+          { id: 'names',   label: 'Names (comma-separated, one per corner)', type: 'text', default: 'A,B,C', placeholder: 'A,B,C   or   -,D,E' },
+          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
         ],
       },
       {
@@ -1282,7 +1625,7 @@ export const CATEGORIES = [
         description: 'Draw a polygon or circle from side lengths / dimensions',
         status: 'legacy', useGeo: true,
         inputs: [
-          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1', placeholder: 'shape1' },
+          { id: 'shapeId', label: 'Shape ID — "a|b" for several', type: 'text', default: 'shape1', placeholder: 'shape1' },
           { id: 'shape-type', label: 'Type', type: 'select', default: 'triangle',
             options: [
               { value: 'triangle',       label: 'Triangle' },
@@ -1305,6 +1648,28 @@ export const CATEGORIES = [
             options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
           { id: 'flipY', label: 'Flip Y', type: 'select', default: 'false',
             options: [{ value: 'false', label: 'No' }, { value: 'true', label: 'Yes' }] },
+        ],
+      },
+      {
+        id: 'geo-snap-shape', label: 'Snap Shape onto Another (legacy SVG)',
+        description: 'Build a shape from points ON an existing shape — a triangle cut inside a triangle, a median, a segment. Anchors: vN = corner N · eN@0.4 = 40% along edge N · eN:7.2 = 7.2 units along edge N (edge N runs from corner N to corner N+1). 2 anchors = segment, 3+ = polygon.',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId',  label: 'New shape ID',         type: 'text', default: 'inner' },
+          { id: 'parentId', label: 'Snap onto (shape ID)', type: 'text', default: 'big' },
+          { id: 'anchors',  label: 'Anchors (comma-separated)', type: 'text', default: 'v2,e1:7.2,e2:5', placeholder: 'v2,e1:7.2,e2:5' },
+          { id: 'fillColor',   label: 'Fill color (optional)',   type: 'color-name', default: '' },
+          { id: 'borderColor', label: 'Border color (optional)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id: 'geo-name-vertices', label: 'Name Corners (legacy SVG)',
+        description: 'Put letters on the CORNERS (A, B, C…) instead of the edges. Blank or '-' skips a corner — use it where two shapes meet so the shared corner is named once.',
+        status: 'legacy', useGeo: true,
+        inputs: [
+          { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'big' },
+          { id: 'names',   label: 'Names (comma-separated, one per corner)', type: 'text', default: 'A,B,C', placeholder: 'A,B,C   or   -,D,E' },
+          { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
         ],
       },
       {
@@ -1335,11 +1700,11 @@ export const CATEGORIES = [
       },
       {
         id: 'geo-label-sides', label: 'Label Sides (legacy SVG)',
-        description: 'Label every side — blank or "a=" auto-fills the computed length',
+        description: 'Label every side — blank or "a=" auto-fills the computed length, "-" leaves the side unlabelled. Entries are comma-separated; put ONE semicolon in the string to switch the whole thing to semicolons, which is how you write a French decimal ("9,24 cm;-;-").',
         status: 'legacy', useGeo: true,
         inputs: [
           { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'shape1' },
-          { id: 'labels',  label: 'Labels (comma-separated, blank = length only)',
+          { id: 'labels',  label: 'Labels (comma- or semicolon-separated; blank = length, "-" = none)',
             type: 'text', default: 'a=,b=,c=', placeholder: 'a=,b=,c=' },
         ],
       },

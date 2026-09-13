@@ -94,18 +94,123 @@ export function extractRichLabels(rawInput) {
   return [...new Set([...rawInput.matchAll(/\|([^|]+)\|/g)].map(m => m[1].trim()))]
 }
 
+// ── Lists and subscripts ─────────────────────────────────────────────────────
+// "3 ; 7 ; 11 ; 15" is a LIST: the terms of a sequence side by side, with
+// nothing between them to add. Each item is parsed on its own and its first
+// term is marked, so the panel draws a gap there instead of a +. The separator
+// is the semicolon because the comma is taken: here it is the decimal point.
+// "…" (or "...") standing alone as an item is the "and so on" of a sequence —
+// written on the line, and still a cell an arrow can reach.
+function splitTopLevel(str, sep) {
+  const out = []
+  let cur = '', depth = 0
+  for (const c of str) {
+    if (c === '(' || c === '[' || c === '{') depth++
+    else if (c === ')' || c === ']' || c === '}') depth--
+    if (c === sep && depth === 0) { out.push(cur); cur = ''; continue }
+    cur += c
+  }
+  out.push(cur)
+  return out
+}
+
+function parseRichList(str) {
+  const items = splitTopLevel(str, ';')
+  if (items.length < 2) return parseRichSide(str)
+  const terms = []
+  for (const item of items) {
+    const s = item.trim()
+    if (!s) continue
+    const first = terms.length
+    if (s === '…' || s === '...') {
+      terms.push({ isOperator: true, text: '…', sign: '+', coefficient: 0, variable: null, degree: 0 })
+    } else {
+      terms.push(...parseRichSide(s))
+    }
+    if (terms.length > first) terms[first].listJoin = true
+  }
+  return terms
+}
+
+// u_0, u_n, u_{n+1}: the index of a term, typed the only way a keyboard can and
+// drawn as the subscript it is. Left exactly as typed when any character of it
+// has no subscript form, rather than half converted.
+const SUBSCRIPT = {
+  0: '₀', 1: '₁', 2: '₂', 3: '₃', 4: '₄', 5: '₅', 6: '₆', 7: '₇', 8: '₈', 9: '₉',
+  '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎',
+  a: 'ₐ', e: 'ₑ', h: 'ₕ', i: 'ᵢ', j: 'ⱼ', k: 'ₖ', l: 'ₗ', m: 'ₘ', n: 'ₙ', o: 'ₒ',
+  p: 'ₚ', r: 'ᵣ', s: 'ₛ', t: 'ₜ', u: 'ᵤ', v: 'ᵥ', x: 'ₓ',
+}
+export function toSubscripts(str) {
+  return str.replace(/([A-Za-zα-ω])_(?:\{([^{}]*)\}|(\d+|[a-z]))/g, (m, base, braced, bare) => {
+    const chars = [...(braced ?? bare).replace(/\s+/g, '')]
+    return chars.length && chars.every(c => SUBSCRIPT[c]) ? base + chars.map(c => SUBSCRIPT[c]).join('') : m
+  })
+}
+
 export function parseRichEquation(rawInput) {
+  // "6 2/3" is an integer written against a fraction with nothing between
+  // them, and it used to parse as 6 with the fraction dropped in silence. It
+  // IS a sum — 6 + 2/3 — so it becomes one here, and the term that follows is
+  // marked so the panel can hold that "+" back for a moment. Showing the
+  // notation first and the operator second is the whole point: the reader sees
+  // the two forms are the same thing.
+  const mixedAt = []
+  rawInput = String(rawInput ?? "").replace(
+    /(^|[^0-9.,])(\d+)\s+(\d+\s*\/\s*\d+)/g,
+    (m, lead, whole, frac) => { mixedAt.push(whole); return lead + whole + " + " + frac },
+  )
+  // u_0 → u₀ (see toSubscripts). Only outside |labels|: other steps (Replace
+  // Variable) find a label by exactly what was typed.
+  rawInput = rawInput.split('|').map((seg, k) => (k % 2 ? seg : toSubscripts(seg))).join('|')
+  // "35,234" is how a decimal is written in half the world, and it used to
+  // parse as 35 with ",234" quietly dropped. The comma only ever means a
+  // decimal point inside an equation string — nothing else in this grammar
+  // separates with one — so it becomes a point here, and the term remembers
+  // which one was typed so it is drawn back the way it was written.
+  const decimalComma = /\d,\d/.test(rawInput)
+  rawInput = rawInput.replace(/(\d),(\d)/g, '$1.$2')
   // Syntax: ** = exponent (→ internal ^), * = multiplication. Convert ** first so
   // the single * is left untouched for products.
   rawInput = rawInput.replace(/\*\*/g, '^')
+  // A times sign written the way it is on paper. "24,56 x 10^2" used to parse
+  // the x as a VARIABLE and then fail on the rest of the line, which is not a
+  // syntax anyone would guess was wrong. × and · are unambiguous anywhere; a
+  // bare x only counts when it stands alone between two numbers — "2x" and
+  // "x^2" are still the variable they always were.
+  rawInput = rawInput.replace(/([\d)])\s*[×·]\s*/g, '$1*')
+  // The spaces are optional, because nobody types them: "24,25x10^2" is what
+  // gets written. A bare x only counts as a times sign when it has a DIGIT on
+  // both sides — "2x" and "x^2" are still the variable they always were, and
+  // "2x + 3" is untouched because the x there is followed by a space and a +.
+  rawInput = rawInput.replace(/(\d)\s*x\s*(?=[\d(])/gi, '$1*')
   rawInput = substitutePi(rawInput)
-  const input  = rawInput.includes('=') ? rawInput : `${rawInput}=0`
-  const eqIdx  = input.indexOf('=')
-  const leftTerms  = parseRichSide(input.slice(0, eqIdx).trim())
+  // An input with no "=" is a thing being SHOWN — "6 1/2", "a^2 + b^2", one
+  // number to point an annotation at — not a problem with a hidden right-hand
+  // side. Appending "=0" to it put a phantom "= 0" on screen next to every
+  // such expression. It stays one-sided until a solving step needs the other
+  // half, and ActionExecutor adds it there.
+  const twoSided = rawInput.includes('=')
+  const twoSidedIdx = rawInput.indexOf('=')
+  const eqIdx = twoSided ? twoSidedIdx : rawInput.length
+  const leftTerms  = parseRichList(rawInput.slice(0, eqIdx).trim())
     .map((t, i) => new MathObject({ ...t, side: 'left',  cellIndex: i }))
-  const rightTerms = parseRichSide(input.slice(eqIdx + 1).trim())
+  const rightTerms = parseRichList(rawInput.slice(eqIdx + 1).trim())
     .map((t, i) => new MathObject({ ...t, side: 'right', cellIndex: i }))
-  return new EquationState(leftTerms, rightTerms)
+  const state = new EquationState(leftTerms, twoSided ? rightTerms : [])
+  state.oneSided = !twoSided
+  if (mixedAt.length) {
+    // Only the fraction half of a mixed pair carries the flag: it is the term
+    // whose leading operator is the one being held back.
+    const all = [...state.left, ...state.right]
+    for (let k = 1; k < all.length; k++) {
+      const prev = all[k - 1]
+      if (prev.side !== all[k].side) continue
+      if (mixedAt.includes(String(prev.coefficient))) all[k].mixedJoin = true
+    }
+  }
+  if (decimalComma) [...state.left, ...state.right].forEach(t => { t.decimalComma = true })
+  return state
 }
 
 // Paren-aware sign splitter: treats +/- at depth>0 as part of the token
@@ -136,7 +241,13 @@ function splitBySigns(s) {
 // trig calls) is deliberately excluded and left on the exprTree path.
 function tryClassicParenGroup(content) {
   if (/__S\d+__/.test(content)) return null
-  if (/\b(sin|cos|tan|cot|sec|csc)\s*\(/.test(content)) return null
+  // Radicals belong to the generic tree for the same reason the trig names do:
+  // mathjs reads sqrt(16) as a name applied to a paren group, and the term
+  // then renders as the WORD sqrt instead of a radical sign.
+  if (/\b(sin|cos|tan|cot|sec|csc|sqrt|cbrt|root)\s*\(/.test(content)) return null
+  // So does a letter exponent: mathjs has no notion of rⁿ⁻¹ as a term, and would
+  // hand back a bracket with the wrong things inside it.
+  if (/\^\s*(?!-?\d+(?![.\d]))/.test(content)) return null
   try {
     const raw = extractTerms(content)
     if (raw.length === 1 && raw[0].isParenGroup) return raw[0]
@@ -351,13 +462,18 @@ export function parseSymbolicEquation(rawInput) {
  * quadratic terms (nx^2, x^2), addition and subtraction.
  */
 export function parseEquation(rawInput) {
+  // Same decimal comma as the rich parser — this path takes every equation with
+  // no fraction, label or trig call in it, which is most plain numbers.
+  const decimalComma = /\d,\d/.test(rawInput)
+  rawInput = rawInput.replace(/(\d),(\d)/g, '$1.$2')
   rawInput = substitutePi(rawInput)
-  // Allow expressions without "=" — treat them as "expr = 0"
-  const input = rawInput.includes('=') ? rawInput : `${rawInput}=0`
-  const eqIdx = input.indexOf('=')
+  // No "=" means an expression on display, not "expr = 0" — see the rich
+  // parser above for why the phantom right-hand side had to go.
+  const twoSided = rawInput.includes('=')
+  const eqIdx = twoSided ? rawInput.indexOf('=') : rawInput.length
 
-  const leftStr = input.slice(0, eqIdx).trim()
-  const rightStr = input.slice(eqIdx + 1).trim()
+  const leftStr = rawInput.slice(0, eqIdx).trim()
+  const rightStr = rawInput.slice(eqIdx + 1).trim()
 
   const leftTerms = extractTerms(leftStr).map((t, i) =>
     new MathObject({ ...t, side: 'left', cellIndex: i })
@@ -366,7 +482,10 @@ export function parseEquation(rawInput) {
     new MathObject({ ...t, side: 'right', cellIndex: i })
   )
 
-  return new EquationState(leftTerms, rightTerms)
+  const state = new EquationState(leftTerms, twoSided ? rightTerms : [])
+  state.oneSided = !twoSided
+  if (decimalComma) [...state.left, ...state.right].forEach(t => { t.decimalComma = true })
+  return state
 }
 
 function extractTerms(expr) {
@@ -485,6 +604,38 @@ function collectTerms(node, positive, out) {
           return null
         }
 
+        // (A)(B) — a bracket multiplying a bracket. The term model already
+        // carries a group as "multiplier × (innerTerms)"; here the multiplier is
+        // itself a bracket, so it rides along as outerTerms. Distribution then
+        // has two lists to cross instead of a monomial and a list, and the
+        // renderer draws a second pair of brackets where the coefficient goes.
+        // Without this the whole product was silently dropped from the equation.
+        {
+          const gA = asParenSide(a)
+          const gB = asParenSide(b)
+          if (gA && gB && !gA.extraVar && !gB.extraVar) {
+            const outerRaw = [], innerRaw = []
+            collectTerms(gA.content, true, outerRaw)
+            collectTerms(gB.content, true, innerRaw)
+            if (outerRaw.length && innerRaw.length) {
+              const plain = t => ({ sign: t.sign, coefficient: t.coefficient, variable: t.variable, degree: t.degree })
+              out.push({
+                sign:         positive ? '+' : '-',
+                coefficient:  1,
+                variable:     null,
+                degree:       -1,
+                isParenGroup: true,
+                parenCoeff:   1,
+                parenCoeffVariable: null,
+                parenCoeffDegree:   1,
+                outerTerms:   outerRaw.map(plain),
+                innerTerms:   innerRaw.map(plain),
+              })
+              return
+            }
+          }
+        }
+
         let coeffVal = null, coeffVar = null, coeffDeg = 1, parenContent = null
         const pB = asParenSide(b)
         const pA = !pB ? asParenSide(a) : null
@@ -561,6 +712,14 @@ function collectTerms(node, positive, out) {
       const [base, exp] = node.args
       if (base.type === 'SymbolNode' && exp.type === 'ConstantNode') {
         out.push({ sign, coefficient: 1, variable: base.name, degree: exp.value })
+        return
+      }
+      // A number raised to a number — "10^3" — is a constant term. Only a
+      // variable base was recognised above, so this fell through every branch
+      // and "2x + 10^3" came out as "2x" with the 1000 dropped in silence.
+      const val = tryConstEval(node)
+      if (val !== null && Number.isFinite(val)) {
+        out.push({ sign, coefficient: val, variable: null, degree: 0 })
         return
       }
     }

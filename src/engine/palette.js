@@ -23,7 +23,18 @@ export const PALETTE = {
 export const SYS = {
   blue:     '#60a5fa',   // reserved — polygon fill, axis, arcsin and system UI
   operator: '#818cf8',   // arcsin( arccos( arctan( ) tokens — indigo
+  annot:    '#60a5fa',   // a lone equation annotation — the same reserved blue
 }
+
+/**
+ * Colours an annotation cycles through once there is more than one on screen.
+ * The first wears SYS.annot — that one is the app pointing at the equation, and
+ * a colour would say "this part matters" without saying why. From the second on,
+ * they have to be told apart at a glance, so each takes a lesson colour none of
+ * the others is already wearing. teal and white are left out: CSS teal is nearly
+ * black on this background, and white reads as ordinary text.
+ */
+export const ANNOT_ROTATION = ['red', 'purple', 'orange', 'green', 'yellow', 'pink']
 
 /**
  * Resolve a raw color string to a hex value.
@@ -32,11 +43,22 @@ export const SYS = {
  *   'yellow', 'orange'…  → looked up in PALETTE
  *   anything else        → returned as-is (graceful fallback)
  */
+// Names that are not lesson colours but that lessons — and steps already saved
+// with them — ask for anyway. Without these resolveColor handed the word
+// straight to the browser and CSS painted its own: "blue" came out #0000FF and
+// "teal" #008080, which is nearly invisible on this background. Resolving them
+// here fixes every step already carrying the name, with nothing to re-edit.
+const ALIASES = {
+  blue: SYS.blue,      // the reserved blue, not the CSS keyword
+  teal: PALETTE.cyan,  // the prompt offers teal; the palette calls it cyan
+}
+
 export function resolveColor(raw) {
   if (!raw) return raw
   const s = String(raw).trim()
   if (s.startsWith('#')) return s
-  return PALETTE[s.toLowerCase()] ?? s
+  const k = s.toLowerCase()
+  return PALETTE[k] ?? ALIASES[k] ?? s
 }
 
 /**

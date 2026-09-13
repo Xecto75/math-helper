@@ -5,6 +5,10 @@ export class EquationState {
     // Deep-clone so mutations don't share references
     this.left = left.map(t => t instanceof MathObject ? t : new MathObject(t))
     this.right = right.map(t => t instanceof MathObject ? t : new MathObject(t))
+    // Set by the parser when the source had no "=": the panel then draws one
+    // side and no equals sign. Cleared the moment a solving step runs, which
+    // is when the second side starts to mean something.
+    this.oneSided = false
     this._reindex()
   }
 
@@ -56,11 +60,14 @@ export class EquationState {
     return {
       left: this.left.map(termToPlain),
       right: this.right.map(termToPlain),
+      oneSided: this.oneSided,
     }
   }
 
   static fromSnapshot(snap) {
-    return new EquationState(snap.left, snap.right)
+    const st = new EquationState(snap.left, snap.right)
+    st.oneSided = !!snap.oneSided
+    return st
   }
 }
 
@@ -93,6 +100,11 @@ function termToPlain(t) {
     denominatorTerms: t.denominatorTerms ?? null,
     color:            t.color            ?? null,
     varParts:         t.varParts         ?? null,
+    // Which separator the author typed, so a decimal is drawn back the way it
+    // was written rather than always with a point.
+    decimalComma:     t.decimalComma     ?? false,
+    mixedJoin:        t.mixedJoin        ?? false,
+    listJoin:         t.listJoin         ?? false,
     isOperator:       t.isOperator       ?? false,
     text:             t.text             ?? null,
     isParenGroup:     t.isParenGroup     ?? false,
@@ -100,6 +112,7 @@ function termToPlain(t) {
     parenCoeffVariable: t.parenCoeffVariable ?? null,
     parenCoeffDegree:   t.parenCoeffDegree   ?? 1,
     innerTerms:       t.innerTerms       ?? null,
+    outerTerms:       t.outerTerms       ?? null,
     factors:          t.factors          ?? null,
     negBase:          t.negBase          ?? false,
     expr:             t.expr ? cloneExpr(t.expr) : null,

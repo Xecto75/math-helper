@@ -5,6 +5,8 @@ import { CATEGORIES } from '../data/functions.js'
 
 // ── Compact codec ─────────────────────────────────────────────────────────────
 
+import { resolveLayout, modulesForPanels, PANELS_FOR_LAYOUT } from '../data/panels.js'
+
 const LAYOUTS = {
   // Single-panel
   sg: 'single-graph',     sG: 'single-geo',    sq: 'single-grid',
@@ -25,21 +27,38 @@ const FUNCS = {
 
   // ── Equation ────────────────────────────────────────────────────────────────
   eq: 'eq-create',           ec: 'eq-combine',          eD: 'eq-distribute',
+  eP: 'eq-polynomial-divide',
   es: 'eq-send-other-side',  eo: 'eq-reorder',          ed: 'eq-divide',
   ef: 'eq-full-solve',       ev: 'eq-replace-variable', er: 'eq-racine-des-bords',
   ea: 'eq-apply-inverse-trig', ee: 'eq-disparition-exposant',
   eS: 'eq-save-result',        em: 'eq-multiply',
   eQ: 'quadratic-solve',
+  eA: 'eq-annotate',       eT: 'eq-term-op',         eX: 'eq-annotate-clear',
+  eW: 'eq-arrow',          eWx: 'eq-arrow-clear',     eWc: 'eq-arrow-chain',
+  eSq: 'eq-sequence',
+  eSc: 'eq-sci-expand',
+  eFa: 'eq-factorial',
+  eR3: 'eq-rule-of-three',
 
   // ── Canvas geometry (SVG) ───────────────────────────────────────────────────
   gp: 'geo-create-polygon',  gx: 'geo-erase-shape',     gm: 'geo-move-shape',
   gh: 'geo-highlight-shape', gl: 'geo-label-sides',     gt: 'geo-add-text',
   ga: 'geo-show-angles',     gw: 'geo-show-arrow',      gW: 'geo-remove-arrow',
+  // ── Chart panel (fraction circles) ──────────────────────────────────────────
+  cP: 'chart-pie',           cS: 'chart-pie-set',
+  cM: 'chart-pie-mode',      cX: 'chart-remove',        cN: 'chart-number-sets',
+  cT: 'chart-tree',          cTp: 'chart-tree-path',
+  cV: 'chart-venn',          cVh: 'chart-venn-highlight',
+
   gE: 'geo-highlight-edge',  gA: 'geo-highlight-angle', gC: 'geo-clear',
+  gs: 'geo-snap-shape',      gv: 'geo-name-vertices',
   gr: 'geo-show-measure',    gM: 'geo-show-area-measures', gP: 'geo-show-perimeter-measures',
 
   // ── 2D shapes — Three.js flat (screen-locked) ───────────────────────────────
   S2c: 'geo3d-create-2d',
+  S2p: 'geo3d-polygon-points',
+  S2s: 'geo3d-snap-shape',
+  S2n: 'geo3d-name-vertices',
   S2m: 'geo3d-move',
   S2h: 'geo3d-highlight',
   S2l: 'geo3d-label-sides',
@@ -78,11 +97,11 @@ const FUNCS = {
   fP:  'graph-show-projection',    fd:  'graph-plot-derivative',
   fR:  'graph-riemann-sum',        fD:  'graph-draw-vector',
   fT:  'graph-transform-function', fg:  'graph-draw-angle',
+  fgb: 'graph-angle-between',      fgx: 'graph-remove-angle',
   fB:  'graph-batch-add-points',   fBP: 'graph-batch-show-projections',
   fTC: 'graph-trig-circle',
 
   // ── Data tables ──────────────────────────────────────────────────────────────
-  Tt: 'table-create',
   Tc: 'tab-create-grid',    Tx: 'tab-erase-grid',     Ta: 'tab-add-column',
   Tr: 'tab-remove-column',  TR: 'tab-add-row',        TrR: 'tab-remove-row',
   Tv: 'tab-change-value',   TV: 'tab-change-values',
@@ -143,7 +162,7 @@ function expandStep([code, ...vals]) {
 function expandCompact(compact) {
   return compact.map(([title, layoutCode, steps]) => ({
     title:  title ?? '',
-    layout: LAYOUTS[layoutCode] ?? layoutCode,
+    layout: resolveLayout(layoutCode) ?? LAYOUTS[layoutCode] ?? layoutCode,
     steps:  (steps ?? []).map(expandStep),
   }))
 }
@@ -176,10 +195,22 @@ function compactStep(step) {
   return [code, ...vals]
 }
 
+// The panel spec for a layout, or null when there is none that resolves BACK to
+// the same layout. Examples are shown to the generator as worked references, so
+// they have to round-trip exactly — "equation-text" is reachable from panels 0+3
+// but resolves to "text-equation", so it keeps its old code instead of silently
+// becoming a different layout in the reference the model copies from.
+function panelSpecFor(layout) {
+  const digits = PANELS_FOR_LAYOUT[layout]
+  if (!digits) return null
+  const spec = digits.join('')
+  return resolveLayout(spec) === layout ? spec : null
+}
+
 function compactLesson(pages) {
   return (pages ?? []).map(pg => [
     pg.title ?? '',
-    LAYOUTS_BY_ID[pg.layout] ?? pg.layout,
+    panelSpecFor(pg.layout) ?? LAYOUTS_BY_ID[pg.layout] ?? pg.layout,
     (pg.steps ?? []).map(compactStep).filter(Boolean),
   ])
 }
@@ -265,7 +296,7 @@ function parseCompact(rawText) {
 // and imitate them blindly. Derived from the codes themselves so it cannot
 // drift from FUNCS.
 //
-// Case matters: tc/ti/tf are text boxes, Tt/Tc/Ta are tables.
+// Case matters: tc/ti/tf are text boxes, Tc/Ta/TR are the grid.
 function moduleForCode(code) {
   if (code === 'sL') return null                        // set-layout: always available
   if (code.startsWith('S3')) return 'geo3d'
@@ -291,7 +322,12 @@ const LAYOUT_NEEDS = {
 export function modulesForCompact(compact) {
   const needed = new Set()
   for (const [, layoutCode, steps] of compact ?? []) {
-    for (const m of LAYOUT_NEEDS[layoutCode] ?? []) needed.add(m)
+    // A panel spec says exactly which modules the page can use; the old layout
+    // codes only ever implied it, which is why the table below has holes.
+    const fromPanels = resolveLayout(layoutCode)
+      ? modulesForPanels([...String(layoutCode)])
+      : (LAYOUT_NEEDS[layoutCode] ?? [])
+    for (const m of fromPanels) needed.add(m)
     for (const [code] of steps ?? []) {
       const m = moduleForCode(code)
       if (m) needed.add(m)

@@ -365,11 +365,14 @@
         },
         {
           "id": "lb177",
-          "funcId": "table-create",
+          "funcId": "tab-create-grid",
           "inputs": {
-            "data": "[[\"Élève\",\"Note\"],[1,65],[2,70],[3,70],[4,75],[5,80],[6,85],[7,90]]",
+            "gridId": "notes1",
+            "cols": "2",
+            "rows": "8",
             "headerRow": "true",
-            "gridId": "notes1"
+            "headerCol": "false",
+            "values": "Élève,Note|1,65|2,70|3,70|4,75|5,80|6,85|7,90"
           }
         }
       ]
@@ -411,11 +414,14 @@
         },
         {
           "id": "lb183",
-          "funcId": "table-create",
+          "funcId": "tab-create-grid",
           "inputs": {
-            "data": "[[\"Position\",\"Note\"],[1,65],[2,70],[3,70],[\"4 (médiane)\",75],[5,80],[6,85],[7,90]]",
+            "gridId": "notes2",
+            "cols": "2",
+            "rows": "8",
             "headerRow": "true",
-            "gridId": "notes2"
+            "headerCol": "false",
+            "values": "Position,Note|1,65|2,70|3,70|4 (médiane),75|5,80|6,85|7,90"
           }
         }
       ]
@@ -1547,12 +1553,14 @@
         },
         {
           "id": "lb986",
-          "funcId": "table-create",
+          "funcId": "tab-create-grid",
           "inputs": {
-            "data": "[[\"x (study hours)\",\"y (score %)\"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]",
-            "headerRow": "true",
             "gridId": "etude1",
-            "color": ""
+            "cols": "2",
+            "rows": "7",
+            "headerRow": "true",
+            "headerCol": "false",
+            "values": "x (study hours),y (score %)|1,55|2,62|3,68|4,75|5,82|6,90"
           }
         }
       ]
@@ -1565,12 +1573,14 @@
       "steps": [
         {
           "id": "lb988",
-          "funcId": "table-create",
+          "funcId": "tab-create-grid",
           "inputs": {
-            "data": "[[\"x (study hours)\",\"y (score %)\"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]",
-            "headerRow": "true",
             "gridId": "etude2",
-            "color": ""
+            "cols": "2",
+            "rows": "7",
+            "headerRow": "true",
+            "headerCol": "false",
+            "values": "x (study hours),y (score %)|1,55|2,62|3,68|4,75|5,82|6,90"
           }
         },
         {
@@ -1634,12 +1644,14 @@
         },
         {
           "id": "lb995",
-          "funcId": "table-create",
+          "funcId": "tab-create-grid",
           "inputs": {
-            "data": "[[\"x (study hours)\",\"y (score %)\"],[1,55],[2,62],[3,68],[4,75],[5,82],[6,90]]",
-            "headerRow": "true",
             "gridId": "etude3",
-            "color": ""
+            "cols": "2",
+            "rows": "7",
+            "headerRow": "true",
+            "headerCol": "false",
+            "values": "x (study hours),y (score %)|1,55|2,62|3,68|4,75|5,82|6,90"
           }
         },
         {

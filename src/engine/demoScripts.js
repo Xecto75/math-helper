@@ -4,12 +4,14 @@
  * The script plays ONLY the animation for that function, nothing else.
  */
 
+import { layoutFrom } from '../data/panels.js'
 import { parseValues as parseTableValues, parseRow } from './tableEngine.js'
-import { parseEquation, parseSymbolicEquation, parseRichEquation } from './parseEquation.js'
+import { parseEquation, parseSymbolicEquation, parseRichEquation, toSubscripts } from './parseEquation.js'
 import { EquationState }  from './EquationState.js'
 import { MathObject }     from './MathObject.js'
 import { generateScript, generateDistributeScript } from './solveScript.js'
-import { nextFuncId, getFunctionIds } from './desmosEngine.js'
+import { dividePolynomials } from './polyDivision.js'
+import { nextFuncId, getFunctionIds, bareExpr } from './desmosEngine.js'
 import { resolveValueRef, VALUE_TOKEN_PATTERN } from './valueRefs.js'
 import { resolveColor }   from './palette.js'
 import { t }              from '../i18n/translations.js'
@@ -28,6 +30,16 @@ import { evaluate }       from 'mathjs'
 // exactly as if it had been typed by hand — just without the risk of
 // retyping the wrong number.
 const VALUE_REF_RE_G = new RegExp(`\\[([^\\]]+)\\](${VALUE_TOKEN_PATTERN})`, 'g')
+// A number from a builder field, with a default for when the field is EMPTY.
+// `Number(v) || d` cannot be used for a coordinate: a typed 0 is falsy, so it
+// silently became the default and a vector to (0, 5) came out pointing at (4, 5).
+const num = (v, d) => {
+  const s = String(v ?? '').trim()
+  if (s === '') return d
+  const n = Number(s)
+  return Number.isFinite(n) ? n : d
+}
+
 function substituteValueRefs(str) {
   const withRefs = str.replace(VALUE_REF_RE_G, (m, id, tok) => {
     const v = resolveValueRef(id, tok)
@@ -100,9 +112,11 @@ export function demoReplaceVariable(eqText, replacementsRaw) {
       // else is treated as an EXPRESSION — "y = -x+3" — and swapped in as a
       // parenthesised group, so 3y becomes 3(-x+3) rather than being dropped
       // for not being a number, which is what used to happen.
-      if (isFinite(val)) return { label: lbl, value: val }
-      return { label: lbl, exprText: rhs }
+      const sub = toSubscripts(lbl)
+      if (isFinite(val)) return sub !== lbl ? [{ label: lbl, value: val }, { label: sub, value: val }] : { label: lbl, value: val }
+      return sub !== lbl ? [{ label: lbl, exprText: rhs }, { label: sub, exprText: rhs }] : { label: lbl, exprText: rhs }
     })
+    .flat()
     .filter(Boolean)
 
   if (!replacements.length) throw new Error('Enter replacements like "a=2,b=-3,c=1" or "y=-x+3"')
@@ -212,6 +226,345 @@ export function demoGeoCreatePolygon(idRaw, typeRaw, valuesRaw, flipXRaw, flipYR
   return { snapshot: null, script }
 }
 
+// ── eq-annotate ───────────────────────────────────────────────────────────────
+// Underlines part of the equation and writes a note under it. Cells are counted
+// per side from 0; "to" blank means the one cell.
+export function demoEquationAnnotate(idRaw, sideRaw, fromRaw, toRaw, partRaw, textRaw, colorRaw) {
+  const id   = (idRaw || 'a1').trim()
+  const side = (sideRaw || 'right').trim() === 'left' ? 'left' : 'right'
+  const from = Math.max(0, Math.round(Number(fromRaw) || 0))
+  const toS  = String(toRaw ?? '').trim()
+  const to   = toS === '' ? from : Math.max(from, Math.round(Number(toS) || from))
+  // Every part the panel knows how to find. int/sep/dec were added to the
+  // function definition, the prompt and the validator but not to this list, so
+  // they all fell through to "whole" here and the annotation quietly covered
+  // the entire number instead of the piece that was asked for.
+  const PARTS = ['coeff', 'var', 'int', 'sep', 'dec']
+  const part = PARTS.includes((partRaw || '').trim()) ? partRaw.trim() : 'whole'
+  const text = String(textRaw ?? '').trim()
+  // Defaulting to 'blue' was the bug behind the harsh annotation colour: there
+  // is no blue in PALETTE, so resolveColor handed the name straight through and
+  // the browser painted CSS blue, #0000FF. An unset colour now stays unset and
+  // the display picks — the accent when it is the only annotation, a lesson
+  // colour when it has to stand apart from another.
+  const raw   = (colorRaw || '').trim()
+  const color = raw ? resolveColor(raw) : ''
+  const script = [
+    { type: 'showTitle', text: `annotate(${side} ${from}${to !== from ? `-${to}` : ''}, "${text}")` },
+    { type: 'eq-annotate', id, side, from, to, part, text, color },
+  ]
+  return { snapshot: null, script }
+}
+
+// ── eq-annotate-clear ─────────────────────────────────────────────────────────
+export function demoEquationAnnotateClear(idRaw) {
+  const id = String(idRaw ?? '').trim()
+  return { snapshot: null, script: id
+    ? [{ type: 'showTitle', text: `removeAnnotation("${id}")` }, { type: 'eq-annotate-remove', id }]
+    : [{ type: 'showTitle', text: 'clearAnnotations()' }, { type: 'eq-annotate-clear' }] }
+}
+
+// ── eq-arrow ──────────────────────────────────────────────────────────────────
+// A curved arrow from one cell to another with a note at its middle. Cells are
+// counted per side from 0, like the annotations; "to" blank is the next cell.
+export function demoEquationArrow(idRaw, sideRaw, fromRaw, toRaw, textRaw, placeRaw, colorRaw) {
+  const id    = String(idRaw ?? '').trim() || 'f1'
+  const side  = String(sideRaw ?? '').trim() === 'right' ? 'right' : 'left'
+  const from  = Math.max(0, Math.round(Number(fromRaw) || 0))
+  const toS   = String(toRaw ?? '').trim()
+  const to    = toS === '' ? from + 1 : Math.max(0, Math.round(Number(toS) || 0))
+  const text  = String(textRaw ?? '').trim()
+  const place = String(placeRaw ?? '').trim() === 'below' ? 'below' : 'above'
+  // Blank stays blank: the panel paints the arrow the reserved blue.
+  const raw   = String(colorRaw ?? '').trim()
+  const color = raw ? resolveColor(raw) : ''
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `arrow(${side} ${from} → ${to}, "${text}")` },
+    { type: 'eq-arrow', id, side, from, to, text, place, color },
+  ] }
+}
+
+// ── eq-arrow-clear ────────────────────────────────────────────────────────────
+export function demoEquationArrowClear(idRaw) {
+  const id = String(idRaw ?? '').trim()
+  return { snapshot: null, script: id
+    ? [{ type: 'showTitle', text: `removeArrow("${id}")` }, { type: 'eq-arrow-remove', id }]
+    : [{ type: 'showTitle', text: 'clearArrows()' }, { type: 'eq-arrow-clear' }] }
+}
+
+// ── eq-sequence ───────────────────────────────────────────────────────────────
+// A sequence written out from its first term and its step, computed rather than
+// typed: arithmetic adds d each time, geometric multiplies by r. It goes up as a
+// list (see parseRichList) with the step on arrows between the terms, and can
+// put its points (n, aₙ) on a graph panel of the same page.
+export function demoEquationSequence(kindRaw, firstRaw, stepRaw, countRaw, dotsRaw, arrowsRaw, pointsRaw, rankRaw, colorRaw) {
+  const geo    = String(kindRaw ?? '').trim() === 'geometric'
+  // A comma is a decimal point here, as everywhere else in a lesson.
+  const read   = (v, dflt) => num(String(v ?? '').replace(',', '.'), dflt)
+  const a1     = read(firstRaw, 3)
+  const step   = read(stepRaw, geo ? 2 : 4)
+  const count  = Math.max(2, Math.min(12, Math.round(read(countRaw, 5))))
+  const rank   = Math.round(read(rankRaw, 1))
+  const dots   = String(dotsRaw ?? '').trim() !== 'no'
+  const place  = String(arrowsRaw ?? '').trim()
+  const arrows = ['above', 'below', 'none'].includes(place) ? place : 'above'
+  const points = String(pointsRaw ?? '').trim() === 'yes'
+  const raw    = String(colorRaw ?? '').trim()
+  const color  = raw ? resolveColor(raw) : ''
+
+  // Rounded past float noise (0.1 × 3 = 0.30000000000000004), never past what
+  // the numbers actually are.
+  const clean  = (v) => parseFloat(v.toFixed(6))
+  const values = Array.from({ length: count }, (_, k) => clean(geo ? a1 * Math.pow(step, k) : a1 + k * step))
+  const text   = (v) => String(v).replace('.', ',')
+  const M      = '\u2212'
+  // The note on every hop: +4, −3, ×2, ×(−2).
+  const hop = geo
+    ? (step < 0 ? `×(${M}${text(Math.abs(step))})` : `×${text(step)}`)
+    : (step < 0 ? `${M}${text(Math.abs(step))}` : `+${text(step)}`)
+
+  const base   = demoEquationCreate([...values.map(text), ...(dots ? ['…'] : [])].join(' ; '))
+  const script = [...base.script]
+  if (arrows !== 'none') {
+    script.push({ type: 'pause', seconds: 0.4 })
+    script.push({ type: 'eq-arrow-chain', id: 'seq', side: 'left', from: 0, to: null, text: hop, place: arrows, color })
+  }
+  if (points) {
+    // Framed first, so every point lands on screen: a margin under the lowest
+    // value and over the highest, the axes kept in view.
+    const lo = Math.min(0, ...values), hi = Math.max(0, ...values)
+    const padY = Math.max(1, (hi - lo) * 0.2)
+    script.push({ type: 'ggb-set-viewport', xMin: Math.min(0, rank) - 1, xMax: rank + count, yMin: lo - padY, yMax: hi + padY })
+    values.forEach((v, k) => script.push({
+      type: 'ggb-add-point', id: `seq-${k}`, x: String(rank + k), y: String(v),
+      opts: { size: 6, label: '', showCoords: false, open: false, color: color || [96, 165, 250] },
+    }))
+  }
+  return { snapshot: base.snapshot, script }
+}
+
+// ── eq-arrow-chain ────────────────────────────────────────────────────────────
+// One arrow per pair of neighbours, from one cell to another — the whole
+// sequence linked in one step. "to" blank runs to the last cell of the side.
+export function demoEquationArrowChain(idRaw, sideRaw, fromRaw, toRaw, textRaw, placeRaw, colorRaw) {
+  const id    = String(idRaw ?? '').trim() || 'hop'
+  const side  = String(sideRaw ?? '').trim() === 'right' ? 'right' : 'left'
+  const from  = Math.max(0, Math.round(Number(fromRaw) || 0))
+  const toS   = String(toRaw ?? '').trim()
+  const to    = toS === '' ? null : Math.max(0, Math.round(Number(toS) || 0))
+  const text  = String(textRaw ?? '').trim()
+  const place = String(placeRaw ?? '').trim() === 'below' ? 'below' : 'above'
+  const raw   = String(colorRaw ?? '').trim()
+  const color = raw ? resolveColor(raw) : ''
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `arrowChain(${side} ${from} → ${to ?? 'end'}, "${text}")` },
+    { type: 'eq-arrow-chain', id, side, from, to, text, place, color },
+  ] }
+}
+
+// ── chart-pie ─────────────────────────────────────────────────────────────────
+export function demoChartPie(idRaw, numRaw, denRaw, colorRaw, labelRaw, modeRaw) {
+  const id  = (idRaw || 'pie1').trim()
+  const den = Math.round(Number(denRaw))
+  const num = Number(numRaw)
+  if (!Number.isFinite(den) || den < 1) throw new Error('Denominator: a whole number, 1 or more.')
+  if (!Number.isFinite(num) || num < 0) throw new Error('Numerator: 0 or more.')
+  // No upper bound on the numerator: 8/3 is the case the panel exists for.
+  const opts = {}
+  const color = (colorRaw || '').trim(); if (color) opts.color = color
+  const label = (labelRaw || '').trim(); if (label) opts.label = label
+  if (String(modeRaw || '').trim() === 'percent') opts.mode = 'percent'
+  const script = [
+    { type: 'showTitle', text: `pie("${id}", ${num}/${den})` },
+    { type: 'chart-pie', id, num, den, opts },
+  ]
+  return { snapshot: null, script }
+}
+
+// ── chart-pie-set ─────────────────────────────────────────────────────────────
+// Blank keeps whatever the pie already has, so "one more slice" does not force
+// the caller to restate the denominator it never touched.
+export function demoChartPieSet(idRaw, numRaw, denRaw) {
+  const id  = (idRaw || 'pie1').trim()
+  const num = String(numRaw ?? '').trim()
+  const den = String(denRaw ?? '').trim()
+  if (num === '' && den === '') throw new Error('Give a new numerator, a new denominator, or both.')
+  const script = [
+    { type: 'showTitle', text: `setPie("${id}", ${num || '—'}/${den || '—'})` },
+    { type: 'chart-pie-set', id, num, den },
+  ]
+  return { snapshot: null, script }
+}
+
+// ── chart-pie-mode ────────────────────────────────────────────────────────────
+export function demoChartPieMode(idRaw, modeRaw) {
+  const id   = (idRaw || 'pie1').trim()
+  const mode = (modeRaw || 'toggle').trim()
+  const script = [
+    { type: 'showTitle', text: `pieMode("${id}", "${mode}")` },
+    { type: 'chart-pie-mode', id, mode },
+  ]
+  return { snapshot: null, script }
+}
+
+// ── chart-remove ──────────────────────────────────────────────────────────────
+// ── chart-number-sets ─────────────────────────────────────────────────────────
+// "sets" is optional: leave it blank for the standard five. Given, it is a list
+// of "symbol|name|example,example" rows, outermost first — so a lesson that only
+// needs ℤ inside ℚ can say so without carrying three rings it never mentions.
+// ── chart-tree ────────────────────────────────────────────────────────────────
+// Stages are separated by "|" and outcomes within a stage by ",":
+//   "P,F | P,F | P,F"  — three coins
+//   "P,F | 1,2,3,4,5,6" — a coin then a die
+// A stage list with no "|" is repeated `count` times, which is the common case.
+export function demoChartTree(idRaw, stagesRaw, countRaw, headersRaw, resultsRaw) {
+  const id = (idRaw || 'tree1').trim()
+  const raw = String(stagesRaw ?? 'P,F').trim()
+  const split = (s) => s.split(',').map(x => x.trim()).filter(Boolean)
+  let stages = raw.includes('|')
+    ? raw.split('|').map(split).filter(s => s.length)
+    : Array.from({ length: Math.max(1, Math.min(Math.round(num(countRaw, 3)), 6)) }, () => split(raw))
+  const headers = String(headersRaw ?? '').split(',').map(s => s.trim()).filter(Boolean)
+  const results = String(resultsRaw ?? '') !== '0'
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `tree(${stages.map(s => s.length).join('×')})` },
+    { type: 'chart-tree', id, opts: { stages, headers, results } },
+  ] }
+}
+
+// ── chart-tree-path ───────────────────────────────────────────────────────────
+export function demoChartTreePath(idRaw, pathRaw) {
+  const id = (idRaw || 'tree1').trim()
+  const path = String(pathRaw ?? '').trim()
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `treePath("${path}")` },
+    { type: 'chart-tree-path', id, path },
+  ] }
+}
+
+// ── chart-venn ────────────────────────────────────────────────────────────────
+// "sets" is the names, comma separated: "A,B" or "A,B,C". Anything past three is
+// dropped — see the note on VENN_MS in ChartDisplay for why three is the limit.
+export function demoChartVenn(idRaw, setsRaw) {
+  const id = (idRaw || 'venn1').trim()
+  const sets = String(setsRaw ?? 'A,B').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3)
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `venn(${sets.join(', ')})` },
+    { type: 'chart-venn', id, opts: { sets: sets.length >= 2 ? sets : ['A', 'B'] } },
+  ] }
+}
+
+// ── chart-venn-highlight ──────────────────────────────────────────────────────
+export function demoChartVennHighlight(idRaw, exprRaw, colorRaw) {
+  const id = (idRaw || 'venn1').trim()
+  const expr = String(exprRaw ?? '').trim()
+  const color = colorRaw ? resolveColor(colorRaw) : ''
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `vennHighlight("${expr}")` },
+    { type: 'chart-venn-highlight', id, expr, color },
+  ] }
+}
+
+export function demoChartNumberSets(idRaw, setsRaw) {
+  const id = (idRaw || 'sets1').trim()
+  const rows = String(setsRaw ?? '').split('\n').map(s => s.trim()).filter(Boolean)
+  const sets = rows.map((row, i) => {
+    const [symbol = '', name = '', ex = ''] = row.split('|').map(s => s.trim())
+    return { key: `s${i}`, symbol, name, examples: ex ? ex.split(',').map(s => s.trim()).filter(Boolean) : [] }
+  })
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: 'numberSets()' },
+    { type: 'chart-number-sets', id, opts: sets.length ? { sets } : {} },
+  ] }
+}
+
+export function demoChartRemove(idRaw) {
+  const ids = splitIds(idRaw, 'pie1')
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `removeChart("${ids.join('", "')}")` },
+    { type: 'chart-remove', id: ids[0], ids },
+  ] }
+}
+
+// ── geo3d-polygon-points ──────────────────────────────────────────────────────
+export function demoGeo3dPolygonPoints(idRaw, pointsRaw, colorRaw) {
+  const id     = (idRaw || 'poly1').trim()
+  const points = String(pointsRaw || '').trim()
+  if (!points) throw new Error('Points: "x,y;x,y;…", at least two.')
+  const opts = {}
+  const color = (colorRaw || '').trim(); if (color) opts.color = color
+  const script = [
+    { type: 'showTitle', text: `polygon("${id}", "${points}")` },
+    { type: 'ggb-2d-polygon', id, points, opts },
+  ]
+  return { snapshot: null, script }
+}
+
+// ── geo3d-snap-shape ──────────────────────────────────────────────────────────
+export function demoGeo3dSnapShape(idRaw, parentIdRaw, anchorsRaw, colorRaw) {
+  const id       = (idRaw       || 'inner').trim()
+  const parentId = (parentIdRaw || 'big').trim()
+  const anchors  = String(anchorsRaw || '').split(',').map(a => a.trim()).filter(Boolean)
+  if (anchors.length < 2) throw new Error('Anchors: at least 2 (2 = segment, 3+ = polygon), e.g. "v2,e1:7.2,e2:5".')
+  const opts = {}
+  const color = (colorRaw || '').trim(); if (color) opts.color = color
+  const script = [
+    { type: 'showTitle', text: `snapShape("${id}" → "${parentId}", [${anchors.join(', ')}])` },
+    { type: 'ggb-2d-snap', id, parentId, anchors, opts },
+  ]
+  return { snapshot: null, script }
+}
+
+// ── geo3d-name-vertices ───────────────────────────────────────────────────────
+export function demoGeo3dNameVertices(idRaw, namesRaw, colorRaw) {
+  const id    = (idRaw || 'shape1').trim()
+  const names = namesRaw ? String(namesRaw).split(',').map(n => n.trim()) : []
+  const color = (colorRaw || '').trim()
+  const opts  = {}
+  if (color) opts.color = color
+  const script = [
+    { type: 'showTitle', text: `nameVertices("${id}", [${names.join(', ')}])` },
+    { type: 'ggb-2d-name-vertices', id, names, opts },
+  ]
+  return { snapshot: null, script }
+}
+
+// ── geo-snap-shape ────────────────────────────────────────────────────────────
+export function demoGeoSnapShape(idRaw, parentIdRaw, anchorsRaw, fillColorRaw, borderColorRaw) {
+  const id       = (idRaw       || 'shape2').trim()
+  const parentId = (parentIdRaw || 'shape1').trim()
+  const anchors  = String(anchorsRaw || '')
+    .split(',').map(a => a.trim()).filter(Boolean)
+  if (anchors.length < 2) throw new Error('Anchors: at least 2 (2 = segment, 3+ = polygon), e.g. "v2,e1:7.2,e2:5".')
+
+  const fillColor   = (fillColorRaw   || '').trim()
+  const borderColor = (borderColorRaw || '').trim()
+  const opts = { color: [100, 149, 237], fillOpacity: 0.2 }
+  if (fillColor)   opts.fillColor   = fillColor
+  if (borderColor) opts.borderColor = borderColor
+
+  const script = [
+    { type: 'showTitle', text: `snapShape("${id}" → "${parentId}", [${anchors.join(', ')}])` },
+    { type: 'ggb-snap-shape', id, parentId, anchors, opts },
+  ]
+  return { snapshot: null, script }
+}
+
+// ── geo-name-vertices ─────────────────────────────────────────────────────────
+export function demoGeoNameVertices(idRaw, namesRaw, colorRaw) {
+  const id    = (idRaw || 'shape1').trim()
+  const names = namesRaw ? String(namesRaw).split(',').map(n => n.trim()) : []
+  const color = (colorRaw || '').trim()
+  const opts  = {}
+  if (color) opts.color = color
+
+  const script = [
+    { type: 'showTitle', text: `nameVertices("${id}", [${names.join(', ')}])` },
+    { type: 'ggb-name-vertices', id, names, opts },
+  ]
+  return { snapshot: null, script }
+}
+
 // ── geo-show-measure ──────────────────────────────────────────────────────────
 // Circle → radius line. Polygon → height line (top vertex down to base).
 export function demoGeoShowMeasure(shapeIdRaw, colorRaw, angleRaw, labelRaw) {
@@ -277,8 +630,8 @@ export function demoGeoEraseShape(shapeIdRaw) {
 // ── geo-move-shape ────────────────────────────────────────────────────────────
 export function demoGeoMoveShape(shapeIdRaw, dxRaw, dyRaw) {
   const id = (shapeIdRaw || '').trim()
-  const dx = Number(dxRaw) || 3
-  const dy = Number(dyRaw) || 2
+  const dx = num(dxRaw, 3)
+  const dy = num(dyRaw, 2)
 
   const script = [
     { type: 'showTitle', text: `moveShape("${id || 'shape1'}", dx=${dx}, dy=${dy})` },
@@ -303,8 +656,15 @@ export function demoGeoHighlightShape(shapeIdRaw) {
 export function demoGeoLabelSides(shapeIdRaw, labelsRaw) {
   const id = (shapeIdRaw || '').trim()
   // Parse comma-separated labels: "a, b, c" → ['a','b','c'], blank entries kept as ''
+  // Separator: a semicolon when the string contains one, a comma otherwise. A
+  // French decimal is written with a comma ("9,24 cm"), which the comma split
+  // eats — and it cannot be told apart from a real separator, because "8,4,8,4"
+  // is a legitimate list of four sides in lessons that already ship. One
+  // semicolon switches the whole string over, so every existing comma-separated
+  // label keeps splitting exactly as it always did.
+  const sep = String(labelsRaw ?? '').includes(';') ? ';' : ','
   const customLabels = labelsRaw
-    ? String(labelsRaw).split(',').map(s => s.trim())
+    ? String(labelsRaw).split(sep).map(s => s.trim())
     : []
   const hasCustom = customLabels.some(l => l !== '')
 
@@ -412,6 +772,19 @@ export function demoGeoClear() {
 // Reset restores the pre-run Desmos snapshot (handled in App.jsx).
 // ════════════════════════════════════════════════════════════════════════════════
 
+// A curve's NAME is plain text, not LaTeX, so the notation has to be spelled
+// with real characters: "·" reads as multiplication where "*" reads as code,
+// and "sqrt(x)" is a function call where "√(x)" is a root. Cheap and shallow on
+// purpose — it prettifies what is written, it does not re-parse it.
+const _SUPS = { '0':'\u2070','1':'\u00b9','2':'\u00b2','3':'\u00b3','4':'\u2074','5':'\u2075','6':'\u2076','7':'\u2077','8':'\u2078','9':'\u2079','-':'\u207b' }
+function prettyLabelExpr(s) {
+  return String(s ?? '')
+    .replace(/\bsqrt\s*\(/g, '\u221a(')
+    .replace(/\bcbrt\s*\(/g, '\u221b(')
+    .replace(/\*/g, '\u00b7')
+    .replace(/\^\(?(-?\d+)\)?/g, (_, n) => [...n].map(c => _SUPS[c] ?? c).join(''))
+}
+
 // ── graph-plot-function ───────────────────────────────────────────────────────
 // Auto-labels the curve as "f(x) = <expr>" (or g/h/… — whichever letter isn't
 // already taken) unless hideLabel is "1". If expr already spells out its own
@@ -426,8 +799,23 @@ export function demoGraphPlotFunction(exprRaw, idRaw, hideLabelRaw) {
     { type: 'showTitle',     text: `plotFunction("${id}", "${expr}")` },
     { type: 'ggb-plot-function', id, expr, opts: { thickness: 3 } },
   ]
-  if (!hideLabel) {
-    const label = expr.includes('=') ? expr : `${id}(x) = ${expr}`
+  // A restricted piece is named by its FORMULA — "f(x) = -x", not
+  // "f(x) = -x\{x<-5\}": the domain is already drawn on the graph, and the
+  // brace notation belongs in a text box, not in a curve's name. An all-in-one
+  // piecewise has no single formula to point at, so it gets no auto-label.
+  // A curve with sliders already has the live badge under the graph, and that
+  // badge is the one that MOVES — pinning a second, frozen copy of the formula
+  // on the curve itself just repeats it wrong. So the name is skipped here
+  // rather than every lesson remembering to tick "hide label".
+  const hasSliders = /\|[^|]+\|/.test(expr)
+  const bare = prettyLabelExpr(bareExpr(expr))
+  if (!hideLabel && !hasSliders) {
+    // An all-in-one piecewise has no single formula to write out, but the curve
+    // still needs telling apart from its neighbours — "f(x)" alone does that,
+    // and the brace notation belongs in a text box beside the graph anyway.
+    const label = !bare ? `${id}(x)`
+      : bare.includes('=') ? bare
+      : `${id}(x) = ${bare}`
     script.push({ type: 'ggb-name-func', id, funcId: id, label, x: 3 + existingCount * 1.5 })
   }
   return { snapshot: null, script }
@@ -453,8 +841,8 @@ export function demoGraphBestFitLine(pointIdsRaw, idRaw, colorRaw) {
 // ── graph-shade-area ──────────────────────────────────────────────────────────
 export function demoGraphShadeArea(funcIdRaw, aRaw, bRaw) {
   const funcId = (funcIdRaw || 'f').trim()
-  const a      = Number(aRaw) || 0
-  const b      = Number(bRaw) || 3
+  const a      = num(aRaw, 0)
+  const b      = num(bRaw, 3)
   const script = [
     { type: 'showTitle',     text: `shadeUnderCurve("${funcId}", ${a}, ${b})` },
     { type: 'ggb-shade-area', id: 'area', funcId, a, b },
@@ -476,17 +864,28 @@ export function demoGraphFindIntersections(f1IdRaw, f2IdRaw, colorRaw, hideLabel
 }
 
 // ── graph-add-point ───────────────────────────────────────────────────────────
-export function demoGraphAddPoint(xRaw, yRaw, idRaw, funcIdRaw, labelRaw, showCoordsRaw) {
+export function demoGraphAddPoint(xRaw, yRaw, idRaw, funcIdRaw, labelRaw, showCoordsRaw, styleRaw, hideLabelRaw, colorRaw) {
   // x and y are kept as strings — desmosEngine.addPoint handles evalMathExpr('sqrt(3)/2') etc.
   const x  = (xRaw != null && String(xRaw).trim() !== '') ? String(xRaw).trim() : '2'
   const y  = (yRaw != null && String(yRaw).trim() !== '') ? String(yRaw).trim() : '3'
   const id = (idRaw || '').trim() || `p_${Date.now()}`
   const funcId     = (funcIdRaw || '').trim()
-  const label      = (labelRaw !== undefined && String(labelRaw).trim() !== '') ? String(labelRaw).trim() : `(${x}, ${y})`
-  const showCoords = showCoordsRaw === true || String(showCoordsRaw).trim() === 'true'
-  const opts = { size: 6, label, showCoords }
-  if (funcId) opts.funcId = funcId
-  else        opts.color  = [96, 165, 250]
+  // Hiding wins over both the label and the coordinates: showCoords writes the
+  // coordinates itself, so leaving it on would put back exactly what was hidden.
+  const hideLabel  = String(hideLabelRaw ?? '').trim() === '1'
+  const label      = hideLabel ? ''
+    : (labelRaw !== undefined && String(labelRaw).trim() !== '') ? String(labelRaw).trim()
+    : `(${x}, ${y})`
+  const showCoords = !hideLabel && (showCoordsRaw === true || String(showCoordsRaw).trim() === 'true')
+  const open = String(styleRaw ?? '').trim() === 'open'
+  const opts = { size: 6, label, showCoords, open }
+  // A named colour beats the default; a funcId still wins over both, since
+  // "same colour as that curve" is a stronger statement than a colour name and
+  // keeps matching if the curve's colour ever changes.
+  const named = String(colorRaw ?? '').trim()
+  if (funcId)     opts.funcId = funcId
+  else if (named) opts.color  = resolveColor(named)
+  else            opts.color  = [96, 165, 250]
   const script = [
     { type: 'showTitle', text: `addPoint("${id}", ${x}, ${y})` },
     { type: 'ggb-add-point', id, x, y, opts },
@@ -514,7 +913,7 @@ export function demoGraphScatterPlot(slopeRaw, interceptRaw, coeffRaw, countRaw,
   const coeff     = Math.max(0, Number(coeffRaw) ?? 1)
   const count     = Math.max(2, Math.round(Number(countRaw) || 20))
   const xMin      = Number(xMinRaw) || -5
-  const xMax      = Number(xMaxRaw) || 5
+  const xMax      = num(xMaxRaw, 5)
   const color     = (colorRaw || '').trim()
   const id        = (idRaw || 'cloud1').trim()
   const opts = {}
@@ -538,19 +937,24 @@ export function demoGraphRemoveScatterPlot(idRaw) {
 // ── graph-add-segment ─────────────────────────────────────────────────────────
 // A genuine finite line segment between two points — NOT an infinite line
 // like y=mx+b or the fh/fV horizontal/vertical lines.
-export function demoGraphAddSegment(x1Raw, y1Raw, x2Raw, y2Raw, colorRaw, idRaw) {
-  const x1 = Number(x1Raw) || 0
-  const y1 = Number(y1Raw) || 0
-  const x2 = Number(x2Raw) || 4
-  const y2 = Number(y2Raw) || 0
+export function demoGraphAddSegment(x1Raw, y1Raw, x2Raw, y2Raw, colorRaw, idRaw, arrowRaw, nameRaw) {
+  const x1 = num(x1Raw, 0)
+  const y1 = num(y1Raw, 0)
+  const x2 = num(x2Raw, 4)
+  const y2 = num(y2Raw, 0)
   const color = colorRaw ? resolveColor(colorRaw) : ''
   const id = (idRaw || 'seg1').trim()
   const opts = {}
   if (color) opts.color = color
+  const arrow = String(arrowRaw ?? '').trim()
+  if (arrow && arrow !== 'none') opts.arrow = arrow
+  // Blank means no name — on an id already drawn, that takes its name away.
+  const name = String(nameRaw ?? '').trim()
+  if (name) opts.name = name
   return {
     snapshot: null,
     script: [
-      { type: 'showTitle', text: `addSegment("${id}", (${x1},${y1})→(${x2},${y2}))` },
+      { type: 'showTitle', text: `addSegment("${id}", (${x1},${y1}) ${opts.arrow ? "⟶" : "→"} (${x2},${y2}))` },
       { type: 'ggb-add-segment', id, x1, y1, x2, y2, opts },
     ],
   }
@@ -741,12 +1145,35 @@ export function demoGraphRiemannSum(funcIdRaw, aRaw, bRaw, nRaw, methodRaw) {
   return { snapshot: null, script }
 }
 
+// ── graph-angle-between ───────────────────────────────────────────────────────
+export function demoGraphAngleBetween(aRaw, bRaw, colorRaw, idRaw) {
+  const a = (aRaw || 'seg1').trim()
+  const b = (bRaw || 'seg2').trim()
+  const id = (idRaw || 'ang1').trim()
+  const opts = {}
+  const color = colorRaw ? resolveColor(colorRaw) : ''
+  if (color) opts.color = color
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `angleBetween("${a}", "${b}")` },
+    { type: 'ggb-angle-between', id, a, b, opts },
+  ] }
+}
+
+// ── graph-remove-angle ────────────────────────────────────────────────────────
+export function demoGraphRemoveAngle(idRaw) {
+  const id = (idRaw || 'ang1').trim()
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `removeAngle("${id}")` },
+    { type: 'ggb-remove-angle', id },
+  ] }
+}
+
 // ── graph-draw-vector ─────────────────────────────────────────────────────────
 export function demoGraphDrawVector(x1Raw, y1Raw, x2Raw, y2Raw) {
-  const x1 = Number(x1Raw) || 0
-  const y1 = Number(y1Raw) || 0
-  const x2 = Number(x2Raw) || 2
-  const y2 = Number(y2Raw) || 3
+  const x1 = num(x1Raw, 0)
+  const y1 = num(y1Raw, 0)
+  const x2 = num(x2Raw, 2)
+  const y2 = num(y2Raw, 3)
   const script = [
     { type: 'showTitle',     text: `drawVector((${x1},${y1}) → (${x2},${y2}))` },
     { type: 'ggb-draw-vector', id: `vec_${Date.now()}`, x1, y1, x2, y2, opts: { color: [96, 165, 250], thickness: 2 } },
@@ -797,7 +1224,7 @@ export function demoGraphTransformFunction(funcIdRaw, typeRaw, valueRaw) {
 // ── graph-tangent ─────────────────────────────────────────────────────────────
 export function demoGraphTangent(funcIdRaw, x0Raw, y0Raw) {
   const funcId = (funcIdRaw || 'f').trim()
-  const x0     = Number(x0Raw) || 1
+  const x0     = num(x0Raw, 1)
   const y0Num  = parseFloat(y0Raw)
   const hasY0  = y0Raw !== '' && y0Raw !== undefined && y0Raw !== null && isFinite(y0Num)
 
@@ -816,47 +1243,24 @@ export function demoGraphTangent(funcIdRaw, x0Raw, y0Raw) {
 // TABLES — animated grid engine demos
 // ════════════════════════════════════════════════════════════════════════════════
 
-// ── table-create ───────────────────────────────────────────────────────────────
-// Simpler entry point than tab-create-grid: give one 2D array literal, e.g.
-// [[2,2,3],[5,5,6],[4,4,4]], and the grid size (rows × cols) is auto-detected —
-// no need to specify cols/rows separately (or keep them in sync with the data).
-export function demoTableCreate(dataRaw, headerRowRaw, gridIdRaw, colorRaw) {
-  const gid = (gridIdRaw ?? '').trim() || 'table1'
-
-  let data
-  try { data = JSON.parse(dataRaw ?? '') } catch { data = null }
-  if (!Array.isArray(data) || !data.length || !Array.isArray(data[0])) {
-    throw new Error('Enter a 2D array like [[2,2,3],[5,5,6],[4,4,4]]')
-  }
-  const rows = data.length
-  const cols = data[0].length
-  if (!data.every(row => Array.isArray(row) && row.length === cols)) {
-    throw new Error('Every row must have the same number of columns.')
-  }
-  const values    = data.map(row => row.map(v => String(v)))
-  const headerRow = headerRowRaw === 'true'
-  const color     = (colorRaw || '').trim()
-  const opts      = { headerRow }
-  if (color) opts.color = resolveColor(color)
-
-  const script = [
-    { type: 'showTitle',     text: `createTable("${gid}", ${cols}×${rows})` },
-    { type: 'table-create-grid', id: gid, cols, rows, values, opts },
-  ]
-  return { snapshot: null, script }
-}
-
 // ── tab-create-grid ───────────────────────────────────────────────────────────
-export function demoTableCreateGrid(colsRaw, rowsRaw, valuesRaw, headerRowRaw, gridIdRaw) {
+export function demoTableCreateGrid(colsRaw, rowsRaw, valuesRaw, headerRowRaw, gridIdRaw, headerColRaw, colorRaw) {
   const gid       = (gridIdRaw ?? '').trim() || 'grid1'
   const cols      = Math.max(1, Math.min(Number(colsRaw) || 3, 12))
   const rows      = Math.max(1, Math.min(Number(rowsRaw) || 4, 20))
   const values    = parseTableValues(valuesRaw || 'Name,Age,Score|Alice,25,95|Bob,30,87|Carol,22,91')
   const headerRow = headerRowRaw !== 'false'
+  const headerCol = headerColRaw === 'true'
+  const color     = (colorRaw || '').trim()
+  // Both header flags on is what makes a two-axis table read as one: the top
+  // row and the left column are the two things being crossed, everything else
+  // is a result.
+  const opts      = { headerRow, headerCol }
+  if (color) opts.color = resolveColor(color)
 
   const script = [
     { type: 'showTitle',     text: `createGrid("${gid}", ${cols}, ${rows})` },
-    { type: 'table-create-grid', id: gid, cols, rows, values, opts: { headerRow } },
+    { type: 'table-create-grid', id: gid, cols, rows, values, opts },
   ]
   return { snapshot: null, script }
 }
@@ -1082,9 +1486,9 @@ export function demoClearComments() {
 }
 
 export function demoRemoveComment(cmtIdRaw) {
-  const id = (cmtIdRaw || '').trim()
-  if (!id) throw new Error('Comment ID is required for cmt-remove.')
-  return { snapshot: null, script: [{ type: 'remove-comment', id }] }
+  const ids = splitIds(cmtIdRaw)
+  if (!ids.length) throw new Error('Comment ID is required for cmt-remove.')
+  return { snapshot: null, script: [{ type: 'remove-comment', id: ids[0], ids }] }
 }
 
 export function demoUpdateComment(cmtIdRaw, textRaw, colorRaw) {
@@ -1095,6 +1499,37 @@ export function demoUpdateComment(cmtIdRaw, textRaw, colorRaw) {
   return { snapshot: null, script: [{ type: 'update-comment', id, text, color }] }
 }
 
+// ── eq-polynomial-divide ──────────────────────────────────────────────────────
+// Sits alongside eq-create rather than in its own module: it occupies the same
+// panel, so a page has an equation or a division, and either can replace the
+// other. The script sets the tableau up, then hands control to the sub-step gate
+// — the reader meets the problem before the method, and each click brings down
+// one subtraction. Same gate the auto-solve uses, so ‹ › behave identically.
+export function demoPolynomialDivide(polyRaw, divisorRaw) {
+  const poly    = substituteValueRefs((polyRaw ?? '').trim())
+  const divisor = substituteValueRefs((divisorRaw ?? '').trim())
+  if (!poly)    throw new Error('Enter the polynomial to divide.')
+  if (!divisor) throw new Error('Enter the divisor, e.g. "x - 1".')
+
+  const work = dividePolynomials(poly, divisor)
+
+  // One click per round, and the round then plays out in three beats half a
+  // second apart: where the line comes from, the line, what is left. Only the
+  // first beat is gated — once the reader has asked for the round, the rest of
+  // it should unfold on its own rather than needing three more clicks.
+  const script = [{ type: 'division-create', work }]
+  work.steps.forEach((_, i) => {
+    script.push({ type: 'division-reveal', step: i, part: 0, gated: true })
+    script.push({ type: 'pause', seconds: 0.5 })
+    script.push({ type: 'division-reveal', step: i, part: 1 })
+    script.push({ type: 'pause', seconds: 0.5 })
+    script.push({ type: 'division-reveal', step: i, part: 2 })
+  })
+  script.push({ type: 'division-quotient', gated: true })
+  return { snapshot: null, script }
+}
+
+
 // ── set-layout ────────────────────────────────────────────────────────────────
 // Switches the page's layout mid-script (e.g. text-equation → single-equation
 // → graph-equation as a derivation progresses). App.jsx's display slots are
@@ -1104,7 +1539,9 @@ export function demoUpdateComment(cmtIdRaw, textRaw, colorRaw) {
 export function demoSetLayout(modeRaw) {
   const mode = (modeRaw || '').trim()
   if (!mode) throw new Error('Choose a layout for set-layout.')
-  return { snapshot: null, script: [{ type: 'set-layout', mode }] }
+  // Accepts either form: "03" (panels, what the generator writes now) or a
+  // layout name, which is what every lesson saved before panels existed says.
+  return { snapshot: null, script: [{ type: 'set-layout', mode: layoutFrom(mode) }] }
 }
 
 // ── eq-full-solve ─────────────────────────────────────────────────────────────
@@ -1138,12 +1575,125 @@ export function demoEquationDistribute(eqText, currentSnapshot) {
   return { snapshot: ownedSnapshot ? snapshot : null, script }
 }
 
+// ── eq-cross-multiply ─────────────────────────────────────────────────────────
+// The proportion is typed HERE rather than in a separate Create Equation before
+// it: the rule of three is one move on four numbers, and asking for them in one
+// place is how anyone would expect to use it. Left blank, it crosses whatever
+// equation is already on screen.
+export function demoCrossMultiply(eqRaw) {
+  const eq = String(eqRaw ?? '').trim()
+  const cross = [
+    { type: 'showTitle', text: eq ? `crossMultiply("${eq}")` : 'crossMultiply()' },
+    { type: 'cross-multiply' },
+    // Gated: the page stops on the working and › does the arithmetic.
+    // One stop, on the finished working. After that it is solved through — the
+    // product, then the division — without asking again: the reader has already
+    // said go, and being stopped a second time mid-arithmetic is being asked to
+    // approve a step nobody was deciding anything about.
+    { type: 'rule-of-three-solve', phase: 1, gated: true, stop: true },
+    { type: 'rule-of-three-solve', phase: 2 },
+  ]
+  if (!eq) return { snapshot: null, script: cross }
+  const base = demoEquationCreate(eq)
+  return {
+    snapshot: base.snapshot,
+    script: [...base.script, { type: 'pause', seconds: 0.6 }, ...cross],
+  }
+}
+
+// ── eq-factorial-expand ───────────────────────────────────────────────────────
+export function demoFactorialExpand(sideRaw, indexRaw) {
+  const side = String(sideRaw ?? 'left').trim() === 'right' ? 'right' : 'left'
+  const index = Math.max(0, Math.round(num(indexRaw, 0)))
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `factorial(${side}[${index}])` },
+    { type: 'factorial-expand', side, index },
+  ] }
+}
+
+// ── eq-sci-expand ─────────────────────────────────────────────────────────────
+export function demoSciExpand(sideRaw, indexRaw, targetRaw) {
+  const side = String(sideRaw ?? 'left').trim() === 'right' ? 'right' : 'left'
+  const index = Math.max(0, Math.round(num(indexRaw, 0)))
+  // Blank means 0 — write the number out in full, the original behaviour.
+  const target = Math.round(num(targetRaw, 0))
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `sciExpand(${side}[${index}] → 10^${target})` },
+    { type: 'sci-expand', side, index, target },
+  ] }
+}
+
+export function demoEquationTermOp(sideRaw, indexRaw, opRaw, valueRaw) {
+  const side  = (sideRaw || 'left').trim() === 'right' ? 'right' : 'left'
+  const index = Math.max(0, Math.round(Number(indexRaw) || 0))
+  const op    = (opRaw || 'over').trim()
+  if (!['over', 'amplify'].includes(op)) throw new Error(`Unknown term op "${op}".`)
+  const value = op === 'amplify' ? Number(valueRaw) : null
+  if (op === 'amplify' && (!isFinite(value) || value === 0)) {
+    throw new Error('amplify needs a non-zero number.')
+  }
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: op === 'over' ? `term ${index} → n/1` : `term ${index} × ${value}/${value}` },
+    { type: 'term-op', side, index, op, value },
+  ] }
+}
+
 // ── eq-create ─────────────────────────────────────────────────────────────────
 export function demoEquationCreate(eqText) {
   const eq = substituteValueRefs((eqText || '3x + 5 = 14').trim())
-  const isRich = /\|[^|]+\|/.test(eq) || /\//.test(eq) || /\b(sin|cos|tan|cot|sec|csc)\s*\(/.test(eq)
-  const snapshot = (isRich ? parseRichEquation(eq) : parseEquation(eq)).snapshot()
-  const script = [{ type: 'renderEquation' }]
+  // A times sign between two numbers needs the rich parser: the classic grammar
+  // has no product, and it does not FAIL on "24,25x10^2" either — it reads the x
+  // as a variable and hands back one nonsense term, so the empty-side fallback
+  // below never fires. Recognised here instead.
+  const isRich = /\|[^|]+\|/.test(eq) || /\//.test(eq) ||
+    // A list ("3 ; 7 ; 11") and a subscript ("u_0") exist only in the rich
+    // grammar — the classic one has no separator and reads u_0 as one name.
+    /;/.test(eq) || /[A-Za-zα-ω]_[\w{]/.test(eq) ||
+    // So does an exponent that is not a plain number: 2^n, r^(n-1).
+    /\^\s*(?!-?\d+(?![.\d]))/.test(eq) ||
+    /\d\s*[x×·]\s*[\d(]/i.test(eq) ||
+    // Radicals need the rich parser too: the classic grammar has no notion of
+    // one, so "sqrt(16)" came back as a term whose variable was the literal
+    // text "sqrt(16)" — printed as the word, never as a radical sign.
+    /\b(sin|cos|tan|cot|sec|csc|sqrt|cbrt|root)\s*\(/.test(eq)
+  let snapshot = (isRich ? parseRichEquation(eq) : parseEquation(eq)).snapshot()
+
+  // The parser drops what it cannot read instead of complaining, and an empty
+  // side then renders as "0" — so "(3x+2)(2x-2)" came out as "0 = 0" and every
+  // step after it operated on nothing. A side with zero terms is always a parse
+  // failure: even a literal "0" parses to one term.
+  //
+  // An equation written without "=" has no right side ON PURPOSE — it is an
+  // expression being shown, not a problem being posed. Only a side that was
+  // actually written and came back empty is a failure.
+  const wroteBothSides = eq.includes('=')
+  const failedSide = (snap) => {
+    const s = ['left', 'right'].find(k => (snap[k] ?? []).length === 0)
+    return s && (wroteBothSides || s === 'left') ? s : null
+  }
+
+  let emptySide = failedSide(snapshot)
+  if (emptySide) {
+    // Two brackets side by side is not a parse failure to report, it is an
+    // expansion waiting to happen. Hand it to the expansion, which ends by
+    // putting the expanded polynomial in the equation panel — so anything after
+    // this step (a full solve, a factoring move) sees a normal equation.
+    if (/\)\s*\(/.test(eq)) return demoExpandProduct(eq)
+    // Before giving up: the RICH parser knows forms the classic grammar has no
+    // place for — a product of two numbers, an expression tree, "24,56 x 10^2".
+    // isRich only sniffs for pipes, fractions and trig, and a line it does not
+    // recognise used to be reported as unreadable when the other parser could
+    // read it perfectly well. Only reached once the classic one has failed, so
+    // nothing that already parsed changes hands.
+    if (!isRich) {
+      const alt = parseRichEquation(eq).snapshot()
+      if (!failedSide(alt)) { snapshot = alt; emptySide = null }
+    }
+    if (emptySide) throw new Error(`Cannot read the ${emptySide} side of "${eq}".`)
+  }
+  // The two share one panel, so creating an equation is also how a division
+  // hands it back. Harmless when there was no division up.
+  const script = [{ type: 'division-clear' }, { type: 'renderEquation' }]
   // "pi" in the raw string → the equation itself already renders the π glyph
   // (see parseEquation.js's substitutePi); also float a small one-time note
   // explaining what it numerically is, the first time it shows up.
@@ -1193,9 +1743,19 @@ export function demoTextUpdateTitle(boxId, title) {
   return { snapshot: null, script: [{ type: 'text-update-title', id, title: titleV }] }
 }
 
+// One id, or several separated by "|". Removing four labelled shapes took four
+// steps and four beats, which read as four separate decisions instead of one
+// clearing-out. Splitting here rather than in each remover means every
+// removal that uses it behaves the same way, and a single id still costs
+// nothing: the split gives one element back.
+export function splitIds(raw, fallback = '') {
+  const ids = String(raw ?? '').split('|').map(s => s.trim()).filter(Boolean)
+  return ids.length ? ids : (fallback ? [fallback] : [])
+}
+
 export function demoTextRemove(boxId) {
-  const id = (boxId || 'box1').trim()
-  return { snapshot: null, script: [{ type: 'text-remove', id }] }
+  const ids = splitIds(boxId, 'box1')
+  return { snapshot: null, script: [{ type: 'text-remove', id: ids[0], ids }] }
 }
 
 export function demoTextFadeContent(boxIdRaw, contentRaw) {
@@ -1734,10 +2294,8 @@ export function demoGeo3dCreate(idRaw, typeRaw, aRaw, bRaw, cRaw, colorRaw) {
 }
 
 export function demoGeo3dRemove(idRaw) {
-  return {
-    snapshot: null,
-    script: [{ type: 'ggb-3d-remove', id: (idRaw || 'shape1').trim() }],
-  }
+  const ids = splitIds(idRaw, 'shape1')
+  return { snapshot: null, script: [{ type: 'ggb-3d-remove', id: ids[0], ids }] }
 }
 
 export function demoGeo3dMove(idRaw, dxRaw, dyRaw) {

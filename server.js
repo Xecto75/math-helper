@@ -3,7 +3,6 @@ import fs         from 'fs'
 import path       from 'path'
 import express    from 'express'
 import cors       from 'cors'
-import Anthropic  from '@anthropic-ai/sdk'
 import { CATEGORIES } from './src/data/functions.js'
 import { ROUTER_SYSTEM_PROMPT, buildGeneratorPrompt, docForCode } from './src/data/moduleCatalog.js'
 import { EXAMPLE_LESSONS } from './src/data/exampleLessons.js'
@@ -87,9 +86,8 @@ app.post('/api/example-locks/:id', (req, res) => {
   res.json({ ok: true })
 })
 
-// The rate card now lives in src/server/pricing.js so the transcript writer can
-// price each call with the same numbers this file bills from.
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// Which model answers is a setting, not a rewrite — see src/server/llm.js.
+import { generate, MODELS } from './src/server/llm.js'
 
 import {
   LAYOUTS, FUNCS, CLR, FUNC_META,
@@ -102,29 +100,37 @@ import { costOf } from './src/server/pricing.js'
 
 // Single door to the API: every request and its full response is written to the
 // run's transcript file here, so no call can be logged partially or forgotten.
-async function callClaude(trace, label, params) {
+async function callModel(trace, label, params) {
   const t0 = Date.now()
-  const message = await client.messages.create(params)
-  trace?.call(label, params, message, Date.now() - t0)
-  return message
+  const res = await generate(params)
+  trace?.call(label, res.request, res.raw, Date.now() - t0)
+  return res
 }
 
 // ── Request 1: Router ─────────────────────────────────────────────────────────
 
 async function routeModules(prompt, trace) {
   const t0 = Date.now()
-  const message = await callClaude(trace, 'Router (haiku)', {
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 256,
-    system:     ROUTER_SYSTEM_PROMPT,
-    messages:   [{ role: 'user', content: prompt }],
+  const res = await callModel(trace, `Router (${MODELS.router})`, {
+    model:     MODELS.router,
+    // 256 was sized for the answer alone — a two-line JSON object. This model
+    // thinks before it writes and its reasoning is billed against the SAME
+    // budget, so the budget ran out during the thinking and the reply was cut
+    // off mid-key: "{"status":"ok"," and nothing else. Every downstream
+    // symptom came from that one line — no modules, no exampleId, the
+    // equation+text fallback, and a lesson with no visual in it. Room to
+    // think costs nothing when it is not used: only tokens actually produced
+    // are billed.
+    maxTokens: 2048,
+    system:    ROUTER_SYSTEM_PROMPT,
+    user:      prompt,
   })
-  const raw  = message.content[0]?.text?.trim() ?? '{}'
-  const u    = message.usage ?? {}
-  const cost = costOf('claude-haiku-4-5-20251001', u)
+  const raw  = res.text.trim() || '{}'
+  const u    = res.usage ?? {}
+  const cost = costOf(MODELS.router, u)
   // Prompts and raw model output go to the transcript file only — the console
   // keeps the one-line summary you actually read while a lesson is building.
-  console.log(`\n─── Router (haiku) ${Date.now() - t0}ms  in:${u.input_tokens} out:${u.output_tokens}  $${cost.toFixed(5)}`)
+  console.log(`\n─── Router (${MODELS.router}) ${Date.now() - t0}ms  in:${u.input_tokens} out:${u.output_tokens}  $${cost.toFixed(5)}`)
 
   let result
   try {
@@ -143,7 +149,11 @@ async function routeModules(prompt, trace) {
         .filter(id => EXAMPLE_LESSONS.some(e => e.id === id)),
     }
   } catch {
-    console.warn('  Router parse failed — falling back to equation+text')
+    if (res.stopReason === 'MAX_TOKENS' || res.stopReason === 'length') {
+      console.warn(`  Router hit its token ceiling and was cut off — raise maxTokens. Raw: ${JSON.stringify(raw.slice(0, 60))}`)
+    } else {
+      console.warn('  Router parse failed — falling back to equation+text')
+    }
     result = { status: 'ok', modules: ['equation', 'text'], exampleId: null }
   }
   console.log('  status:', result.status, result.status === 'ok' ? `modules:${result.modules} example:${result.exampleId ?? '—'}` : result.message ?? '')
@@ -202,29 +212,29 @@ async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null,
   const systemPrompt = buildGeneratorPrompt(merged, lang, reference)
   const t0 = Date.now()
 
-  console.log(`\n─── Generator (sonnet) modules=[${moduleIds.join(',')}]`)
+  console.log(`\n─── Generator (${MODELS.generator}) modules=[${moduleIds.join(',')}]`)
 
-  const message = await callClaude(trace, 'Generator (sonnet)', {
-    model:      'claude-sonnet-4-6',
+  const res = await callModel(trace, `Generator (${MODELS.generator})`, {
+    model: MODELS.generator,
     // A 5-6 page lesson in compact codes runs well under this; the headroom is
-    // so a long one is never truncated mid-lesson. Even if it were all used the
-    // request still lands around $0.20, inside the $0.30 per-prompt ceiling.
-    max_tokens: 12000,
-    system:     [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-    messages:   [{ role: 'user', content: prompt }],
+    // so a long one is never truncated mid-lesson.
+    maxTokens:   12000,
+    system:      systemPrompt,
+    user:        prompt,
+    cacheSystem: true,
   })
 
-  const rawText = message.content[0]?.text ?? ''
-  const u = message.usage ?? {}
+  const rawText = res.text
+  const u = res.usage ?? {}
   const tok = {
     in:     u.input_tokens                ?? 0,
     cRead:  u.cache_read_input_tokens     ?? 0,
     cWrite: u.cache_creation_input_tokens ?? 0,
     out:    u.output_tokens               ?? 0,
   }
-  const cost = costOf('claude-sonnet-4-6', u)
+  const cost = costOf(MODELS.generator, u)
   console.log(`  ${Date.now() - t0}ms  in:${tok.in} cRead:${tok.cRead} cWrite:${tok.cWrite} out:${tok.out}  $${cost.toFixed(5)}`)
-  console.log('  stop reason:', message.stop_reason)
+  console.log('  stop reason:', res.stopReason)
 
   return { rawText, cost }
 }
@@ -233,17 +243,17 @@ async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null,
 // them, and the docs for those exact functions.
 async function repairWithAI(compact, issues, trace) {
   const t0 = Date.now()
-  const message = await callClaude(trace, 'Repair (sonnet)', {
-    model:      'claude-sonnet-4-6',
-    max_tokens: 12000,
-    system:     buildRepairPrompt(compact, issues, docForCode),
-    messages:   [{ role: 'user', content: 'Return the corrected lesson.' }],
+  const res = await callModel(trace, `Repair (${MODELS.generator})`, {
+    model:     MODELS.generator,
+    maxTokens: 12000,
+    system:    buildRepairPrompt(compact, issues, docForCode),
+    user:      'Return the corrected lesson.',
   })
-  const u    = message.usage ?? {}
-  const cost = costOf('claude-sonnet-4-6', u)
+  const u    = res.usage ?? {}
+  const cost = costOf(MODELS.generator, u)
   console.log(`
-─── Repair (sonnet) ${Date.now() - t0}ms  in:${u.input_tokens} out:${u.output_tokens}  $${cost.toFixed(5)}`)
-  return message.content[0]?.text ?? ''
+─── Repair (${MODELS.generator}) ${Date.now() - t0}ms  in:${u.input_tokens} out:${u.output_tokens}  $${cost.toFixed(5)}`)
+  return res.text
 }
 
 // ── Health check ─────────────────────────────────────────────────────────────
@@ -296,7 +306,7 @@ app.post('/api/generate-lesson', async (req, res) => {
   // server-side, because this is the only place that cannot be bypassed. The
   // client also hides the button when a user is out of credits, but that is
   // cosmetic: anyone can POST straight to this endpoint, and each call spends
-  // real money on the Anthropic API.
+  // real money on the model provider (see src/server/llm.js).
   let auth   = null
   let anonIp = null
   if (authConfigured) {

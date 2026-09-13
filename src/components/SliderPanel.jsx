@@ -21,9 +21,10 @@ export default function SliderPanel({ graphRef }) {
       {vars.map(v => {
         const pct = ((v.value - v.min) / (v.max - v.min)) * 100
         return (
-          <div className="var-slider" key={v.name}>
+          <div className="var-slider" key={v.name}
+               style={{ '--sc': v.color || '#60a5fa', '--pct': `${pct}%` }}>
             <div className="var-slider-track">
-              <span className="var-slider-name" style={{ '--pct': `${pct}%` }}>{v.name}</span>
+              <span className="var-slider-name">{v.name}</span>
               <input
                 type="range"
                 className="var-slider-input"

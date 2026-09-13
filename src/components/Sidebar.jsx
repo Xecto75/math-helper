@@ -45,14 +45,10 @@ const ICONS = {
 // source (npm run dev). In a production build import.meta.env.DEV is false, this
 // entry is never created, and the drawer is never rendered — the visitor cannot
 // reach it because it is not there.
-// Collapse/expand control. Same idea as the panel toggle every chat app puts in
-// this corner: two overlapping marks, the brand by default and this one on
-// hover, so the rail keeps its clean look while still saying it can open.
-const PANEL_ICON = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9.5 4v16"/>
-  </svg>
-)
+// The logo file itself, served straight out of public/. Not redrawn here: the
+// artwork is the artwork, and tracing it by hand only produces something that
+// is nearly it. The %20 is the space in the filename.
+const LOGO = <img className="sidebar-logo" src="/assets/icons/Group%201.png" alt="Vectora" />
 
 const TOP_ITEMS = [
   { id: 'home'    },
@@ -110,8 +106,7 @@ export default function Sidebar({ active, onToggle, expanded, onSetExpanded, lan
         title={u(lang, expanded ? 'navCollapse' : 'navExpand')}
         aria-expanded={expanded}
       >
-        <span className="sidebar-brand-mark">∑</span>
-        <span className="sidebar-brand-panel">{PANEL_ICON}</span>
+        <span className="sidebar-brand-mark">{LOGO}</span>
       </button>
 
       <nav className="sidebar-nav sidebar-nav--top">

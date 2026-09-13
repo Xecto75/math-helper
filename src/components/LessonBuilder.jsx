@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { CATEGORIES, defaultInputs } from '../data/functions.js'
+import { PANELS, panelsOf, resolveLayout } from '../data/panels.js'
 import { PRIMARY_DISPLAYS, SECONDARY_ACTIONS } from '../data/primaryDisplays.js'
 import ColorInput from './ColorInput.jsx'
 import { generateLesson } from '../api/generateLesson.js'
@@ -143,22 +144,8 @@ function writeDraft(pages, editingExampleId = null) {
   localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages, editingExampleId }))
 }
 
-const LAYOUT_OPTIONS = [
-  { value: 'single-graph',    label: 'Graph only' },
-  { value: 'single-3d',       label: 'Geometry only' },
-  { value: 'single-grid',     label: 'Table only' },
-  { value: 'single-equation', label: 'Equation only' },
-  { value: 'single-text',     label: 'Text only' },
-  { value: 'grid-graph',      label: 'Table + Graph' },
-  { value: 'grid-equation',   label: 'Table + Equation' },
-  { value: 'geo-equation',    label: 'Geometry + Equation' },
-  { value: 'graph-equation',  label: 'Graph + Equation' },
-  { value: 'text-graph',      label: 'Text + Graph' },
-  { value: 'text-geo',        label: 'Text + Geometry' },
-  { value: 'text-grid',       label: 'Text + Table' },
-  { value: 'text-equation',   label: 'Text + Equation' },
-  { value: 'equation-text',   label: 'Equation + Text' },
-]
+// The layout <select> it fed is gone — a page picks panels now and the layout
+// name is derived (src/data/panels.js).
 
 const ALL_READY = CATEGORIES.flatMap(c => c.functions).filter(f => f.status === 'ready')
 
@@ -178,37 +165,37 @@ function detectVarLabels(page, currentStep) {
   return [...new Set(labels)]
 }
 
+// A function belongs to a panel through the use* flag it already carries; a
+// function with no flag at all is an equation function. So "may this step go on
+// this page" is just: is its panel one of the page's panels. This replaced a
+// twenty-case switch over layout names that had to be extended by hand every
+// time a pairing was added.
+const PANEL_OF_FLAG = [
+  ['useText',   '0'],
+  ['useGraph',  '1'],
+  ['useTable',  '2'],
+  ['useGeo',    '4'],
+  ['use3D',     '5'],
+]
+
+// Three layouts predate the panel split and their CSS shows the Three.js slot
+// wherever the SVG geometry slot appears, so both kinds of geometry function
+// have always been legal on them. Kept verbatim: narrowing them would quietly
+// invalidate steps in lessons that already work.
+const GEO_LEGACY = new Set(['single-geo', 'text-geo', 'geo-equation'])
+
 function isFuncCompatible(fn, layout) {
   if (fn.useAll) return true
-  const g   = !!fn.useGraph, geo = !!fn.useGeo, three = !!fn.use3D
-  const t   = !!fn.useTable, txt = !!fn.useText, c = !!fn.useCalc
-  const ar  = !!fn.useArith, mu  = !!fn.useMult, cl  = !!fn.useClock
-  const nb  = !!fn.useNumbers, md = !!fn.useMdas
-  const anyGeo = geo || three
-  const eq  = !g && !anyGeo && !t && !txt && !c && !ar && !mu && !cl && !nb && !md
-  switch (layout) {
-    case 'single-graph':    return g
-    case 'single-3d':       return three
-    case 'single-geo':      return anyGeo      // legacy pages
-    case 'single-grid':     return t
-    case 'single-equation': return eq
-    case 'single-text':     return txt
-    case 'single-arith':    return ar
-    case 'single-mult':     return mu
-    case 'single-clock':    return cl
-    case 'single-numbers':  return nb
-    case 'text-mdas':       return txt || md
-    case 'grid-graph':      return g || t
-    case 'grid-equation':   return t || eq
-    case 'geo-equation':    return anyGeo || eq
-    case 'graph-equation':  return g || eq
-    case 'text-graph':      return g || txt
-    case 'text-geo':        return anyGeo || txt
-    case 'text-grid':       return t || txt
-    case 'text-equation':   return eq || txt
-    case 'equation-text':   return eq || txt
-    default: return true
-  }
+  const digits = panelsOf(layout)
+  if (!digits.length) return true      // a layout outside the panel list
+
+  const own = PANEL_OF_FLAG.filter(([flag]) => fn[flag]).map(([, d]) => d)
+  // No panel flag of any kind = an equation function (panel 3).
+  if (!own.length) own.push('3')
+
+  const allowed = new Set(digits)
+  if (GEO_LEGACY.has(layout) && allowed.has('4')) allowed.add('5')
+  return own.some(d => allowed.has(d))
 }
 
 // The page's declared layout only holds until the first mid-page 'set-layout'
@@ -504,6 +491,20 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
       return next
     })
     setActivePage(idx + 1)
+  }
+
+  // One or two panels, never three: picking a third pushes the older of the two
+  // out rather than refusing the click, so the picker never gets stuck needing a
+  // deselect first. The page still stores a layout NAME — the panels are only how
+  // it is chosen, so everything downstream (steps, CSS, saved lessons) is unchanged.
+  const togglePanel = (digit) => {
+    const cur = panelsOf(page?.layout ?? '')
+    const next = cur.includes(digit)  ? cur.filter(d => d !== digit)
+               : cur.length < 2       ? [...cur, digit]
+               :                        [cur[1], digit]
+    if (!next.length) { clearPageLayout(); return }
+    const layout = resolveLayout(next.join(''))
+    if (layout) setPageLayout(layout)
   }
 
   const setPageLayout = (layout) => {
@@ -1275,17 +1276,19 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
 
             {/* ── Layout selector ──────────────────────────────────────────── */}
             <div className="lb-layout-row">
-              <span className="lb-layout-label">Layout</span>
-              <select
-                className="lb-layout-sel"
-                value={page.layout ?? ''}
-                onChange={e => setPageLayout(e.target.value)}
-              >
-                <option value="">— choose layout —</option>
-                {LAYOUT_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+              <span className="lb-layout-label">Panneaux</span>
+              <div className="lb-panel-picker">
+                {Object.entries(PANELS).map(([digit, pnl]) => (
+                  <button
+                    key={digit}
+                    type="button"
+                    className={`lb-panel-btn${panelsOf(page.layout ?? '').includes(digit) ? ' lb-panel-btn--on' : ''}`}
+                    onClick={() => togglePanel(digit)}
+                  >
+                    <span className="lb-panel-digit">{digit}</span>{pnl.label}
+                  </button>
                 ))}
-              </select>
+              </div>
               {page.layout && (
                 <button className="lb-display-change-btn" onClick={clearPageLayout}>Clear</button>
               )}

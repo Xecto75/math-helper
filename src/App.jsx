@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, lazy, Suspense } from 'react'
 import EquationDisplay      from './components/EquationDisplay.jsx'
 import CalcDisplay          from './components/CalcDisplay.jsx'
+import DivisionDisplay      from './components/DivisionDisplay.jsx'
 import ArithmeticDisplay    from './components/ArithmeticDisplay.jsx'
 import MultiplicationTable  from './components/MultiplicationTable.jsx'
 import ClockDisplay         from './components/ClockDisplay.jsx'
@@ -14,6 +15,7 @@ import DesmosDisplay        from './components/DesmosDisplay.jsx'
 import SliderPanel           from './components/SliderPanel.jsx'
 import ThreeDisplay         from './components/ThreeDisplay.jsx'
 import TableDisplay         from './components/TableDisplay.jsx'
+import ChartDisplay        from './components/ChartDisplay.jsx'
 import TextBoxDisplay       from './components/TextBoxDisplay.jsx'
 import CommentLayer         from './components/CommentLayer.jsx'
 // Loaded only when running from source. import.meta.env.DEV is replaced by a
@@ -30,9 +32,10 @@ import CustomView           from './views/CustomView.jsx'
 import SettingsView         from './views/SettingsView.jsx'
 import ProfileView          from './views/ProfileView.jsx'
 import { CATEGORIES, defaultInputs } from './data/functions.js'
-import { executeScript, cancelAllAnimations, setSubStepGate, setHurry } from './engine/ActionExecutor.js'
+import { executeScript, cancelAllAnimations, setSubStepGate, setHurry, isHurrying } from './engine/ActionExecutor.js'
 import * as graphEngine     from './engine/desmosEngine.js'
 import * as tableEngine     from './engine/tableEngine.js'
+import * as chartEngine     from './engine/chartEngine.js'
 import * as textEngine      from './engine/textEngine.js'
 import * as geometryEngine  from './engine/geometryEngine.js'
 import * as threeEngine     from './engine/threeEngine.js'
@@ -49,7 +52,7 @@ import {
 import {
   demoEquationCombine, demoEquationSendOtherSide, demoEquationReorder,
   demoEquationDivide, demoEquationMultiply, demoEquationFullSolve, demoEquationCreate, demoEquationDistribute, demoQuadraticSolve,
-  demoGeoCreatePolygon, demoGeoEraseShape, demoGeoMoveShape,
+  demoGeoCreatePolygon, demoGeoSnapShape, demoGeoNameVertices, demoGeoEraseShape, demoGeoMoveShape,
   demoGeoHighlightShape, demoGeoLabelSides, demoGeoAddText, demoGeoClear, demoGeoShowMeasure, demoGeoShowAreaMeasures,
   demoGeoShowPerimeterMeasures,
   demoReplaceVariable, demoSaveResult, demoRacineDesBords, demoDisparitionExposant, demoApplyInverseTrig,
@@ -61,7 +64,7 @@ import {
   demoGraphDivideSegment, demoGraphRemoveDivideSegment,
   demoGraphSetViewport, demoGraphNameFunc, demoGraphTangent,
   demoGraphAddHorizontalLine, demoGraphMarkRoots, demoGraphShowProjection, demoGraphPlotDerivative,
-  demoGraphRiemannSum, demoGraphDrawVector, demoGraphDrawAngle, demoGraphTransformFunction,
+  demoGraphRiemannSum, demoGraphDrawVector, demoGraphAngleBetween, demoGraphRemoveAngle, demoGraphDrawAngle, demoGraphTransformFunction,
   demoGraphBatchAddPoints, demoGraphBatchShowProjections, demoGraphTrigCircle,
   demoGeo3dCreate, demoGeo3dRemove, demoGeo3dClear,
   demoGeo3dMove, demoGeo3dHighlight, demoGeo3dLabelSides,
@@ -71,12 +74,16 @@ import {
   demoGeo3dShowArrow, demoGeo3dRemoveArrow, demoGeo3dClearHighlights, demoGeo3dSetView, demoGeo3dAddText,
   demoGeo3dShowVolumeMeasures, demoGeo3dRemoveVolumeMeasures,
   demoGeo2dFlip, demoGeo2dRotate,
-  demoTableCreate, demoTableCreateGrid, demoTableEraseGrid, demoTableAddColumn,
+  demoGeo3dSnapShape, demoGeo3dNameVertices, demoGeo3dPolygonPoints,
+  demoEquationAnnotate, demoEquationTermOp, demoSciExpand, demoFactorialExpand, demoCrossMultiply, demoEquationAnnotateClear, demoEquationArrow, demoEquationArrowClear, demoEquationArrowChain, demoEquationSequence,
+  demoChartPie, demoChartPieSet, demoChartPieMode, demoChartRemove, demoChartNumberSets, demoChartVenn, demoChartTree, demoChartTreePath, demoChartVennHighlight,
+ demoTableCreateGrid, demoTableEraseGrid, demoTableAddColumn,
   demoTableRemoveColumn, demoTableAddRow, demoTableRemoveRow,
   demoTableChangeValue, demoTableChangeValues,
   demoTableHighlightRow, demoTableClearRowHighlight,
   demoAddCommentGraph, demoAddCommentGraphFunc, demoAddCommentGraphArea,
   demoAddCommentGrid, demoAddCommentGeo, demoAddCommentGeoEdge,
+  demoPolynomialDivide,
   demoAddCommentEquation, demoAddCommentFree, demoClearComments, demoRemoveComment, demoUpdateComment,
   demoTextCreate, demoTextAddItem, demoTextRemoveItem,
   demoTextUpdateTitle, demoTextRemove, demoTextFadeContent,
@@ -99,6 +106,13 @@ const ALL_READY_APP = CATEGORIES.flatMap(c => c.functions).filter(f => f.status 
 // This browser has already had the one lesson that needs no account. A hint for
 // the UI only — the server keeps its own count and is the one that decides.
 const ANON_USED_KEY = 'math-engine-anon-used'
+
+// The one-free-lesson wall is a production concern — it exists to bound the
+// Anthropic bill for visitors who arrive with no account. Running from source
+// it only means signing in again to try the same prompt twice, so the local
+// counter is off in dev. import.meta.env.DEV is a build-time literal, so the
+// deployed bundle still has the wall, unconditionally.
+const ANON_WALL = !import.meta.env.DEV
 
 // Why the sign-in sheet opened → which line it puts at the top. Unknown or
 // missing reasons fall back to the plain 'authRequired' wording.
@@ -163,9 +177,31 @@ const fieldsOf = (s) => {
 // Purely ADDING to what a box or comment already says costs the reader nothing —
 // "x = 1" becoming "x = 1|y = -1" is the same sentence plus one more. Replacing
 // it does: "x = 1" becoming "x = 3" wipes a value that may never have been read.
+//
+// Filling in a blank is the third case, and it reads as an addition, not a
+// replacement: "sin(A) = a/5" becoming "sin(A) = 45/5" is the same sentence with
+// the value now known. Stopping the lesson to announce that interrupted the
+// reader to show them nothing new. So the test is on the SIZE of what changed,
+// not on whether anything did — the shared head and tail are trimmed off and a
+// short island left in the middle is a value or a name, while a long one, or
+// several words, is a different sentence and still earns the pause.
+const SUBST_MAX   = 20   // chars: past this the island is a phrase, not a value
+const SUBST_WORDS = 3    // "45", "45 cm", "l'angle A" — not a clause
+const isSubstitution = (prev, next) => {
+  let head = 0
+  const lim = Math.min(prev.length, next.length)
+  while (head < lim && prev[head] === next[head]) head++
+  let tail = 0
+  while (tail < lim - head && prev[prev.length - 1 - tail] === next[next.length - 1 - tail]) tail++
+  const from = prev.slice(head, prev.length - tail)
+  const to   = next.slice(head, next.length - tail)
+  if (from.length > SUBST_MAX || to.length > SUBST_MAX) return false
+  return to.trim().split(' ').filter(Boolean).length <= SUBST_WORDS
+}
+
 const onlyAdds = (before, after) => Object.entries(after).every(([k, next]) => {
   const prev = before?.[k]
-  return !prev || next.includes(prev)
+  return !prev || next.includes(prev) || isSubstitution(prev, next)
 })
 
 function expandPageSegments(pg) {
@@ -253,6 +289,9 @@ export default function App() {
   // (see App.css .has-sliders), so a graph-only page doesn't lose real estate
   // to an empty slider zone.
   const [hasSliders, setHasSliders] = useState(false)
+  // A division is up in the equation slot. Reshapes the paired layouts, because
+  // a tableau does not fit the short band a stacked equation gets.
+  const [divisionUp, setDivisionUp] = useState(false)
   useEffect(() => {
     const update = vars => setHasSliders(vars.length > 0)
     update(graphEngine.getSliderVars())
@@ -423,6 +462,11 @@ export default function App() {
 
   // ── Lesson UI state ────────────────────────────────────────────────────────
   const [lang,            setLang]            = useState(() => localStorage.getItem('math-lang') ?? 'en')
+  // The document language is what hyphens: auto reads to pick its dictionary,
+  // and it was pinned to "en" in index.html. A French note was therefore broken
+  // by English rules — which is how "séparateur" came out as "séparateu" and a
+  // lone "r" on the next line. Screen readers read it too.
+  useEffect(() => { document.documentElement.lang = lang }, [lang])
   const [mdasPreset,      setMdasPreset]      = useState(0)
   const [builderOpen,     setBuilderOpen]     = useState(false)
   const [lessonPages,     setLessonPages]     = useState(null)
@@ -432,6 +476,11 @@ export default function App() {
   // True while the solve coroutine is suspended mid-way through a full-solve —
   // the toolbar's ‹/› then step through mini-steps instead of page steps.
   const [inSubStep,       setInSubStep]       = useState(false)
+  // A step that asked to STOP is not the same as a paused page: nothing is
+  // suspended mid-animation, the reader is being asked to press next. It gets
+  // the waiting › rather than a Resume button, which would say "something was
+  // interrupted" about a stop that was the whole point of the step.
+  const [waitingGate,     setWaitingGate]     = useState(false)
 
   // ── AI state ───────────────────────────────────────────────────────────────
   const [promptVal,   setPromptVal]   = useState('')
@@ -453,9 +502,11 @@ export default function App() {
   // ── Refs ───────────────────────────────────────────────────────────────────
   const latestEquationSnapRef = useRef(null)
   const equationRef     = useRef(null)
+  const divisionRef     = useRef(null)
   const geoRef          = useRef(null)
   const graphRef        = useRef(null)
   const tableRef        = useRef(null)
+  const chartRef        = useRef(null)
   const textRef         = useRef(null)
   const calcRef         = useRef(null)
   const arithRef        = useRef(null)
@@ -543,9 +594,12 @@ export default function App() {
     graphEngine.clearAll(graphRef.current?.calculator)
     clearSavedValues()
     tableEngine.clearAll(tableRef)
+    chartEngine.clearAll(chartRef)
     geoRef.current?.clearAll?.()
     textEngine.clearAll(textRef)
     calcRef.current?.clearAll()
+    divisionRef.current?.clearAll()
+    setDivisionUp(false)
     arithRef.current?.clearAll()
     multRef.current?.clearAll()
     clockRef.current?.clearAll()
@@ -593,7 +647,7 @@ export default function App() {
     setRunning(true)
     try {
       const { script } = demoFn(...args)
-      await executeScript(script, null, equationRef, setEquationSnap, setUI, geoRef, graphRef, tableRef, setComments, textRef, 1, { skipTitle: true }, calcRef, arithRef, signal, multRef, clockRef, numbersRef, mdasRef, { pizzaRef, counterRef, numberlineRef, threeRef })
+      await executeScript(script, null, equationRef, setEquationSnap, setUI, geoRef, graphRef, tableRef, setComments, textRef, 1, { skipTitle: true }, calcRef, arithRef, signal, multRef, clockRef, numbersRef, mdasRef, { pizzaRef, counterRef, numberlineRef, threeRef, divisionRef, setDivisionUp, chartRef })
     } catch (e) {
       if (!signal.cancelled) setError(e.message ?? 'Error')
     } finally {
@@ -619,7 +673,7 @@ export default function App() {
         case 'mdas':    result = demoMdasExample(MDAS_PRESETS[0], langRef.current); break
       }
       if (result) {
-        await executeScript(result.script, null, equationRef, setEquationSnap, setUI, geoRef, graphRef, tableRef, setComments, textRef, 1, {}, calcRef, arithRef, signal, multRef, clockRef, numbersRef, mdasRef, { pizzaRef, counterRef, numberlineRef, threeRef })
+        await executeScript(result.script, null, equationRef, setEquationSnap, setUI, geoRef, graphRef, tableRef, setComments, textRef, 1, {}, calcRef, arithRef, signal, multRef, clockRef, numbersRef, mdasRef, { pizzaRef, counterRef, numberlineRef, threeRef, divisionRef, setDivisionUp, chartRef })
       }
     } catch (e) {
       if (!signal.cancelled) setError(e.message ?? 'Error')
@@ -640,7 +694,7 @@ export default function App() {
     setRunning(true)
     try {
       const { script } = demoMdasExample(MDAS_PRESETS[idx], langRef.current)
-      await executeScript(script, null, equationRef, setEquationSnap, setUI, geoRef, graphRef, tableRef, setComments, textRef, 1, {}, calcRef, arithRef, signal, multRef, clockRef, numbersRef, mdasRef, { pizzaRef, counterRef, numberlineRef, threeRef })
+      await executeScript(script, null, equationRef, setEquationSnap, setUI, geoRef, graphRef, tableRef, setComments, textRef, 1, {}, calcRef, arithRef, signal, multRef, clockRef, numbersRef, mdasRef, { pizzaRef, counterRef, numberlineRef, threeRef, divisionRef, setDivisionUp, chartRef })
     } catch (e) {
       if (!signal.cancelled) setError(e.message ?? 'Error')
     } finally {
@@ -670,6 +724,11 @@ export default function App() {
       case 'geo-show-measure':        return demoGeoShowMeasure(inputs.shapeId, inputs.color, inputs.angle, inputs.label)
       case 'geo-show-area-measures':  return demoGeoShowAreaMeasures(inputs.shapeId, inputs.color)
       case 'geo-show-perimeter-measures': return demoGeoShowPerimeterMeasures(inputs.shapeId, inputs.color)
+      case 'geo3d-polygon-points':    return demoGeo3dPolygonPoints(inputs.shapeId, inputs.points, inputs.color)
+      case 'geo3d-snap-shape':        return demoGeo3dSnapShape(inputs.shapeId, inputs.parentId, inputs.anchors, inputs.color)
+      case 'geo3d-name-vertices':     return demoGeo3dNameVertices(inputs.shapeId, inputs.names, inputs.color)
+      case 'geo-snap-shape':          return demoGeoSnapShape(inputs.shapeId, inputs.parentId, inputs.anchors, inputs.fillColor, inputs.borderColor)
+      case 'geo-name-vertices':       return demoGeoNameVertices(inputs.shapeId, inputs.names, inputs.color)
       case 'geo-erase-shape':         return demoGeoEraseShape(inputs.shapeId)
       case 'geo-move-shape':          return demoGeoMoveShape(inputs.shapeId, inputs.dx, inputs.dy)
       case 'geo-highlight-shape':     return demoGeoHighlightShape(inputs.shapeId)
@@ -690,6 +749,7 @@ export default function App() {
       }
       case 'eq-save-result':         return demoSaveResult(inputs.name)
       case 'eq-racine-des-bords':     return demoRacineDesBords(inputs.eq)
+      case 'eq-polynomial-divide':    return demoPolynomialDivide(inputs.poly, inputs.divisor)
       case 'eq-disparition-exposant': return demoDisparitionExposant(inputs.eq, inputs.newDegree)
       case 'eq-apply-inverse-trig':   return demoApplyInverseTrig(inputs.trig)
       case 'graph-plot-function':     return demoGraphPlotFunction(inputs.expr, inputs.id, inputs.hideLabel)
@@ -697,11 +757,11 @@ export default function App() {
       case 'graph-remove-function':   return demoGraphRemoveFunction(inputs.funcId)
       case 'graph-shade-area':        return demoGraphShadeArea(inputs.funcId, inputs.a, inputs.b)
       case 'graph-find-intersections':return demoGraphFindIntersections(inputs.f1, inputs.f2, inputs.color, inputs.hideLabel)
-      case 'graph-add-point':              return demoGraphAddPoint(inputs.x, inputs.y, inputs.id, inputs.funcId, inputs.label, inputs.showCoords)
+      case 'graph-add-point':              return demoGraphAddPoint(inputs.x, inputs.y, inputs.id, inputs.funcId, inputs.label, inputs.showCoords, inputs.style, inputs.hideLabel, inputs.color)
       case 'graph-remove-point':           return demoGraphRemovePoint(inputs.id)
       case 'graph-scatter-plot':           return demoGraphScatterPlot(inputs.slope, inputs.intercept, inputs.coeff, inputs.count, inputs.xMin, inputs.xMax, inputs.color, inputs.id)
       case 'graph-remove-scatter-plot':    return demoGraphRemoveScatterPlot(inputs.id)
-      case 'graph-add-segment':           return demoGraphAddSegment(inputs.x1, inputs.y1, inputs.x2, inputs.y2, inputs.color, inputs.id)
+      case 'graph-add-segment':           return demoGraphAddSegment(inputs.x1, inputs.y1, inputs.x2, inputs.y2, inputs.color, inputs.id, inputs.arrow, inputs.name)
       case 'graph-remove-segment':         return demoGraphRemoveSegment(inputs.id)
       case 'graph-segment-tick':           return demoGraphSegmentTick(inputs.id, inputs.ticks, inputs.color)
       case 'graph-remove-segment-tick':    return demoGraphRemoveSegmentTick(inputs.id)
@@ -719,11 +779,31 @@ export default function App() {
       case 'graph-batch-show-projections': return demoGraphBatchShowProjections(inputs.pointIds)
       case 'graph-plot-derivative':   return demoGraphPlotDerivative(inputs.funcId)
       case 'graph-riemann-sum':       return demoGraphRiemannSum(inputs.funcId, inputs.a, inputs.b, inputs.n, inputs.method)
+      case 'graph-angle-between':     return demoGraphAngleBetween(inputs.a, inputs.b, inputs.color, inputs.id)
+      case 'graph-remove-angle':      return demoGraphRemoveAngle(inputs.id)
       case 'graph-draw-vector':       return demoGraphDrawVector(inputs.x1, inputs.y1, inputs.x2, inputs.y2)
       case 'graph-draw-angle':        return demoGraphDrawAngle(inputs.ax, inputs.ay, inputs.bx, inputs.by, inputs.cx, inputs.cy, inputs.color)
       case 'graph-transform-function':return demoGraphTransformFunction(inputs.funcId, inputs.transformType, inputs.value)
-      case 'table-create':            return demoTableCreate(inputs.data, inputs.headerRow, inputs.gridId, inputs.color)
-      case 'tab-create-grid':         return demoTableCreateGrid(inputs.cols, inputs.rows, inputs.values, inputs.headerRow, inputs.gridId)
+      case 'eq-cross-multiply':       return demoCrossMultiply(inputs.equation)
+      case 'eq-factorial':            return demoFactorialExpand(inputs.side, inputs.index)
+      case 'eq-sci-expand':           return demoSciExpand(inputs.side, inputs.index, inputs.target)
+      case 'eq-term-op':              return demoEquationTermOp(inputs.side, inputs.index, inputs.op, inputs.value)
+      case 'eq-annotate':             return demoEquationAnnotate(inputs.annotId, inputs.side, inputs.from, inputs.to, inputs.part, inputs.text, inputs.color)
+      case 'eq-annotate-clear':       return demoEquationAnnotateClear(inputs.annotId)
+      case 'eq-arrow':                return demoEquationArrow(inputs.arrowId, inputs.side, inputs.from, inputs.to, inputs.text, inputs.place, inputs.color)
+      case 'eq-arrow-clear':          return demoEquationArrowClear(inputs.arrowId)
+      case 'eq-arrow-chain':          return demoEquationArrowChain(inputs.arrowId, inputs.side, inputs.from, inputs.to, inputs.text, inputs.place, inputs.color)
+      case 'eq-sequence':             return demoEquationSequence(inputs.kind, inputs.first, inputs.step, inputs.count, inputs.dots, inputs.arrows, inputs.points, inputs.rank, inputs.color)
+      case 'chart-pie':               return demoChartPie(inputs.chartId, inputs.num, inputs.den, inputs.color, inputs.label, inputs.mode)
+      case 'chart-pie-set':           return demoChartPieSet(inputs.chartId, inputs.num, inputs.den)
+      case 'chart-pie-mode':          return demoChartPieMode(inputs.chartId, inputs.mode)
+      case 'chart-tree':             return demoChartTree(inputs.chartId, inputs.stages, inputs.count, inputs.headers, inputs.results)
+      case 'chart-tree-path':        return demoChartTreePath(inputs.chartId, inputs.path)
+      case 'chart-venn':             return demoChartVenn(inputs.chartId, inputs.sets)
+      case 'chart-venn-highlight':   return demoChartVennHighlight(inputs.chartId, inputs.expr, inputs.color)
+      case 'chart-number-sets':      return demoChartNumberSets(inputs.chartId, inputs.sets)
+      case 'chart-remove':            return demoChartRemove(inputs.chartId)
+      case 'tab-create-grid':         return demoTableCreateGrid(inputs.cols, inputs.rows, inputs.values, inputs.headerRow, inputs.gridId, inputs.headerCol, inputs.color)
       case 'tab-erase-grid':          return demoTableEraseGrid(inputs.gridId)
       case 'tab-add-column':          return demoTableAddColumn(inputs.values, inputs.gridId)
       case 'tab-remove-column':       return demoTableRemoveColumn(inputs.colIndex, inputs.gridId)
@@ -846,6 +926,12 @@ export default function App() {
       graphEngine.clearAll(graphRef.current?.calculator)
       clearSavedValues()
       tableEngine.clearAll(tableRef)
+      // Charts were missing from this list while every other display was in it,
+      // so a tree or a Venn built on one page was still on screen under the next
+      // page's. They share the panel with the table, and the table was cleared
+      // here — the omission was simply never noticed because a second pie with
+      // the same id overwrote the first and looked like a clear.
+      chartEngine.clearAll(chartRef)
       geoRef.current?.clearAll?.()
       textEngine.clearAll(textRef)
       calcRef.current?.clearAll()
@@ -921,7 +1007,7 @@ export default function App() {
     // Called by full-solve immediately BEFORE each of its mini-steps, so when
     // we suspend here the equation is showing the state that mini-step is
     // about to change — same semantics as stopping before a page step.
-    setSubStepGate(async () => {
+    setSubStepGate(async (opts) => {
       // Cancelled mid-solve (a newer build started, or the user navigated):
       // THROW rather than return. Returning would hand control back to the
       // solve, which would happily run its remaining mini-steps against a
@@ -940,17 +1026,25 @@ export default function App() {
       // untouched, the gate un-parked, and ‹/› silently fell through to the
       // page-step path, which re-ran the WHOLE solve. Pause now just sets the
       // budget to 0 and every decision here follows from it.
+      // A step that asked to STOP spends the budget itself, so the loop below
+      // parks even in ordinary playback. Everything after it — the pause, the
+      // Resume button, ‹ and › — then works exactly as it does mid-solve.
+      if (opts?.force) subBudgetRef.current = 0
       while (subBudgetRef.current <= 0) {
         // Park. The coroutine keeps its own local state alive, so resuming is
         // exact — no replay, nothing re-derived. A `while` (not `if`) so a
         // spurious wake-up re-checks instead of running a step it wasn't given.
         signal.pausePending = false   // the page loop must not also break
-        pausedRef.current   = true
-        setPaused(true)
-        setInSubStep(true)
+        if (opts?.force) {
+          setWaitingGate(true)
+        } else {
+          pausedRef.current = true
+          setPaused(true)
+        }
         // eslint-disable-next-line no-await-in-loop
         await new Promise(res => { subGateReleaseRef.current = res })
         subGateReleaseRef.current = null
+        setWaitingGate(false)
         if (signal.cancelled) throw CANCELLED
       }
       subBudgetRef.current -= 1
@@ -999,10 +1093,14 @@ export default function App() {
           latestEquationSnapRef.current = snapshot
           setEquationSnapTracked(snapshot)
           if (signal.cancelled) break
-          await new Promise(r => setTimeout(r, 120 / speed))
+          // This one sits in the step loop, outside the executor, so it never
+          // saw the hurry — a dozen steps of it added a second of dead time to
+          // every skip, which is most of what still felt slow after the tweens
+          // had been sped up.
+          await new Promise(r => setTimeout(r, (isHurrying() ? 12 : 120) / speed))
         }
         if (signal.cancelled) break
-        await executeScript(script, snapshot ?? latestEquationSnapRef.current, equationRef, setEquationSnapTracked, setUITracked, geoRef, graphRef, tableRef, setCommentsTracked, textRef, speed, { skipTitle: true }, calcRef, arithRef, signal, multRef, clockRef, numbersRef, mdasRef, { pizzaRef, counterRef, numberlineRef, threeRef })
+        await executeScript(script, snapshot ?? latestEquationSnapRef.current, equationRef, setEquationSnapTracked, setUITracked, geoRef, graphRef, tableRef, setCommentsTracked, textRef, speed, { skipTitle: true }, calcRef, arithRef, signal, multRef, clockRef, numbersRef, mdasRef, { pizzaRef, counterRef, numberlineRef, threeRef, divisionRef, setDivisionUp, chartRef })
         inSolveRef.current = false   // this step's solve (if any) is finished
 
         if (!signal.cancelled) {
@@ -1039,6 +1137,10 @@ export default function App() {
   }, [restoreSnapshot]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBuilderBuildPage = useCallback((pg, speed = 1) => {
+    // The drawer is fixed and 420px wide — on any window it covers the panel
+    // the lesson draws into, so pressing Build appeared to do nothing at all.
+    // Building IS the "show me" action; the drawer reopens from the sidebar.
+    setBuilderOpen(false)
     animSpeedRef.current = speed
     setLessonPages(null)
     setLessonPageIdx(0)
@@ -1048,6 +1150,7 @@ export default function App() {
 
   const handleBuilderBuildAll = useCallback((pages, speed = 1) => {
     if (!pages?.length) return
+    setBuilderOpen(false)
     animSpeedRef.current = speed
     const segments = expandLessonPages(pages)
     setLessonPages(segments)
@@ -1067,7 +1170,7 @@ export default function App() {
     // visitors get one free lesson; ANON_USED_KEY is set once they have had
     // it. Cleared storage just means one wasted round trip, not a free extra:
     // the server refuses it either way.)
-    if (authConfigured && meLoadedRef.current && !me && localStorage.getItem(ANON_USED_KEY)) {
+    if (ANON_WALL && authConfigured && meLoadedRef.current && !me && localStorage.getItem(ANON_USED_KEY)) {
       openAuth(u(langRef.current, 'authAfterFree'))
       return
     }
@@ -1088,7 +1191,7 @@ export default function App() {
       localStorage.setItem('math-engine-draft', JSON.stringify(draft))
       // That was the free one. Remember it, so the next prompt meets the sheet
       // on Enter rather than after another pointless round trip.
-      if (authConfigured && meLoadedRef.current && !me) localStorage.setItem(ANON_USED_KEY, '1')
+      if (ANON_WALL && authConfigured && meLoadedRef.current && !me) localStorage.setItem(ANON_USED_KEY, '1')
       setPromptVal('')
       handleBuilderBuildAll(loaded, 1)
     } catch (err) {
@@ -1194,8 +1297,9 @@ export default function App() {
   let currentPageDot = 0
   for (let i = 0; i < pageStarts.length; i++) if (pageStarts[i] <= lessonPageIdx) currentPageDot = i
 
-  const awaitingClick = !!lessonPages && !running && !paused && !aiLoading &&
-                        lessonPageIdx < lessonPages.length - 1
+  const awaitingClick = waitingGate ||
+                        (!!lessonPages && !running && !paused && !aiLoading &&
+                         lessonPageIdx < lessonPages.length - 1)
 
   // Space / → advance, ← goes back — the reflex in any slide deck. Ignored
   // while typing in the prompt box or answering an input exercise.
@@ -1272,6 +1376,24 @@ export default function App() {
       clearCanvas: false,
     })
   }, [buildPage, grantSubSteps])
+
+  // The one thing › does, wherever it is pressed.
+  //
+  // While something is still playing it means "get to the end of this", not
+  // "start the next one" — so it hurries the run that is already going. It must
+  // never kick off a second build: two builds animating the same equation at
+  // once is what made everything look like it was on fast-forward until one of
+  // them was cancelled. Only once nothing is running does it actually advance.
+  const handleForward = useCallback(() => {
+    // Parked on a gate is not the same as playing: there is no animation to
+    // hurry, a coroutine is waiting to be told to go on. Hurrying it did
+    // nothing at all, so a step that stops for the reader could only be got
+    // past with Resume — which then runs everything left, not the one step.
+    if (subGateReleaseRef.current) { handleStepForward(); return }
+    if (running) { setHurry(true); return }
+    if (lessonPages) { handleLessonNav(1); return }
+    handleStepForward()
+  }, [running, lessonPages, handleLessonNav, handleStepForward])
 
   const handleStepBackward = useCallback(() => {
     // Inside a full-solve: restore the snapshot taken at the previous mini-step
@@ -1424,7 +1546,7 @@ export default function App() {
       {/* ── TOP BAR ──────────────────────────────────────────────────────────── */}
       <header className="top-bar">
         <div className="top-bar-left">
-          <span className="top-bar-brand">MathEngine</span>
+          <span className="top-bar-brand">Vectora</span>
         </div>
         {ui.title && <div className="top-bar-title">{ui.title}</div>}
         <div className="top-bar-right" />
@@ -1433,15 +1555,26 @@ export default function App() {
       {exercise && layoutMode && layoutMode !== 'empty' && <ExerciseQuestionBar question={exercise.question} />}
 
       {/* ── MAIN CANVAS ──────────────────────────────────────────────────────── */}
-      <div className={`lesson-content lesson-layout--${layoutMode} lesson-bg--${pageBackground}${hasSliders ? ' has-sliders' : ''}`} ref={contentRef}>
+      <div className={`lesson-content lesson-layout--${layoutMode} lesson-bg--${pageBackground}${hasSliders ? ' has-sliders' : ''}${divisionUp ? ' has-division' : ''}`} ref={contentRef}>
         {exercise && (!layoutMode || layoutMode === 'empty') && <ExerciseQuestionHero question={exercise.question} />}
         <div className="display-slot display-slot--text"><TextBoxDisplay ref={textRef} /></div>
         <div className="display-slot display-slot--geo"><GeometryDisplay ref={geoRef} /></div>
         <div className="display-slot display-slot--3d"><ThreeDisplay ref={threeRef} /></div>
         <div className="display-slot display-slot--graph"><DesmosDisplay ref={graphRef} /></div>
         <div className="display-slot display-slot--slider"><SliderPanel graphRef={graphRef} /></div>
-        <div className="display-slot display-slot--table"><TableDisplay ref={tableRef} /></div>
-        <div className="display-slot display-slot--equation"><EquationDisplay ref={equationRef} snapshot={equationSnap} /></div>
+        <div className="display-slot display-slot--table">
+          {/* Table and charts share this slot — a page has one or the other,
+              the way the equation slot holds an equation or a division. */}
+          <TableDisplay ref={tableRef} />
+          <ChartDisplay ref={chartRef} />
+        </div>
+        {/* Equation and division share this slot — one replaces the other. Both
+            stay mounted (their refs must be live before a step calls them);
+            which one is visible is CSS, like every other display here. */}
+        <div className="display-slot display-slot--equation">
+          <EquationDisplay ref={equationRef} snapshot={equationSnap} />
+          <DivisionDisplay ref={divisionRef} />
+        </div>
         <div className="display-slot display-slot--calc"><CalcDisplay ref={calcRef} /></div>
         <div className="display-slot display-slot--arith"><ArithmeticDisplay ref={arithRef} /></div>
         <div className="display-slot display-slot--mult"><MultiplicationTable ref={multRef} /></div>
@@ -1497,14 +1630,22 @@ export default function App() {
         <div className="bottom-section bottom-section--toolbar">
           <div className="playback-bar">
             <div className="pb-center">
-              {lessonPages && (
-                paused ? (
+              {/* Stepping is available whenever a page is playing, not only
+                  inside a multi-page lesson. Gating the whole toolbar on
+                  lessonPages left a single previewed page with no way to step
+                  at all — and a page can hold a dozen beats. Page-to-page
+                  navigation still needs a lesson; stepping does not. */}
+              {(lessonPages || lastBuiltPage) && (
+                (paused || !lessonPages) ? (
                   <>
                     <button className="pb-btn" onClick={handleStepBackward}
                       disabled={inSubStep ? subDoneRef.current === 0 : pageStepIdxRef.current === 0}>‹</button>
-                    <button className="pb-btn pb-btn--play" onClick={handleResume}>▶ Resume</button>
-                    <button className="pb-btn" onClick={handleStepForward}
-                      disabled={!inSubStep && pageStepIdxRef.current >= (currentPageRef.current?.steps.length ?? 0)}>›</button>
+                    {paused && <button className="pb-btn pb-btn--play" onClick={handleResume}>▶ Resume</button>}
+                    <button
+                      className={`pb-btn${awaitingClick ? ' pb-btn--waiting' : ''}`}
+                      onClick={handleForward}
+                      disabled={!running && !inSubStep && paused && pageStepIdxRef.current >= (currentPageRef.current?.steps.length ?? 0)}
+                    >›</button>
                   </>
                 ) : (
                   <>
@@ -1526,8 +1667,15 @@ export default function App() {
                         waiting for an animation that already ended. */}
                     <button
                       className={`pb-btn${awaitingClick ? ' pb-btn--waiting' : ''}`}
-                      onClick={() => handleLessonNav(1)}
-                      disabled={lessonPageIdx >= lessonPages.length - 1}
+                      onClick={handleForward}
+                      // Being on the last PAGE is not the same as having nothing left to
+                      // do. A page holds a dozen beats, and this button is also what
+                      // releases a pause and what fast-forwards the running animation —
+                      // so disabling it here left the reader stuck part-way through the
+                      // last page with no way to advance, skip, or reach the end.
+                      disabled={lessonPageIdx >= lessonPages.length - 1 &&
+                                !running && !inSubStep &&
+                                pageStepIdxRef.current >= (currentPageRef.current?.steps.length ?? 0)}
                     >›</button>
                   </>
                 )

@@ -4,6 +4,7 @@
  * Registry maps logical ids to Desmos expression ids for removal.
  */
 import { parse } from 'mathjs'
+import { animMs } from './animSpeed.js'
 
 const registry = new Map()
 let _vp = { left: -10, right: 10, bottom: -7.5, top: 7.5 }
@@ -84,21 +85,103 @@ function formatSliderNum(v) {
 // (before stripSliderPipes) with that slider's current value, then tidies
 // the result into displayable LaTeX: drop explicit * (implicit mult reads
 // better), promote ^n to ^{n} for KaTeX, and fold a "+ -3" into "- 3".
+// The live badge is the one piece of notation a reader actually studies while
+// dragging a slider, so it is written the way it is written on a board: ⌊x⌋ and
+// ⌈x⌉ rather than the word "floor" set in italics (which reads as f·l·o·o·r
+// multiplied together — the very confusion the graph itself had), and √x rather
+// than "sqrt(x)". Depth-counted like sqrtToLatex, so the closing paren of
+// "floor(b*(x-h))" is the outer one and not the first one encountered.
+// "2-4(x-2)/2" is 2 minus a fraction; "3*(x-2)*8/4" is one fraction over 4.
+// The difference is not the "/" — it is how far the numerator reaches, and that
+// is a MULTIPLICATIVE run: walk left from the slash over factors, parentheses
+// and colour wrappers, and stop at the first + or - that is really joining two
+// terms (a leading sign is part of the term, not a break). The denominator is
+// the same walk to the right. Written out with \frac, the bar then covers
+// exactly what is divided, which is the whole point of drawing one.
+function fractionsToLatex(str) {
+  let depth = 0
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i]
+    if (c === '(' || c === '{') { depth++; continue }
+    if (c === ')' || c === '}') { depth--; continue }
+    if (c !== '/' || depth !== 0) continue
+
+    let d = 0, a = i - 1
+    for (; a >= 0; a--) {
+      const ch = str[a]
+      if (ch === ')' || ch === '}') d++
+      else if (ch === '(' || ch === '{') d--
+      else if (d === 0 && (ch === '+' || ch === '-')) {
+        const before = str.slice(0, a).trim()
+        // Nothing before it, or another operator: it is a SIGN on this term.
+        if (before && !/[-+*/(]$/.test(before)) break
+      }
+    }
+    let d2 = 0, b = i + 1
+    for (; b < str.length; b++) {
+      const ch = str[b]
+      if (ch === '(' || ch === '{') d2++
+      else if (ch === ')' || ch === '}') { if (d2 === 0) break; d2-- }
+      else if (d2 === 0 && (ch === '+' || ch === '-') && b > i + 1) break
+    }
+    const num = str.slice(a + 1, i)
+    const den = str.slice(i + 1, b)
+    if (!num.trim() || !den.trim()) continue
+    return str.slice(0, a + 1)
+      + `\\frac{${fractionsToLatex(num)}}{${fractionsToLatex(den)}}`
+      + fractionsToLatex(str.slice(b))
+  }
+  return str
+}
+
+function prettyBadgeLatex(str) {
+  const OPEN = {
+    floor: ['\\lfloor ', ' \\rfloor'],
+    ceil:  ['\\lceil ',  ' \\rceil'],
+    sqrt:  ['\\sqrt{',    '}'],
+    cbrt:  ['\\sqrt[3]{', '}'],
+  }
+  let out = ''
+  for (let i = 0; i < str.length; i++) {
+    const m = /^(floor|ceil|sqrt|cbrt)\(/.exec(str.slice(i))
+    if (!m || (i > 0 && /[a-zA-Z\\]/.test(str[i - 1]))) { out += str[i]; continue }
+    const open = i + m[1].length          // sits on the '('
+    let depth = 0, j = open
+    for (; j < str.length; j++) {
+      if (str[j] === '(') depth++
+      else if (str[j] === ')' && --depth === 0) break
+    }
+    if (j >= str.length) { out += str[i]; continue }   // unbalanced — leave it
+    const [L, R] = OPEN[m[1]]
+    out += L + prettyBadgeLatex(str.slice(open + 1, j)) + R
+    i = j
+  }
+  return out
+}
+
 export function getLiveEquationText(funcId) {
   const fn = registry.get(`fn::${funcId}`)
   if (!fn?.template) return null
   const names = extractSliderVars(fn.template)
   if (!names.length) return null
-  let disp = fn.template
+  // The badge writes its own "y = ", so an expression that already carries one
+  // must not get a second: "y=|a|x" was coming out as "y = y=1x".
+  let disp = fn.template.replace(/^\s*y\s*=\s*/i, '')
   for (const name of names) {
     const s   = sliders.get(name)
     const val = s ? formatSliderNum(s.value) : name
-    disp = disp.split(`|${name}|`).join(val)
+    // Same colour as the rail that produced it — that pairing IS what makes
+    // "which number am I dragging" answerable without reading the letters.
+    disp = disp.split(`|${name}|`).join(s?.color ? `\\textcolor{${s.color}}{${val}}` : val)
   }
-  const latex = disp
-    .replace(/\*/g, '')
+  const latex = fractionsToLatex(prettyBadgeLatex(disp))
+    // A real multiplication dot, not a dropped "*": "1·2" says what it is,
+    // "12" says something else entirely.
+    .replace(/\*/g, ' \\cdot ')
     .replace(/\^(-?\d+(\.\d+)?)/g, '^{$1}')
-    .replace(/\+\s*-/g, '- ')
+    // "+ -3" still folds into "- 3" now that the number is wrapped: the sign is
+    // lifted out of the colour box rather than left stranded inside it.
+    .replace(/\+\s*(\\textcolor\{[^}]*\}\{)?-/g, (_, pre) => (pre ? `- ${pre}` : '- '))
   return { text: `$y = ${latex}$`, color: fn.color }
 }
 
@@ -113,9 +196,16 @@ function extractSliderVars(expr) {
 }
 function stripSliderPipes(expr) { return expr.replace(PIPE_VAR_RE, '$1') }
 
+// One colour per slider, so the rail a reader is dragging and the number it
+// writes into the equation below are recognisably the same thing. The reserved
+// blue is deliberately NOT in this ramp: it already belongs to the curve and
+// its equation, and a slider wearing it would read as "this one IS the curve".
+const SLIDER_COLORS = ['#f97316', '#22c55e', '#a855f7', '#fbbf24', '#06b6d4', '#f472b6']
+
 function registerSlider(calc, name) {
   if (sliders.has(name)) return
-  const s = { value: 1, min: -10, max: 10, step: 0.1 }
+  const color = SLIDER_COLORS[sliders.size % SLIDER_COLORS.length]
+  const s = { value: 1, min: -10, max: 10, step: 0.1, color }
   sliders.set(name, s)
   calc.setExpression({ id: `slider_${name}`, latex: `${name}=${s.value}` })
 }
@@ -144,6 +234,8 @@ export function setSliderValue(calc, name, value) {
   if (!s) return
   s.value = value
   calc.setExpression({ id: `slider_${name}`, latex: `${name}=${value}` })
+  // a, b, h and k reshape a staircase, so its endpoints move with them.
+  refreshAllStepDots(calc)
   _emitSliders()
 }
 
@@ -264,17 +356,17 @@ function darken(hex, factor = 0.65) {
 
 // Blend toward white. Because the Desmos container is CSS-inverted, a LIGHTER raw
 // color renders DARKER on screen — so this is used to make points darker than the curve.
-function lighten(hex, factor = 0.4) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const L = c => Math.round(c + (255 - c) * factor)
-  return rgbToHex([L(r), L(g), L(b)])
-}
-
 // ── Fade helpers ──────────────────────────────────────────────────────────────
 
+// An angle mark sits ON the figure it measures, so neither its rim nor its tint
+// is drawn at full strength — the segments underneath have to stay readable.
+const ANGLE_LINE = 0.85
+const ANGLE_FILL = 0.22
+
 const FADE_MS = 380
+// An endpoint sliding to a new place. Slower than a fade because the eye has to
+// follow it there, not just notice it.
+const MOVE_MS = 520
 const easeIO = t => t < 0.5 ? 2*t*t : -1 + (4 - 2*t) * t
 
 // Animate opacity props from 0 → target values, then resolve.
@@ -283,7 +375,7 @@ function fadeIn(calc, ids, props, ms = FADE_MS) {
   return new Promise(resolve => {
     const t0 = performance.now()
     ;(function tick() {
-      const p = Math.min((performance.now() - t0) / ms, 1)
+      const p = Math.min((performance.now() - t0) / animMs(ms), 1)
       const e = easeIO(p)
       const o = Object.fromEntries(Object.entries(props).map(([k, v]) => [k, v * e]))
       ids.forEach(id => calc.setExpression({ id, ...o }))
@@ -299,7 +391,7 @@ function fadeOut(calc, ids, props, ms = FADE_MS) {
   return new Promise(resolve => {
     const t0 = performance.now()
     ;(function tick() {
-      const p = Math.min((performance.now() - t0) / ms, 1)
+      const p = Math.min((performance.now() - t0) / animMs(ms), 1)
       const e = easeIO(p)
       const o = Object.fromEntries(Object.entries(props).map(([k, v]) => [k, v * (1 - e)]))
       ids.forEach(id => calc.setExpression({ id, ...o }))
@@ -312,9 +404,174 @@ function fadeOut(calc, ids, props, ms = FADE_MS) {
   })
 }
 
+// Desmos paints its expression list in order, so whatever was added LAST is
+// drawn on top. A segment added before a curve therefore ends up underneath
+// it — and the segment is the thing the lesson is pointing at, so a curve
+// plotted afterwards must not cover it. Re-adding the segment expressions
+// moves them back to the end of the list.
+//
+// Each one is re-added from the state Desmos itself is holding, not rebuilt
+// from the registry: the registry knows the geometry but not the colour and
+// opacity the expression currently carries, and rebuilding would quietly undo
+// a fade or a per-step colour change. Remove-then-set happens inside one task,
+// so Desmos repaints once at the end and nothing flickers.
+function raiseSegments(calc) {
+  const states = calc.getExpressions?.()
+  if (!states) return
+  const byId = new Map(states.map(s => [s.id, s]))
+  for (const [key, e] of registry) {
+    if (!/^(seg|segtick|vec)::/.test(key)) continue
+    const ids = e.calcIds ?? (e.calcId ? [e.calcId] : [])
+    for (const cid of ids) {
+      const st = byId.get(cid)
+      if (!st) continue
+      calc.removeExpression({ id: cid })
+      calc.setExpression(st)
+    }
+  }
+}
+
 // ── Graph functions ───────────────────────────────────────────────────────────
 
-const FUNC_COLORS = ['#7c6ef5', '#22c55e', '#60a5fa', '#fbbf24', '#06b6d4', '#f97316', '#f472b6']
+// The reserved blue is FIRST because a curve drawn with no colour asked for
+// is a DEFAULT, and the default is always #60a5fa. The rest of the cycle only
+// exists so a second and third curve on the same graph stay tellable apart.
+const FUNC_COLORS = ['#60a5fa', '#22c55e', '#fbbf24', '#f97316', '#06b6d4', '#f472b6', '#7c6ef5']
+
+// ── Step-function endpoints ──────────────────────────────────────────────────
+// Desmos draws a staircase as bare segments. It has no notion of an endpoint
+// that does NOT belong to the curve, so nothing shows where one step stops and
+// the next begins — and "which step does x = 2 actually belong to" IS the
+// question a step-function lesson asks. The ●/○ pair is the content, not
+// decoration, so it is placed automatically and is never an authorable step.
+//
+// One filled dot and one hollow dot per visible step, both in the curve's own
+// colour. Two consequences of the function being infinite and parameterised:
+// only the steps currently in view are drawn (recomputed on pan and zoom), and
+// they are recomputed when a slider moves, so a, b, h and k stay live.
+//
+// Boundaries are found by SAMPLING, not algebra: floor can sit anywhere inside
+// an expression, and a solver that only understood a*floor(b*(x-h))+k would
+// quietly draw nothing for everything else.
+const STEP_FN_RE    = /\b(floor|ceil)\s*\(/
+const MAX_STEP_DOTS = 60          // past this they are noise, not information
+const STEP_DOT_SIZE = 9
+const stepDots      = new Map()   // funcId -> { closedId, openId }
+const _boundsWatched = new WeakSet()
+
+// The x where f jumps, with the value on each side of the jump.
+//
+// The candidate filter is what separates a JUMP from a mere slope: on a
+// staircase most sample gaps are exactly 0, so any non-zero one is a jump,
+// while on something like "x + floor(x)" every gap is non-zero and only the
+// ones far above the typical gap are real. Bisecting every interval instead
+// would be tens of thousands of evaluations on every frame of a zoom.
+function stepBoundaries(f, left, right) {
+  const N  = 1200
+  const dx = (right - left) / N
+  const at = (x) => { try { const y = f(x); return isFinite(y) ? y : null } catch { return null } }
+
+  const xs = [], ys = []
+  for (let i = 0; i <= N; i++) { const x = left + i * dx; xs.push(x); ys.push(at(x)) }
+
+  const gaps = []
+  for (let i = 1; i <= N; i++)
+    if (ys[i - 1] !== null && ys[i] !== null) gaps.push(Math.abs(ys[i] - ys[i - 1]))
+  if (!gaps.length) return []
+  const sorted = [...gaps].sort((a, b) => a - b)
+  const median = sorted[Math.floor(sorted.length / 2)]
+  const minJump = Math.max(median * 8, 1e-9)
+
+  const out = []
+  for (let i = 1; i <= N; i++) {
+    const yA = ys[i - 1], yB = ys[i]
+    if (yA === null || yB === null || Math.abs(yB - yA) <= minJump) continue
+    // Squeeze onto the jump itself. 60 halvings of one sample interval is far
+    // under a screen pixel at any zoom the reader can reach.
+    let lo = xs[i - 1], hi = xs[i]
+    for (let j = 0; j < 60; j++) {
+      const mid = (lo + hi) / 2
+      const ym  = at(mid)
+      if (ym === null) break
+      if (Math.abs(ym - yA) < Math.abs(ym - yB)) lo = mid
+      else hi = mid
+    }
+    out.push({ x: hi, yLo: yA, yHi: yB })
+    if (out.length > MAX_STEP_DOTS) return out
+  }
+  return out
+}
+
+// Read the bounds Desmos is ACTUALLY showing. Deliberately not syncViewport():
+// this runs on every frame of a drag, and _vp is written by the animated
+// viewport transitions elsewhere — moving it from here would fight them.
+function currentXRange(calc) {
+  const mc = calc?.graphpaperBounds?.mathCoordinates
+  if (mc && isFinite(mc.left) && isFinite(mc.right) && mc.right > mc.left)
+    return { left: mc.left, right: mc.right }
+  const vp = getViewport()
+  return { left: vp.left, right: vp.right }
+}
+
+function dropStepDots(calc, id) {
+  const d = stepDots.get(id)
+  if (!d) return
+  calc?.removeExpression({ id: d.closedId })
+  calc?.removeExpression({ id: d.openId })
+  stepDots.delete(id)
+}
+
+// Returns the two expression ids when it drew something, so the first plot can
+// fade them in alongside the curve instead of popping them on at the end.
+function refreshStepDots(calc, id, pointOpacity = 1) {
+  const fn = registry.get(`fn::${id}`)
+  if (!calc || !fn || fn.isRegion || !STEP_FN_RE.test(fn.expr ?? '')) { dropStepDots(calc, id); return null }
+
+  const f = makeEval(fn.expr)
+  if (!f) { dropStepDots(calc, id); return null }
+
+  const { left, right } = currentXRange(calc)
+  const cuts = stepBoundaries(f, left, right)
+  if (!cuts.length || cuts.length > MAX_STEP_DOTS) { dropStepDots(calc, id); return null }
+
+  // Which side of the jump the boundary belongs to: floor is right-continuous
+  // (f(2) is the NEW step), ceil is left-continuous. A negative coefficient
+  // inside would swap them — not a form these lessons use, and guessing it
+  // wrong is worse than not guessing.
+  const rightClosed = /\bfloor\s*\(/.test(fn.expr) || !/\bceil\s*\(/.test(fn.expr)
+  const n = (v) => Number(v.toFixed(6))
+  const list = (pts) => `([${pts.map(p => n(p[0])).join(',')}],[${pts.map(p => n(p[1])).join(',')}])`
+
+  const closed = cuts.map(c => [c.x, rightClosed ? c.yHi : c.yLo])
+  const open   = cuts.map(c => [c.x, rightClosed ? c.yLo : c.yHi])
+
+  const closedId = `stepc_${id}`, openId = `stepo_${id}`
+  const common = { color: fn.color, pointSize: STEP_DOT_SIZE, lines: false, pointOpacity }
+  calc.setExpression({ id: closedId, latex: list(closed), pointStyle: 'POINT', ...common })
+  calc.setExpression({ id: openId,   latex: list(open),   pointStyle: 'OPEN',  ...common })
+  stepDots.set(id, { closedId, openId })
+  return [closedId, openId]
+}
+
+function refreshAllStepDots(calc) {
+  for (const key of registry.keys())
+    if (key.startsWith('fn::')) refreshStepDots(calc, key.slice(4))
+}
+
+// The dots have to follow the reader's own pan and zoom, not just the steps a
+// lesson takes — the curve is infinite and only what is on screen is drawn.
+function watchBoundsFor(calc) {
+  if (!calc || _boundsWatched.has(calc)) return
+  _boundsWatched.add(calc)
+  let queued = false
+  try {
+    calc.observe('graphpaperBounds', () => {
+      if (queued) return
+      queued = true
+      requestAnimationFrame(() => { queued = false; refreshAllStepDots(calc) })
+    })
+  } catch { /* no observer available — the dots still follow the lesson's own steps */ }
+}
 
 export async function plotFunction(calc, id, expr, opts = {}) {
   const sliderVars = extractSliderVars(expr)
@@ -327,12 +584,27 @@ export async function plotFunction(calc, id, expr, opts = {}) {
   // the other, so plotting a root no longer silently draws nothing while
   // intersections/roots/tangents keep evaluating it correctly.
   const latexExpr = toDesmos(cleanExpr)
-  calc.setExpression({ id: `fn_${id}`, latex: latexExpr, color, lineWidth, lineOpacity: 0 })
+  // An inequality is a REGION, not a curve: "x > -2" means every point to the
+  // right of the line x = -2, and "2x - y > 3" every point on one side of that
+  // line. Desmos shades exactly that as soon as the latex carries a comparison,
+  // so the expression goes in unchanged and only the styling is decided here:
+  // the boundary is dashed when the comparison is strict and solid when it
+  // includes equality. That dash is not decoration — it is how the reader is
+  // told whether the boundary itself belongs to the answer.
+  const compare  = inequalityCompare(latexExpr)
+  const isRegion = Boolean(compare)
+  const strict   = isRegion && (compare[1] === '<' || compare[1] === '>')
+  const fillOp   = isRegion ? 0.3 : 0
+  const fadeProps = isRegion ? { lineOpacity: 1, fillOpacity: fillOp } : { lineOpacity: 1 }
+  calc.setExpression({
+    id: `fn_${id}`, latex: latexExpr, color, lineWidth, lineOpacity: 0,
+    ...(isRegion ? { fillOpacity: 0, lineStyle: strict ? 'DASHED' : 'SOLID' } : {}),
+  })
   // hasSliders marks this as a "drag to explore" curve — its shape is meant to
   // keep changing, so any label on it (getVisibilityAnchors) must never lock
   // the camera onto whatever position happened to be true when it was first
   // drawn (see ensureVisible).
-  registry.set(`fn::${id}`, { calcId: `fn_${id}`, expr: cleanExpr, latex: latexExpr, template: expr, color, lineWidth, hasSliders: sliderVars.length > 0, fadeProps: { lineOpacity: 1 } })
+  registry.set(`fn::${id}`, { calcId: `fn_${id}`, expr: cleanExpr, latex: latexExpr, template: expr, color, lineWidth, hasSliders: sliderVars.length > 0, isRegion, fadeProps })
   // Resync now that this function's template is in the registry — a slider
   // no longer referenced by anything currently plotted (e.g. this call just
   // replaced an old "explore" curve with a slider-free one) is removed here,
@@ -344,7 +616,16 @@ export async function plotFunction(calc, id, expr, opts = {}) {
   // doesn't, no separate "turn the badge on" action to remember.
   if (sliderVars.length) showLiveEquation(id, id)
   else hideLiveEquation(id)
-  await fadeIn(calc, [`fn_${id}`], { lineOpacity: 1 })
+  // Placed before the fade so they come up WITH the curve rather than popping
+  // on once it has settled, and watched from here so a reader's own zoom keeps
+  // them in step without any lesson asking for it.
+  watchBoundsFor(calc)
+  const dotIds = refreshStepDots(calc, id, 0)
+  await Promise.all([
+    fadeIn(calc, [`fn_${id}`], fadeProps),
+    dotIds ? fadeIn(calc, dotIds, { pointOpacity: 1 }) : Promise.resolve(),
+  ])
+  raiseSegments(calc)
 }
 
 // ── Line of best fit (least-squares regression) through already-placed
@@ -387,6 +668,7 @@ export async function plotBestFitLine(calc, id, pointIdsRaw, opts = {}) {
     hasSliders: false, fadeProps: { lineOpacity: 1 },
   })
   await fadeIn(calc, [cId], { lineOpacity: 1 })
+  raiseSegments(calc)
   return { slope, intercept }
 }
 
@@ -397,6 +679,11 @@ export async function removeFunction(calc, id) {
   if (e) {
     toFadeOut.push({ ids: [e.calcId], props: e.fadeProps ?? { lineOpacity: 1 } })
     registry.delete(`fn::${id}`)
+  }
+  const dots = stepDots.get(id)
+  if (dots) {
+    toFadeOut.push({ ids: [dots.closedId, dots.openId], props: { pointOpacity: 1 } })
+    stepDots.delete(id)
   }
   for (const [key, val] of [...registry.entries()]) {
     if (val.funcId === id) {
@@ -420,6 +707,11 @@ export async function removeFunction(calc, id) {
 export async function shadeUnderCurve(calc, id, funcId, a, b, opts = {}) {
   const fn = registry.get(`fn::${funcId}`)
   if (!fn) return
+  // A region is a shaded half-plane, not a curve: it has no y for a given x,
+  // so there is nothing here to shade under, cross, root, differentiate or take
+  // a tangent to. Bailing keeps a mis-authored step inert instead of placing
+  // points at y = true, which is what an inequality evaluates to.
+  if (fn.isRegion) return
   const color   = opts.color ? rgbToHex(opts.color) : darken(fn.color, 0.7)
   const fillOp  = opts.fillOpacity ?? 0.4
   const areaId  = `area_${id}`
@@ -438,6 +730,7 @@ export async function shadeUnderCurve(calc, id, funcId, a, b, opts = {}) {
   calc.removeExpression({ id: fn.calcId })
   calc.setExpression({ id: fn.calcId, latex: fn.latex ?? fn.expr, color: fn.color, lineWidth: fn.lineWidth, lineOpacity: 1 })
   await fadeIn(calc, [areaId, vaId, vbId], { fillOpacity: fillOp, lineOpacity: 1 })
+  raiseSegments(calc)
 }
 
 export async function removeArea(calc, id) {
@@ -451,6 +744,11 @@ export async function findAndMarkIntersections(calc, id, f1Id, f2Id, opts = {}) 
   const e1 = registry.get(`fn::${f1Id}`)
   const e2 = registry.get(`fn::${f2Id}`)
   if (!e1 || !e2) return []
+  // A region is a shaded half-plane, not a curve: it has no y for a given x,
+  // so there is nothing here to shade under, cross, root, differentiate or take
+  // a tangent to. Bailing keeps a mis-authored step inert instead of placing
+  // points at y = true, which is what an inequality evaluates to.
+  if (e1.isRegion || e2.isRegion) return []
   const color   = opts.color ? (Array.isArray(opts.color) ? rgbToHex(opts.color) : opts.color) : '#60a5fa'
   // Search a generous FIXED range, not the current camera view — the camera
   // is very often narrower than the actual intersection by the time this
@@ -485,17 +783,73 @@ export async function findAndMarkIntersections(calc, id, f1Id, f2Id, opts = {}) 
 function sqrtToLatex(s) {
   let out = ''
   for (let i = 0; i < s.length; i++) {
-    if (!s.startsWith('sqrt(', i)) { out += s[i]; continue }
+    // cbrt gets the same treatment with an index, so the equation panel and the
+    // plotter accept the same spelling for the same thing.
+    const kind = s.startsWith('sqrt(', i) ? ''
+               : s.startsWith('cbrt(', i) ? '[3]'
+               : null
+    if (kind === null) { out += s[i]; continue }
     let depth = 0, j = i + 4          // j sits on the '('
     for (; j < s.length; j++) {
       if (s[j] === '(') depth++
       else if (s[j] === ')' && --depth === 0) break
     }
     if (j >= s.length) { out += s[i]; continue }   // unbalanced — leave as-is
-    out += `\\sqrt{${sqrtToLatex(s.slice(i + 5, j))}}`
+    out += `\\sqrt${kind}{${sqrtToLatex(s.slice(i + 5, j))}}`
     i = j
   }
   return out
+}
+
+// ── Domain restrictions and piecewise ────────────────────────────────────────
+// Desmos writes both with ESCAPED braces. "-x\{x<-5\}" is an ordinary curve
+// with a domain filter — draw y = -x, but only where x < -5. And
+// "\{x<-5:-x,x<=0:1,x^2\}" is a whole piecewise function in one expression:
+// condition:value pairs read top to bottom, the first true one wins, and a
+// last term with no condition is the "otherwise".
+//
+// The escaping matters. Plain { } already belong to \frac{}{}, \sqrt{} and
+// x^{2}, which are NOT restrictions, so only \{ \} pairs are split off here
+// and every other brace is left exactly where it was.
+//
+// Both forms carry a "<" that says WHERE the curve is drawn, not which
+// half-plane is the answer — so everything reasoning about the expression has
+// to see past them, or an ordinary curve gets read as an inequality and comes
+// out dashed, shaded, and unnamed.
+function splitBraceGroups(latex) {
+  const groups = []
+  let outside = '', cur = '', depth = 0
+  const s = String(latex ?? '')
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '\\' && s[i + 1] === '{') {
+      depth++; i++
+      if (depth === 1) { cur = ''; continue }
+      cur += '\\{'; continue
+    }
+    if (s[i] === '\\' && s[i + 1] === '}' && depth > 0) {
+      depth--; i++
+      if (depth === 0) { groups.push(cur); continue }
+      cur += '\\}'; continue
+    }
+    if (depth > 0) cur += s[i]
+    else outside += s[i]
+  }
+  // An unclosed \{ leaves its text in cur and it is dropped on purpose: the
+  // expression is malformed, and Desmos will not draw it either.
+  return { outside, groups }
+}
+
+// The formula a restricted piece is actually about: "-x\{x<-5\}" → "-x".
+// Empty for an all-in-one piecewise, which has no single formula to point at.
+export function bareExpr(expr) {
+  const { outside, groups } = splitBraceGroups(expr)
+  return groups.length ? outside.trim() : String(expr ?? '').trim()
+}
+
+// A comparison that is the RELATION ITSELF ("x > -2", "2x - y >= 3") makes
+// this a region to shade. One tucked inside \{ \} does not.
+function inequalityCompare(latex) {
+  return splitBraceGroups(latex).outside.match(/(\\ge|\\le|<|>)/)
 }
 
 function toDesmos(expr) {
@@ -503,6 +857,24 @@ function toDesmos(expr) {
   let s = String(expr).trim()
   s = sqrtToLatex(s)
   s = s.replace(/\bpi\b/gi, '\\pi')
+  // Desmos reads a bare "floor(x)" as f·l·o·o·r times (x) — implicit
+  // multiplication of five variables — and draws nothing at all, with no error
+  // anywhere. The rounding functions exist for it only as \operatorname{}.
+  // floor is the step / greatest-integer function, so this is what makes
+  // "a*floor(b*(x-h))+k" a staircase instead of an empty graph.
+  //
+  // The leading group is what keeps an already-written \operatorname{floor}
+  // from being wrapped a second time: inside it, "floor" is preceded by "{".
+  s = s.replace(/(^|[^{a-zA-Z\\])(floor|ceil|round|abs)\s*\(/g, '$1\\operatorname{$2}(')
+  // Trig is the same story with a different spelling: Desmos knows \sin, not
+  // "sin", and reads the bare word as s·i·n multiplied by whatever follows —
+  // so "sin(x)" drew nothing at all. The arc- forms come first in the
+  // alternation or "arcsin" would match as "arc" followed by \sin.
+  s = s.replace(/(^|[^a-zA-Z\\])(arcsin|arccos|arctan|sin|cos|tan)\s*\(/g, '$1\\$2(')
+  // >= and <= are two characters in source and one symbol in LaTeX; left as
+  // typed, Desmos reads the "=" as a second, broken comparison and plots
+  // nothing at all.
+  s = s.replace(/>=|\u2265/g, '\\ge').replace(/<=|\u2264/g, '\\le')
   // a/b → \frac{a}{b}  (handles -\sqrt{x}/n, \sqrt{x}/n, -n/m, n/m)
   s = s.replace(
     /(-?(?:\\sqrt\{[^}]+\}|\\pi|\d+(?:\.\d+)?))\/(\d+(?:\.\d+)?)/g,
@@ -526,6 +898,9 @@ function evalMathExpr(expr) {
       .replace(/sqrt\(/g, 'Math.sqrt(')
       .replace(/\bpi\b/gi, 'Math.PI')
       .replace(/\babs\(/g, 'Math.abs(')
+      .replace(/\bfloor\(/g, 'Math.floor(')
+      .replace(/\bceil\(/g, 'Math.ceil(')
+      .replace(/\bround\(/g, 'Math.round(')
       .replace(/\bsin\(/g, 'Math.sin(')
       .replace(/\bcos\(/g, 'Math.cos(')
       .replace(/\btan\(/g, 'Math.tan(')
@@ -543,16 +918,24 @@ function formatPointLabel(label) {
 }
 
 export async function addPoint(calc, id, x, y, opts = {}) {
-  // Color priority: a referenced function's color (darker on screen) → explicit color → default.
+  // Colour priority: the referenced function's colour → explicit colour → the
+  // reserved blue. A point given a funcId takes that curve's colour EXACTLY,
+  // not a paler version of it: the endpoint dots of a piecewise piece are part
+  // of the curve, and a dot in a different shade reads as a different object.
   let color
   if (opts.funcId) {
     const fn = registry.get(`fn::${opts.funcId}`)
-    color = fn ? lighten(fn.color, 0.4) : '#60a5fa'
+    color = fn ? fn.color : '#60a5fa'
   } else if (opts.color) {
     color = Array.isArray(opts.color) ? rgbToHex(opts.color) : opts.color
   } else {
     color = '#60a5fa'
   }
+  // A hollow dot is how a graph says "this endpoint is NOT part of the curve" —
+  // the whole point of the ○/● pair at the joins of a piecewise function. It is
+  // a real distinction in the mathematics, not styling, so it is an option on
+  // the point rather than something a lesson has to fake with two shapes.
+  const pointStyle = opts.open ? 'OPEN' : 'POINT'
   const cId  = `pt_${id}`
   const latX = toDesmos(x)
   const latY = toDesmos(y)
@@ -575,7 +958,8 @@ export async function addPoint(calc, id, x, y, opts = {}) {
     const xLbl = toUnicodeLabel(x)
     const yLbl = toUnicodeLabel(y)
     calc.setExpression({ id: cId, latex: `(${latX},${latY})`, color,
-      showLabel: true, label: `(${xLbl}, ${yLbl})`, labelOrientation: 'below_right', pointOpacity: 0 })
+      showLabel: true, label: `(${xLbl}, ${yLbl})`, labelOrientation: 'below_right',
+      pointStyle, pointOpacity: 0 })
 
     // Angle label slightly inside the circle (0.65× toward center) — this one
     // legitimately wants to radiate from the origin (trig-circle angle call-outs).
@@ -596,7 +980,7 @@ export async function addPoint(calc, id, x, y, opts = {}) {
     calc.setExpression({
       id: cId, latex: `(${latX},${latY})`, color,
       showLabel: !!opts.label, label: formatPointLabel(opts.label),
-      labelOrientation: 'below_right', pointOpacity: 0,
+      labelOrientation: 'below_right', pointStyle, pointOpacity: 0,
     })
   }
 
@@ -651,19 +1035,133 @@ export async function removeScatterPlot(calc, id) {
 }
 
 // ── Line segment (finite — NOT an infinite line like y=mx+b) ─────────────────
+// A vector is this same segment with an arrow head on it, so it is one function
+// with an `arrow` option rather than two that drift apart: give it an arrow and
+// everything a segment already has comes with it — a stable id, removal, ticks,
+// [id]len and the rest of the value references, the midpoint a comment anchors
+// to, and its place above the curves. opts.arrow is 'end' (a vector), 'both' (a
+// measured distance) or absent.
 export async function addSegment(calc, id, x1, y1, x2, y2, opts = {}) {
   const color = opts.color ? (Array.isArray(opts.color) ? rgbToHex(opts.color) : opts.color) : '#60a5fa'
+  const lw    = opts.thickness ?? 3
   const cId   = `seg_${id}`
-  calc.setExpression({ id: cId, latex: makeSegment(x1, y1, x2, y2), color, lineWidth: opts.thickness ?? 3, lineOpacity: 0 })
-  registry.set(`seg::${id}`, { x1, y1, x2, y2, calcId: cId, fadeProps: { lineOpacity: 1 } })
-  await fadeIn(calc, [cId], { lineOpacity: 1 })
+  const arrow = opts.arrow === true ? 'end' : opts.arrow
+
+  // A name — u, AB, u_1 — written beside the middle, in the segment's colour. A
+  // vector's name wears its arrow. Desmos sets a label in LaTeX when it sits
+  // between backticks, and \overrightarrow spans the whole name; a combining
+  // arrow character covers one letter at most, and the label font has no glyph
+  // for it anyway.
+  const name     = String(opts.name ?? '').trim()
+  const nameId   = `seg_name_${id}`
+  const nameText = !name ? '' : arrow === 'end' ? `\`\\overrightarrow{${name}}\`` : name
+  const NAME_OP  = 0.6
+  const prevSeg  = registry.get(`seg::${id}`)
+  // Only a name that was not there before arrives with a fade. One that was
+  // there is just rewritten: same id, new name, and nothing leaves the screen.
+  const nameIsNew = !!nameText && !(prevSeg?.calcIds ?? []).includes(nameId)
+  const placeName = (ax, ay, bx, by) => {
+    const dx = bx - ax, dy = by - ay
+    const len = Math.hypot(dx, dy) || 1
+    // Beside the middle, on the side AWAY from the corner (bx, ay) that the
+    // vector's Δx and Δy components use — a name and a component label never
+    // land on each other. Left of the direction of travel, unless that is
+    // where the corner is.
+    let nx = -dy / len, ny = dx / len
+    if (dx * dy < 0) { nx = -nx; ny = -ny }
+    const off = (Math.abs(_vp.top - _vp.bottom) || 10) * 0.02
+    const px  = (ax + bx) / 2 + nx * off
+    const py  = (ay + by) / 2 + ny * off
+    const deg = Math.atan2(ny, nx) * 180 / Math.PI
+    const orient = ['right', 'above_right', 'above', 'above_left', 'left', 'below_left', 'below', 'below_right'][((Math.round(deg / 45) % 8) + 8) % 8]
+    return { latex: `(${+px.toFixed(6)},${+py.toFixed(6)})`, orient }
+  }
+
+  // Draw the whole thing — shaft and head — at one pair of endpoints. Written
+  // as a function of the endpoints so the move below can call it every frame
+  // and have the arrow head recomputed with the shaft, instead of a head left
+  // pointing where the vector used to go.
+  //
+  // The head is two short segments off the tip rather than a filled triangle:
+  // Desmos has no filled polygon that holds its shape through a zoom, and two
+  // lines at a fixed fraction of the shaft stay in proportion however far the
+  // camera is pulled back. Its size is capped so a long vector does not end in
+  // an enormous head.
+  const draw = (ax, ay, bx, by, lineOpacity) => {
+    const ids = [cId]
+    calc.setExpression({ id: cId, latex: makeSegment(ax, ay, bx, by), color, lineWidth: lw, lineOpacity })
+    if (nameText) {
+      // Desmos draws no label on a fully transparent point, so the one-pixel
+      // point under the name is only ever at 0 while the name is fading in.
+      const { latex, orient } = placeName(ax, ay, bx, by)
+      calc.setExpression({
+        // Large, like the other labels that name something on the graph: at the
+        // default size a one-letter name under its arrow was a speck.
+        id: nameId, latex, color, showLabel: true, label: nameText, labelOrientation: orient, labelSize: 'large',
+        pointSize: 1, pointOpacity: lineOpacity > 0 && !nameIsNew ? NAME_OP : 0,
+      })
+      ids.push(nameId)
+    }
+    if (!arrow) return ids
+    const dx = bx - ax, dy = by - ay
+    const len = Math.sqrt(dx * dx + dy * dy)
+    if (len < 1e-9) return ids
+    const ux = dx / len, uy = dy / len
+    const HEAD = Math.min(len * 0.15, 0.45)
+    const WING = HEAD * 0.62
+    const px = -uy, py = ux
+    const tip = (tx, ty, sx, sy, tag) => {
+      // sx,sy points back along the shaft from this tip.
+      const w1x = tx + HEAD * sx + WING * px, w1y = ty + HEAD * sy + WING * py
+      const w2x = tx + HEAD * sx - WING * px, w2y = ty + HEAD * sy - WING * py
+      for (const [n, wx, wy] of [[1, w1x, w1y], [2, w2x, w2y]]) {
+        const wid = `seg_${tag}${n}_${id}`
+        calc.setExpression({ id: wid, latex: makeSegment(tx, ty, wx, wy), color, lineWidth: lw, lineOpacity })
+        ids.push(wid)
+      }
+    }
+    tip(bx, by, -ux, -uy, 'a')
+    if (arrow === 'both') tip(ax, ay, ux, uy, 'b')
+    return ids
+  }
+
+  const prev = prevSeg
+  let ids
+  if (prev) {
+    // Re-using an id means this is the SAME segment being changed, not a new
+    // one replacing it — so it MOVES. Fading the old one out and the new one in
+    // says "forget that, here is another"; sliding the endpoints says "this one
+    // got longer", which is the thing a lesson is usually demonstrating.
+    await new Promise(resolve => {
+      const t0 = performance.now()
+      ;(function tick() {
+        const t = Math.min((performance.now() - t0) / animMs(MOVE_MS), 1)
+        const e = easeIO(t)
+        const at = (a, b) => a + (b - a) * e
+        ids = draw(at(prev.x1, x1), at(prev.y1, y1), at(prev.x2, x2), at(prev.y2, y2), 1)
+        if (t < 1) requestAnimationFrame(tick)
+        else resolve()
+      })()
+    })
+    // An arrow that was there and is not any more leaves its wings behind,
+    // because nothing in this pass rewrote them.
+    for (const old of prev.calcIds ?? [prev.calcId]) {
+      if (!ids.includes(old)) calc.removeExpression({ id: old })
+    }
+  } else {
+    ids = draw(x1, y1, x2, y2, 0)
+    await fadeIn(calc, ids, { lineOpacity: 1 })
+  }
+  if (nameIsNew) await fadeIn(calc, [nameId], { pointOpacity: NAME_OP })
+
+  registry.set(`seg::${id}`, { x1, y1, x2, y2, color, calcId: cId, calcIds: ids, fadeProps: { lineOpacity: 1, pointOpacity: NAME_OP } })
 }
 
 export async function removeSegment(calc, id) {
   const e = registry.get(`seg::${id}`)
   if (!e) return
   registry.delete(`seg::${id}`)
-  await fadeOut(calc, [e.calcId], e.fadeProps ?? { lineOpacity: 1 })
+  await fadeOut(calc, e.calcIds ?? [e.calcId], e.fadeProps ?? { lineOpacity: 1 })
 }
 
 // An "on curve" anchor may name a SEGMENT rather than a plotted function, in
@@ -778,6 +1276,11 @@ export async function removeHorizontalLine(calc, id) {
 export async function markRoots(calc, id, funcId, opts = {}) {
   const fn = registry.get(`fn::${funcId}`)
   if (!fn) return []
+  // A region is a shaded half-plane, not a curve: it has no y for a given x,
+  // so there is nothing here to shade under, cross, root, differentiate or take
+  // a tangent to. Bailing keeps a mis-authored step inert instead of placing
+  // points at y = true, which is what an inequality evaluates to.
+  if (fn.isRegion) return []
   const f = makeEval(fn.expr)
   if (!f) return []
   const color   = opts.color ? rgbToHex(opts.color) : darken(fn.color, 0.7)
@@ -805,12 +1308,18 @@ export async function removeRoots(calc, id) {
 export async function plotDerivative(calc, id, funcId, opts = {}) {
   const fn = registry.get(`fn::${funcId}`)
   if (!fn) return
+  // A region is a shaded half-plane, not a curve: it has no y for a given x,
+  // so there is nothing here to shade under, cross, root, differentiate or take
+  // a tangent to. Bailing keeps a mis-authored step inert instead of placing
+  // points at y = true, which is what an inequality evaluates to.
+  if (fn.isRegion) return
   const color     = opts.color ? rgbToHex(opts.color) : darken(fn.color, 0.7)
   const lineWidth = opts.thickness ?? 2
   const latex     = `\\frac{d}{dx}\\left(${fn.latex ?? fn.expr}\\right)`
   calc.setExpression({ id: `deriv_${id}`, latex, color, lineWidth, lineOpacity: 0 })
   registry.set(`deriv::${id}`, { calcId: `deriv_${id}`, funcId, fadeProps: { lineOpacity: 1 } })
   await fadeIn(calc, [`deriv_${id}`], { lineOpacity: 1 })
+  raiseSegments(calc)
 }
 
 export async function removeDerivative(calc, id) {
@@ -852,6 +1361,7 @@ export async function riemannSum(calc, id, funcId, a, b, n, method = 'midpoint',
   calc.removeExpression({ id: fn.calcId })
   calc.setExpression({ id: fn.calcId, latex: fn.latex ?? fn.expr, color: fn.color, lineWidth: fn.lineWidth, lineOpacity: 1 })
   await fadeIn(calc, calcIds, { fillOpacity: fillOp, lineOpacity: 1 })
+  raiseSegments(calc)
 }
 
 export async function removeRiemannSum(calc, id) {
@@ -861,31 +1371,18 @@ export async function removeRiemannSum(calc, id) {
   await fadeOut(calc, e.calcIds, e.fadeProps ?? { fillOpacity: 0.5, lineOpacity: 1 })
 }
 
+// Kept as its own name because lessons and the compact codec already call it,
+// but there is only one implementation now: an arrow IS a segment with a head,
+// and having drawn them separately is how the vector ended up without the id,
+// the removal and the colour that segments have had all along.
 export async function drawVector(calc, id, x1, y1, x2, y2, opts = {}) {
-  const color = opts.color ? rgbToHex(opts.color) : '#60a5fa'
-  const lw    = opts.thickness ?? 2
-  const dx = x2 - x1, dy = y2 - y1
-  const len = Math.sqrt(dx*dx + dy*dy)
-  if (len < 1e-9) return
-  const ux = dx/len, uy = dy/len
-  const ARROW = Math.min(len * 0.25, 0.8)
-  const WING  = ARROW * 0.45
-  const px = -uy, py = ux
-  const w1x = x2 - ARROW*ux + WING*px,  w1y = y2 - ARROW*uy + WING*py
-  const w2x = x2 - ARROW*ux - WING*px,  w2y = y2 - ARROW*uy - WING*py
-  const shaftId = `vec_s_${id}`
-  const w1Id    = `vec_w1_${id}`
-  const w2Id    = `vec_w2_${id}`
-  calc.setExpression({ id: shaftId, latex: makeSegment(x1, y1, x2, y2), color, lineWidth: lw, lineOpacity: 0 })
-  calc.setExpression({ id: w1Id,    latex: makeSegment(x2, y2, w1x, w1y), color, lineWidth: lw, lineOpacity: 0 })
-  calc.setExpression({ id: w2Id,    latex: makeSegment(x2, y2, w2x, w2y), color, lineWidth: lw, lineOpacity: 0 })
-  registry.set(`vec::${id}`, { calcIds: [shaftId, w1Id, w2Id], fadeProps: { lineOpacity: 1 } })
-  await fadeIn(calc, [shaftId, w1Id, w2Id], { lineOpacity: 1 })
+  await addSegment(calc, id, x1, y1, x2, y2, { thickness: 2, ...opts, arrow: 'end' })
 }
 
+// Old vectors registered under vec::, new ones under seg:: — remove either.
 export async function removeVector(calc, id) {
   const e = registry.get(`vec::${id}`)
-  if (!e) return
+  if (!e) { await removeSegment(calc, id); return }
   registry.delete(`vec::${id}`)
   await fadeOut(calc, e.calcIds, e.fadeProps ?? { lineOpacity: 1 })
 }
@@ -894,7 +1391,7 @@ export async function removeVector(calc, id) {
 // If the angle is ~90° it draws a right-angle square instead of an arc.
 // The measure is computed from the points — the label is always correct.
 export async function drawAngle(calc, id, ax, ay, bx, by, cx, cy, opts = {}) {
-  const color = Array.isArray(opts.color) ? rgbToHex(opts.color) : (opts.color || '#fbbf24')
+  const color = Array.isArray(opts.color) ? rgbToHex(opts.color) : (opts.color || '#60a5fa')
   const r  = opts.radius ?? 1
   const f  = n => +Number(n).toFixed(6)
   const t1 = Math.atan2(ay - by, ax - bx)
@@ -904,24 +1401,46 @@ export async function drawAngle(calc, id, ax, ay, bx, by, cx, cy, opts = {}) {
   while (diff <= -Math.PI) diff += 2 * Math.PI
   const deg     = Math.abs(diff) * 180 / Math.PI
   const isRight = Math.abs(deg - 90) < 0.5
-  const ids = []
+  const strokes = []
 
+  // The region itself is filled, not just outlined. An arc alone reads as a
+  // third line in a picture that is already made of lines; a tinted wedge reads
+  // as "this much turn", which is the quantity the label then puts a number on.
+  // Desmos has no arc-with-fill, so the wedge is a polygon whose rim is sampled
+  // along the arc — 28 points, enough that the curve stays smooth at any zoom a
+  // lesson uses.
+  const pt = (x, y) => `\\left(${f(x)},${f(y)}\\right)`
+  const fillId = `ang_fill_${id}`
+  let rim
   if (isRight) {
-    // right-angle square corner
     const s  = r * 0.55
     const p1 = [bx + s * Math.cos(t1), by + s * Math.sin(t1)]
     const p2 = [bx + s * Math.cos(t2), by + s * Math.sin(t2)]
     const cn = [bx + s * (Math.cos(t1) + Math.cos(t2)), by + s * (Math.sin(t1) + Math.sin(t2))]
+    rim = [pt(bx, by), pt(p1[0], p1[1]), pt(cn[0], cn[1]), pt(p2[0], p2[1])]
     const s1 = `ang_s1_${id}`, s2 = `ang_s2_${id}`
     calc.setExpression({ id: s1, latex: makeSegment(p1[0], p1[1], cn[0], cn[1]), color, lineWidth: 2.5, lineOpacity: 0 })
     calc.setExpression({ id: s2, latex: makeSegment(p2[0], p2[1], cn[0], cn[1]), color, lineWidth: 2.5, lineOpacity: 0 })
-    ids.push(s1, s2)
+    strokes.push(s1, s2)
   } else {
+    const N = 28
+    rim = [pt(bx, by)]
+    for (let i = 0; i <= N; i++) {
+      const th = t1 + diff * (i / N)
+      rim.push(pt(bx + r * Math.cos(th), by + r * Math.sin(th)))
+    }
     const arcId = `ang_arc_${id}`
     const latex = `\\left(${f(bx)}+${f(r)}\\cos\\left(${f(t1)}+${f(diff)}t\\right),\\ ${f(by)}+${f(r)}\\sin\\left(${f(t1)}+${f(diff)}t\\right)\\right)`
     calc.setExpression({ id: arcId, latex, parametricDomain: { min: '0', max: '1' }, color, lineWidth: 2.5, lineOpacity: 0 })
-    ids.push(arcId)
+    strokes.push(arcId)
   }
+
+  // lines:false, or the polygon draws its own border — which for the wedge means
+  // two spurs lying on top of the very segments the angle is between.
+  calc.setExpression({
+    id: fillId, latex: `\\operatorname{polygon}\\left(${rim.join(',')}\\right)`,
+    color, lines: false, fill: true, fillOpacity: 0,
+  })
 
   // measured-degrees label on the bisector
   const lblId = `ang_lbl_${id}`
@@ -931,11 +1450,74 @@ export async function drawAngle(calc, id, ax, ay, bx, by, cx, cy, opts = {}) {
   calc.setExpression({
     id: lblId, latex: `(${f(lx)},${f(ly)})`, color,
     showLabel: true, label: opts.label ?? `${+deg.toFixed(1)}°`,
-    pointOpacity: 0, pointSize: 1,
+    // The label rides on a point, and Desmos fades the LABEL with the point:
+    // pointOpacity 0 was hiding the dot and the degrees along with it. The dot
+    // stays 1px — invisible in practice — and its opacity is what the fade below
+    // animates, so the measure arrives with the arc instead of popping.
+    labelSize: 'large', pointOpacity: 0, pointSize: 1,
   })
 
-  registry.set(`ang::${id}`, { calcIds: [...ids, lblId], fadeProps: { lineOpacity: 1 } })
-  await fadeIn(calc, ids, { lineOpacity: 1 })
+  registry.set(`ang::${id}`, {
+    calcIds: [...strokes, fillId, lblId],
+    fadeProps: { lineOpacity: ANGLE_LINE, fillOpacity: ANGLE_FILL, pointOpacity: 1 },
+  })
+  // The rim and the tint arrive together but at different targets, so they get
+  // one fade each rather than one fade with both properties: giving the polygon
+  // a line opacity would put its border back.
+  await Promise.all([
+    fadeIn(calc, strokes, { lineOpacity: ANGLE_LINE }),
+    fadeIn(calc, [fillId], { fillOpacity: ANGLE_FILL }),
+    fadeIn(calc, [lblId], { pointOpacity: 1 }),
+  ])
+}
+
+// The angle between two segments or vectors, marked where they actually meet.
+// Takes the two ids rather than six coordinates: by the time a lesson has drawn
+// the vectors it has already said where they are, and retyping their endpoints
+// is how the arc ends up on a corner that has since moved.
+//
+// The vertex is the endpoint the two SHARE. Two vectors drawn from the origin
+// share it there, which is the ordinary case — [-5,0] and [5,0] both start at
+// (0,0), and the arc reads 180°. Segments that never touch are measured where
+// their lines cross instead, so the angle between them still has somewhere to
+// be drawn; parallel ones have no such point and draw nothing.
+export async function angleBetween(calc, id, aId, bId, opts = {}) {
+  const s1 = registry.get(`seg::${aId}`)
+  const s2 = registry.get(`seg::${bId}`)
+  if (!s1 || !s2) return
+  const A = [[s1.x1, s1.y1], [s1.x2, s1.y2]]
+  const B = [[s2.x1, s2.y1], [s2.x2, s2.y2]]
+  const near = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 1e-6
+
+  let vertex = null, ra = null, rb = null
+  for (let i = 0; i < 2 && !vertex; i++) {
+    for (let j = 0; j < 2 && !vertex; j++) {
+      if (near(A[i], B[j])) { vertex = A[i]; ra = A[1 - i]; rb = B[1 - j] }
+    }
+  }
+
+  if (!vertex) {
+    const [p1, p2] = A, [p3, p4] = B
+    const d1x = p2[0] - p1[0], d1y = p2[1] - p1[1]
+    const d2x = p4[0] - p3[0], d2y = p4[1] - p3[1]
+    const den = d1x * d2y - d1y * d2x
+    if (Math.abs(den) < 1e-9) return
+    const t = ((p3[0] - p1[0]) * d2y - (p3[1] - p1[1]) * d2x) / den
+    vertex = [p1[0] + t * d1x, p1[1] + t * d1y]
+    ra = [vertex[0] + d1x, vertex[1] + d1y]
+    rb = [vertex[0] + d2x, vertex[1] + d2y]
+  }
+
+  // The mark is sized from the segments it sits between, not from a fixed 1 unit:
+  // on a graph zoomed out to 20 units a one-unit arc is a smudge, and on a tight
+  // one it swallows the figure. A quarter of the shorter ray reads the same at
+  // every zoom, which is what the reader actually compares it against.
+  const reach = Math.min(
+    Math.hypot(ra[0] - vertex[0], ra[1] - vertex[1]),
+    Math.hypot(rb[0] - vertex[0], rb[1] - vertex[1]),
+  )
+  const radius = opts.radius ?? Math.max(0.6, Math.min(reach * 0.26, 2.5))
+  await drawAngle(calc, id, ra[0], ra[1], vertex[0], vertex[1], rb[0], rb[1], { ...opts, radius })
 }
 
 export async function removeAngle(calc, id) {
@@ -1268,6 +1850,12 @@ export function clearAll(calc) {
   registry.clear()
   sliders.clear()
   liveEquations.clear()
+  stepDots.clear()   // setBlank() below drops the expressions themselves
+  // Drop the trig-circle labels BEFORE the viewport reset below. They're HTML
+  // positioned from _vp at render time, so leaving them mounted through the
+  // reset re-projects all 32 of them into a 20-unit-wide view — they pile up
+  // in a clump at the centre for a frame before the next draw wipes them.
+  _emitTrigOverlay([])
   _vp = { left: -10, right: 10, bottom: -7.5, top: 7.5 }
   calc?.setBlank()
   _emitSliders()
@@ -1310,6 +1898,11 @@ function pixelsPerUnit(calc) {
 export function nameFunc(calc, id, funcId, label, x, y, opts = {}) {
   const fn = registry.get(`fn::${funcId}`)
   if (!fn) return
+  // A region has no curve to sit a name on: makeEval of an inequality returns
+  // a BOOLEAN, and true passes isFinite, so the label used to be placed at
+  // (x, true) and blow up on toFixed. Naming the shaded half-plane is not a
+  // thing a lesson asks for anyway — the boundary is already written on it.
+  if (fn.isRegion) return
   const f = makeEval(fn.expr)
   if (!f) return
 
@@ -1407,6 +2000,11 @@ export function removeNameFunc(calc, id) {
 export async function tangent(calc, id, funcId, x, y, opts = {}) {
   const fn = registry.get(`fn::${funcId}`)
   if (!fn) return
+  // A region is a shaded half-plane, not a curve: it has no y for a given x,
+  // so there is nothing here to shade under, cross, root, differentiate or take
+  // a tangent to. Bailing keeps a mis-authored step inert instead of placing
+  // points at y = true, which is what an inequality evaluates to.
+  if (fn.isRegion) return
   const f = makeEval(fn.expr)
   if (!f) return
 
@@ -1489,15 +2087,23 @@ function toJsExpr(raw) {
     // LaTeX: \frac{a}{b} → (a)/(b)
     .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)')
     // LaTeX backslash functions
-    .replace(/\\sin\b/g, 'Math.sin')
-    .replace(/\\cos\b/g, 'Math.cos')
-    .replace(/\\tan\b/g, 'Math.tan')
     .replace(/\\sqrt\{([^}]*)\}/g, 'Math.sqrt($1)')
     .replace(/\\sqrt\b/g, 'Math.sqrt')
     .replace(/\\ln\b/g, 'Math.log')
     .replace(/\\exp\b/g, 'Math.exp')
     .replace(/\\pi\b/g, 'Math.PI')
     .replace(/\\cdot\b/g, '*')
+    // Rounding functions, in BOTH the \operatorname{} form Desmos emits and the
+    // plain form a lesson types. One pass over the two spellings on purpose:
+    // mapping them separately would let the second rule see the "floor" inside
+    // the "Math.floor" the first one just wrote ("." is not a word character)
+    // and produce "Math.Math.floor". It also has to happen before the lone
+    // braces below turn \operatorname{floor} into \operatorname(floor).
+    .replace(/(?:\\operatorname\{(floor|ceil|round|abs)\}|\b(floor|ceil|round|abs|cbrt)\b)/g,
+             (_, op, plain) => `Math.${op || plain}`)
+    // Trig, in both spellings, in ONE pass for the same reason.
+    .replace(/\\?\b(arcsin|arccos|arctan|sin|cos|tan)\b/g,
+             (_, name) => `Math.${{ arcsin: 'asin', arccos: 'acos', arctan: 'atan' }[name] ?? name}`)
     // LaTeX grouping
     .replace(/\\left\(/g, '(')
     .replace(/\\right\)/g, ')')
@@ -1511,11 +2117,7 @@ function toJsExpr(raw) {
     .replace(/\{/g, '(')
     .replace(/\}/g, ')')
     // Non-LaTeX trig/constants
-    .replace(/\bsin\b/g, 'Math.sin')
-    .replace(/\bcos\b/g, 'Math.cos')
-    .replace(/\btan\b/g, 'Math.tan')
     .replace(/\bsqrt\b/g, 'Math.sqrt')
-    .replace(/\babs\b/g, 'Math.abs')
     .replace(/\bpi\b/g, 'Math.PI')
     .replace(/\be\b/g, 'Math.E')
     // Implicit multiplication: "2x" → "2*x", "2(" → "2*("
@@ -1585,7 +2187,87 @@ export function makeImplicitEval(expr) {
   } catch { return null }
 }
 
+// "-5<x\le0" → a test on x. A chained bound reads as one clause, exactly the
+// way it is written: "-5<x<=0" is two comparisons that must both hold.
+function makeCondition(condRaw) {
+  const s = String(condRaw ?? '').replace(/\\ge/g, '>=').replace(/\\le/g, '<=')
+  const parts = s.split(/(<=|>=|<|>)/)
+  if (parts.length < 3) return null
+  const tests = []
+  for (let i = 1; i < parts.length; i += 2) {
+    try {
+      tests.push(new Function('x',
+        `"use strict"; return (${toJsExpr(parts[i - 1])}) ${parts[i]} (${toJsExpr(parts[i + 1])})`))
+    } catch { return null }
+  }
+  return (x) => tests.every(t => { try { return t(x) } catch { return false } })
+}
+
+// Split on a separator that is not inside parentheses, so a value like
+// "max(x,2)" survives being cut on commas.
+function splitTopLevel(str, sep) {
+  const out = []
+  let cur = '', depth = 0
+  for (const ch of String(str ?? '')) {
+    if (ch === '(') depth++
+    else if (ch === ')') depth--
+    if (ch === sep && depth === 0) { out.push(cur); cur = '' }
+    else cur += ch
+  }
+  out.push(cur)
+  return out
+}
+
+// An evaluator for the two brace forms. Outside its domain a piece returns
+// NaN — which every caller already reads as "no curve here", so the label, the
+// roots and the intersections all stay inside the piece instead of wandering
+// off where nothing is drawn.
+//
+// This is not decoration: without it, makeEval cut "1\{-5<x<=0\}" at the "="
+// of the "<=" and handed back the constant 0. Not an error anyone would see —
+// just a wrong answer, silently.
+function makePieceEval(expr) {
+  const { outside, groups } = splitBraceGroups(expr)
+  if (!groups.length) return null
+
+  // "\{cond:val, cond:val, else\}" — the braces ARE the function.
+  if (!outside.trim() && groups.length === 1 && groups[0].includes(':')) {
+    const branches = []
+    let fallback = null
+    for (const part of splitTopLevel(groups[0], ',')) {
+      const half = splitTopLevel(part, ':')
+      if (half.length === 2) {
+        const cond = makeCondition(half[0])
+        const val  = makeEval(half[1])
+        if (!cond || !val) return null
+        branches.push({ cond, val })
+      } else {
+        fallback = makeEval(part)
+        if (!fallback) return null
+      }
+    }
+    if (!branches.length) return null
+    return (x) => {
+      for (const b of branches) if (b.cond(x)) return b.val(x)
+      return fallback ? fallback(x) : NaN
+    }
+  }
+
+  // "base\{cond\}\{cond\}" — the braces filter an ordinary expression, and
+  // several of them stack into an AND.
+  const base  = makeEval(outside)
+  const conds = groups.map(makeCondition)
+  if (!base || conds.some(c => !c)) return null
+  return (x) => (conds.every(c => c(x)) ? base(x) : NaN)
+}
+
 function makeEval(expr) {
+  // A restriction or a piecewise is not an ordinary formula, and it must be
+  // recognised BEFORE the cut-at-"=" below: "1\{-5<x<=0\}" contains an "="
+  // only because it contains a "<=".
+  const piece = makePieceEval(expr)
+  if (piece) return piece
+
   // Only cut-at-"=" when the left side is already isolated ("y = ..." /
   // "f(x) = ...") — that's the one case where throwing away the left side
   // is safe. Anything else ("-6x+3y=12", "12=-6x+3y") needs the implicit
@@ -1665,9 +2347,87 @@ function growProjectionLines(calc, vId, hId, xF, yF, ms = FADE_MS) {
   })
 }
 
+// One leg of a vector's components, drawn from where the pen is toward where it
+// goes: the Δx leg leaves the tail, the Δy leg leaves the corner.
+function growLeg(calc, legId, axis, fixed, from, to, ms = FADE_MS) {
+  return new Promise(resolve => {
+    const t0 = performance.now()
+    const tick = () => {
+      const p   = Math.min((performance.now() - t0) / ms, 1)
+      const cur = from + (to - from) * easeIO(p)
+      const lo  = +Math.min(from, cur).toFixed(6)
+      const hi  = +Math.max(from, cur).toFixed(6)
+      calc.setExpression({ id: legId, latex: axis === 'x'
+        ? `y=${fixed}\\left\\{${lo}\\le x\\le${hi}\\right\\}`
+        : `x=${fixed}\\left\\{${lo}\\le y\\le${hi}\\right\\}` })
+      if (p < 1) requestAnimationFrame(tick)
+      else resolve()
+    }
+    tick()
+  })
+}
+
+// A vector's components: the dashed Δx leg leaves the tail along x, then the Δy
+// leg climbs from that corner to the tip — the move the vector stands for, one
+// axis at a time. Same dashes, colour and grow as a point's projections, but
+// labelled with what they measure, "Δx = 4" and "Δy = 3". A point's projections
+// keep their bare coordinates; a Δ is a change, and only a vector has one.
+// Each label sits on the outside of the triangle the legs make with the vector,
+// so it never lands on the arrow.
+async function showVectorComponents(calc, id, segId, seg, opts = {}) {
+  const f  = (n) => +Number(n).toFixed(6)
+  const x1 = f(seg.x1), y1 = f(seg.y1), x2 = f(seg.x2), y2 = f(seg.y2)
+  if (![x1, y1, x2, y2].every(isFinite)) return
+  const dx = x2 - x1, dy = y2 - y1
+  const color = darken(seg.color ?? '#60a5fa', 0.3)
+  const OP = 0.6
+  const hId = `proj_dx_${id}`
+  const vId = `proj_dy_${id}`
+  const calcIds = []
+  // A leg of length zero is not drawn — a vertical vector has no Δx to walk.
+  if (Math.abs(dx) > 1e-9) {
+    calc.setExpression({ id: hId, latex: `y=${y1}\\left\\{${x1}\\le x\\le${x1}\\right\\}`, color, lineWidth: 2.5, lineStyle: 'DASHED', lineOpacity: OP })
+    calcIds.push(hId)
+  }
+  if (Math.abs(dy) > 1e-9) {
+    calc.setExpression({ id: vId, latex: `x=${x2}\\left\\{${y1}\\le y\\le${y1}\\right\\}`, color, lineWidth: 2.5, lineStyle: 'DASHED', lineOpacity: OP })
+    calcIds.push(vId)
+  }
+  registry.set(`proj::${id}`, { calcIds: [...calcIds], pointId: segId, fadeProps: { lineOpacity: OP } })
+  if (calcIds.includes(hId)) await growLeg(calc, hId, 'x', y1, x1, x2)
+  if (calcIds.includes(vId)) await growLeg(calc, vId, 'y', x2, y1, y2)
+
+  if (opts.showValues === false) return
+  const signed = (v) => { const r = +v.toFixed(3); return r < 0 ? `\u2212${Math.abs(r)}` : `${r}` }
+  // Under the Δx leg when the vector climbs, over it when it falls; beside the
+  // Δy leg on the side away from the tail.
+  const dxLblId = `proj_dxl_${id}`
+  calc.setExpression({
+    id: dxLblId, latex: `(${f((x1 + x2) / 2)},${y1})`, color,
+    showLabel: true, label: `Δx = ${signed(dx)}`, labelOrientation: dy >= 0 ? 'below' : 'above',
+    pointSize: 1, pointOpacity: 0,
+  })
+  const dyLblId = `proj_dyl_${id}`
+  calc.setExpression({
+    id: dyLblId, latex: `(${x2},${f((y1 + y2) / 2)})`, color,
+    showLabel: true, label: `Δy = ${signed(dy)}`, labelOrientation: dx >= 0 ? 'right' : 'left',
+    pointSize: 1, pointOpacity: 0,
+  })
+  calcIds.push(dxLblId, dyLblId)
+  registry.set(`proj::${id}`, { calcIds, pointId: segId, fadeProps: { lineOpacity: OP, pointOpacity: OP } })
+  // Desmos draws no label on a point that is fully transparent: the labels
+  // arrive with their one-pixel points, the same way a point's values do.
+  await fadeIn(calc, [dxLblId, dyLblId], { pointOpacity: OP })
+}
+
 export async function showAxisProjection(calc, id, pointId, opts = {}) {
   const pt = registry.get(`pt::${pointId}`)
-  if (!pt) return
+  if (!pt) {
+    // Not a point: given a vector (any segment), its components instead.
+    const seg = registry.get(`seg::${pointId}`)
+    if (seg) await showVectorComponents(calc, id, pointId, seg, opts)
+    return
+  }
   const x = pt.numX, y = pt.numY
   if (!isFinite(x) || !isFinite(y)) return
   const color = darken(pt.color ?? '#60a5fa', 0.3)
@@ -1747,12 +2507,21 @@ const _TC_ANGLES = [
   { id:'p330', deg:'330°', nx:Math.sqrt(3)/2,     ny:-0.5,               sx:'√3/2',  sy:'-1/2'   },
 ]
 
+// Both label rings are UNIFORM — one radius for the angles inside, one for the
+// coordinates outside. The old code alternated the radius every other point to
+// dodge collisions, which turned each ring into a zigzag ((0,1) hugging the
+// circle while (1/2,√3/2) sat twice as far out). Anchoring every coordinate
+// radially instead — it grows away from its own point rather than being
+// centred on it — buys the same clearance with a single clean ring.
+const _TC_R_ANGLE = 0.87
+const _TC_R_COORD = 1.03
+
 export async function drawTrigCircle(calc) {
   const circColor = '#7c6ef5'
   const ptColor   = '#60a5fa'
 
   _emitTrigOverlay([]) // clear previous overlay immediately
-  await adjustView(calc, 0, 0, 5.5)
+  await adjustView(calc, 0, 0, 3.0)
 
   calc.setExpression({ id: 'tc_circ', latex: 'x^2+y^2=1', color: circColor, lineWidth: 3, lineOpacity: 0 })
   registry.set('fn::tc_circ', { calcId: 'tc_circ', expr: 'x^2+y^2=1', color: circColor, lineWidth: 3, fadeProps: { lineOpacity: 1 } })
@@ -1760,8 +2529,7 @@ export async function drawTrigCircle(calc) {
   const dotIds = []
   const overlayItems = []
 
-  for (let i = 0; i < _TC_ANGLES.length; i++) {
-    const a = _TC_ANGLES[i]
+  for (const a of _TC_ANGLES) {
     const xF = +a.nx.toFixed(8)
     const yF = +a.ny.toFixed(8)
 
@@ -1769,13 +2537,21 @@ export async function drawTrigCircle(calc) {
     calc.setExpression({ id: dotId, latex: `(${xF},${yF})`, color: ptColor, showLabel: false, pointSize: 9, pointOpacity: 0 })
     dotIds.push(dotId)
 
-    // Inner angle labels — alternating radius so adjacent labels don't overlap
-    const innerR = i % 2 === 0 ? 0.65 : 0.50
-    overlayItems.push({ id: `ang_${a.id}`, mathX: a.nx * innerR, mathY: a.ny * innerR, text: a.deg, type: 'angle' })
+    // Inner angle labels — centred on one uniform ring just under the circle
+    overlayItems.push({ id: `ang_${a.id}`, mathX: a.nx * _TC_R_ANGLE, mathY: a.ny * _TC_R_ANGLE, text: a.deg, type: 'angle' })
 
-    // Outer coord labels — staggered radius to separate adjacent labels
-    const outerR = i % 2 === 0 ? 1.55 : 2.0
-    overlayItems.push({ id: `crd_${a.id}`, mathX: a.nx * outerR, mathY: a.ny * outerR, text: `(${a.sx}, ${a.sy})`, type: 'coord' })
+    // Outer coord labels — one uniform ring, each anchored radially outward.
+    // anchorY is never 0: the two labels sitting on the x-axis are pushed just
+    // above it instead of being struck through by it.
+    overlayItems.push({
+      id: `crd_${a.id}`,
+      mathX: a.nx * _TC_R_COORD,
+      mathY: a.ny * _TC_R_COORD,
+      text: `(${a.sx}, ${a.sy})`,
+      type: 'coord',
+      anchorX: Math.sign(a.nx),
+      anchorY: a.ny === 0 ? 1 : Math.sign(a.ny),
+    })
 
     registry.set(`pt::${a.id}`, { calcId: dotId, calcIds: [dotId], numX: a.nx, numY: a.ny, color: ptColor, fadeProps: { pointOpacity: 1 } })
   }
@@ -1784,6 +2560,16 @@ export async function drawTrigCircle(calc) {
     fadeIn(calc, ['tc_circ'], { lineOpacity: 1 }),
     fadeIn(calc, dotIds,      { pointOpacity: 1 }),
   ])
+
+  // Dashed drop-lines from every point to both axes (no values on the axes —
+  // the coordinates are already spelled out on the outer ring). The four
+  // quadrantal points are skipped: their projection IS the axis, so drawing
+  // it only lays a dashed segment on top of a line that's already there.
+  await Promise.all(
+    _TC_ANGLES
+      .filter(a => a.nx !== 0 && a.ny !== 0)
+      .map(a => showAxisProjection(calc, a.id, a.id, { showValues: false }))
+  )
 
   _emitTrigOverlay(overlayItems)
 }

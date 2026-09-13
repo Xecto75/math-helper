@@ -205,12 +205,128 @@ export function createPolygon(geoRef, id, type, values, opts = {}) {
   if (opts.autoFit !== false) autoFitAll(display)
 }
 
+// ── Anchoring one shape to another ──────────────────────────────────────────
+// createPolygon builds from side lengths and then CENTRES the result on itself,
+// which is exactly wrong for a figure whose parts have to touch: a triangle cut
+// by a line parallel to one side, a median, a square built on a hypotenuse. A
+// snapped shape takes its corners from a shape that already exists instead.
+//
+// Each anchor is one of:
+//   vN     — corner N of the parent
+//   eN@t   — fraction t (0..1) along parent edge N, from corner N toward N+1
+//   eN:d   — d units along parent edge N, measured from corner N
+// Edge N runs from corner N to corner N+1. Two anchors give a segment, three or
+// more a polygon; either way the result is an ordinary registry entry, so
+// labelSides / showAngles / nameVertices / [id]N refs all work on it after.
+function resolveAnchor(parentVerts, raw) {
+  const s = String(raw).trim()
+  const n = parentVerts.length
+
+  const mv = /^v(\d+)$/i.exec(s)
+  if (mv) {
+    const v = parentVerts[Number(mv[1]) % n]
+    if (!v) throw new Error(`Ancrage inconnu : "${s}"`)
+    return [r4(v[0]), r4(v[1])]
+  }
+
+  const me = /^e(\d+)\s*([@:])\s*(-?\d*\.?\d+)$/i.exec(s)
+  if (me) {
+    const i  = Number(me[1]) % n
+    const a  = parentVerts[i], b = parentVerts[(i + 1) % n]
+    const dx = b[0] - a[0], dy = b[1] - a[1]
+    // ':' is a distance in world units, so it has to be divided by the edge's
+    // real length to become the same fraction '@' states directly. A zero-length
+    // edge would make that a division by zero — fall back to the edge's start.
+    const len = Math.hypot(dx, dy)
+    const t   = me[2] === '@' ? Number(me[3]) : (len ? Number(me[3]) / len : 0)
+    return [r4(a[0] + dx * t), r4(a[1] + dy * t)]
+  }
+
+  throw new Error(`Ancrage invalide : "${raw}" — attendu vN, eN@fraction ou eN:distance`)
+}
+
+export function snapShape(geoRef, id, parentId, anchors, opts = {}) {
+  const display = geoRef?.current
+  if (!display?.isReady()) return
+  const parent = registry.get(parentId)
+  if (!parent?.vertices?.length) throw new Error(`snapShape : forme "${parentId}" introuvable`)
+
+  const list = (Array.isArray(anchors) ? anchors : String(anchors).split(','))
+    .map(a => String(a).trim()).filter(Boolean)
+  if (list.length < 2) throw new Error('snapShape : au moins 2 ancrages (2 = segment, 3+ = polygone)')
+
+  const vertices = list.map(a => resolveAnchor(parent.vertices, a))
+
+  const hexColor  = rgbToHex(opts.color ?? [100, 149, 237])
+  const fillHex   = opts.fillColor   ? resolveColor(opts.fillColor)   : hexColor
+  const strokeHex = opts.borderColor ? resolveColor(opts.borderColor) : hexColor
+  const style = {
+    fill:        fillHex,
+    // A segment has no inside. Filling two points draws nothing anyway, but a
+    // fill opacity left on it would still tint a 3+ point shape by surprise.
+    fillOpacity: vertices.length === 2 ? 0 : (opts.fillOpacity ?? 0.15),
+    stroke:      strokeHex,
+    strokeWidth: opts.thickness ?? 2,
+  }
+
+  display.drawPolygon(id, vertices, style)
+  registry.set(id, {
+    type: vertices.length === 2 ? 'segment' : 'polygon',
+    vertices, style, bboxVerts: vertices, snappedTo: parentId,
+  })
+  if (opts.autoFit !== false) autoFitAll(display)
+}
+
+// ── Naming the CORNERS ──────────────────────────────────────────────────────
+// labelSides names the edges; this names the vertices, the way a textbook
+// figure does (A, B, C…). A blank or "-" entry skips that corner — which is
+// what you want wherever two shapes meet, so the shared corner is named once
+// instead of twice on top of itself.
+export function nameVertices(geoRef, id, names = [], opts = {}) {
+  const entry = registry.get(id)
+  if (!entry?.vertices?.length) return
+  const display = geoRef?.current
+  if (!display) return
+
+  const verts  = entry.vertices
+  const vp     = display.getViewport() ?? { xMin: -8, xMax: 8 }
+  const offset = (vp.xMax - vp.xMin) * 0.05
+  // A SNAPPED shape has every corner sitting on its parent's outline, so
+  // "away from this shape" points straight back INTO the parent — D and E of a
+  // triangle cut inside a triangle end up under the figure instead of beside
+  // the points they name. Push away from the parent in that case; a shape that
+  // stands on its own still pushes away from itself.
+  const outFrom = (registry.get(entry.snappedTo)?.vertices?.length ? registry.get(entry.snappedTo).vertices : verts)
+  const cx = outFrom.reduce((s, v) => s + v[0], 0) / outFrom.length
+  const cy = outFrom.reduce((s, v) => s + v[1], 0) / outFrom.length
+  const color = opts.color ? resolveColor(opts.color) : (entry.style?.stroke ?? '#60a5fa')
+
+  verts.forEach((v, i) => {
+    const raw = names[i] !== undefined ? String(names[i]).trim() : ''
+    if (!raw || raw === '-') { display.removeLabel(`vn${id}_${i}`); return }
+    // Straight out from the centre through the corner, so the letter clears
+    // both edges meeting there instead of sitting on one of them.
+    let dx = v[0] - cx, dy = v[1] - cy
+    const m = Math.hypot(dx, dy) || 1
+    display.addLabel(`vn${id}_${i}`, r4(v[0] + (dx / m) * offset), r4(v[1] + (dy / m) * offset), raw, {
+      color, fontSize: opts.fontSize ?? 17,
+    })
+  })
+}
+
+export function unnameVertices(geoRef, id) {
+  const display = geoRef?.current
+  if (!display) return
+  for (let i = 0; i < 30; i++) display.removeLabel(`vn${id}_${i}`)
+}
+
 export function eraseShape(geoRef, id) {
   const display = geoRef?.current
   if (!display) return
   display.removeShape(id)
   display.removeShape(`radius__${id}`)
   for (let i = 1; i <= 30; i++) display.removeLabel(`sl${id}_${i}`)
+  for (let i = 0; i < 30; i++) display.removeLabel(`vn${id}_${i}`)
   display.removeLabel(`tx${id}`)
   display.removeLabel(`radlbl__${id}`)
   registry.delete(id)
@@ -271,8 +387,19 @@ export async function labelSides(geoRef, id, customLabels = []) {
 
   // Build label data first. A blank entry falls back to the computed side length,
   // rounded to 1 decimal so legs like √13 show as "3.6" instead of "3.6056".
-  const labels = verts.map((v, i) => {
+  // A segment (2 corners) has ONE side, not two — mapping over both corners
+  // would drop a second label on the same line, right on top of the first.
+  const sideCount = verts.length === 2 ? 1 : verts.length
+  const ctrX = verts.reduce((t, v) => t + v[0], 0) / verts.length
+  const ctrY = verts.reduce((t, v) => t + v[1], 0) / verts.length
+
+  const labels = verts.slice(0, sideCount).map((v, i) => {
     const custom    = customLabels[i] !== undefined ? String(customLabels[i]).trim() : ''
+    // "-" leaves that side unlabelled — the only way to show one measurement
+    // without handing over the others (a figure that labels every side of the
+    // outer triangle has already given away what the lesson asks for). A BLANK
+    // entry still fills in the computed length, as it always has.
+    if (custom === '-') { display.removeLabel(`sl${id}_${i + 1}`); return null }
     const next      = verts[(i + 1) % verts.length]
     const mx        = (v[0] + next[0]) / 2
     const my        = (v[1] + next[1]) / 2
@@ -287,7 +414,15 @@ export async function labelSides(geoRef, id, customLabels = []) {
     const edgeDx    = next[0] - v[0], edgeDy = next[1] - v[1]
     const eLen      = Math.sqrt(edgeDx ** 2 + edgeDy ** 2) || 1
     const nx = -edgeDy / eLen, ny = edgeDx / eLen
-    const sign = (mx * nx + my * ny) >= 0 ? 1 : -1
+    // Push the label AWAY from the shape's OWN centre. The old test measured
+    // from the origin, which is the same thing for a createPolygon shape (those
+    // are centred on it) but points the wrong way for a snapped one — the label
+    // then lands inside the shape. A segment has its centre ON the side being
+    // labelled, so there is no outward to speak of: it keeps the origin test.
+    const rx = mx - ctrX, ry = my - ctrY
+    const sign = Math.hypot(rx, ry) < 1e-9
+      ? ((mx * nx + my * ny) >= 0 ? 1 : -1)
+      : ((rx * nx + ry * ny) >= 0 ? 1 : -1)
     // Outward normal direction; anchor the text AWAY from the shape so wide
     // labels on slanted/vertical sides grow outward instead of over the edge.
     const ox = sign * nx
@@ -299,7 +434,7 @@ export async function labelSides(geoRef, id, customLabels = []) {
       text:      labelText,
       style:     { color: entry.edgeColors?.[i] ?? entry.style?.stroke ?? '#60a5fa', anchor },
     }
-  })
+  }).filter(Boolean)
 
   // Check if any of these labels already exist in the SVG DOM
   const existingEls = labels

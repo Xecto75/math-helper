@@ -1,5 +1,8 @@
 import { useState, useImperativeHandle, forwardRef, useEffect, useRef } from 'react'
 import MathText, { isPureMathLine } from './RichText.jsx'
+// The unmount timer has to stay in step with the card's CSS transition, so
+// it reads the same multiplier the stylesheet does.
+import { animMs } from '../engine/animSpeed.js'
 
 // Single animated item row
 function ListItem({ text, entering }) {
@@ -107,7 +110,7 @@ const TextBoxDisplay = forwardRef(function TextBoxDisplay(_, ref) {
       setBoxes(prev => prev.map(b => b.id === id ? { ...b, leaving: true } : b))
       setTimeout(() => {
         setBoxes(prev => prev.filter(b => !(b.id === id && b.leaving)))
-      }, TB_FADE_MS)
+      }, animMs(TB_FADE_MS))
     },
 
     addItem(id, text) {
@@ -128,7 +131,7 @@ const TextBoxDisplay = forwardRef(function TextBoxDisplay(_, ref) {
 
     clearAll() {
       setBoxes(prev => prev.map(b => ({ ...b, leaving: true })))
-      setTimeout(() => setBoxes(prev => prev.filter(b => !b.leaving)), TB_FADE_MS)
+      setTimeout(() => setBoxes(prev => prev.filter(b => !b.leaving)), animMs(TB_FADE_MS))
     },
 
     // Page teardown — no fade, the whole panel is going away anyway and a

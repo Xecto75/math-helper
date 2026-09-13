@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { animCss, animMs } from '../engine/animSpeed.js'
 
 const ORTHO_HALF = 6  // half-height in world units for 2D ortho view
 
@@ -84,7 +85,7 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
     if (!Number.isFinite(toH) || toH <= fromH + 0.01) return
 
     const ease = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
-    const dur  = Math.max(duration * 1000, 1)
+    const dur  = Math.max(animMs(duration * 1000), 1)
     const t0   = performance.now()
     const tick = () => {
       const p = ease(Math.min((performance.now() - t0) / dur, 1))
@@ -198,7 +199,7 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
         userSelect:    'none',
         zIndex:        '4',
         textShadow:    '0 1px 3px rgba(0,0,0,0.8)',
-        transition:    'color 0.25s',
+        transition:    `color ${animCss(0.25)}`,
       })
       overlayRef.current?.appendChild(el)
       // Any label can land outside the current frame; re-fit on the next frame
@@ -274,7 +275,7 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       const el   = containerRef.current
       const asp  = el ? el.clientWidth / (el.clientHeight || 1) : 1.33
       const ease = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
-      const dur  = duration * 1000
+      const dur  = animMs(duration * 1000)
 
       if (is2DRef.current) {
         const ortho = orthoCamRef.current

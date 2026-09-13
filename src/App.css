@@ -1,3 +1,7 @@
+/* --anim-k is the duration multiplier for every animation timed in CSS.
+   1 is the speed each one was written at; ActionExecutor drops it while the
+   reader is skipping ahead, which is the only way a fast-forward reaches an
+   animation gsap does not own. Unset it plays at 1 — see the var() defaults. */
 /* ═══════════════════════════════════════════════════════════════════════════
    APP SHELL  —  full-viewport container
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -67,28 +71,17 @@
   background: rgba(165,180,252,0.1);
 }
 .sidebar-brand-mark {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--accent-1);
-  line-height: 1;
-  transition: opacity 0.15s;
-}
-.sidebar-brand-panel {
-  position: absolute;
-  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
-  opacity: 0;
-  transition: opacity 0.15s;
+  line-height: 1;
 }
-.sidebar-brand-panel svg {
-  width: 22px;
-  height: 22px;
+.sidebar-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
 }
-.sidebar-brand:hover .sidebar-brand-mark  { opacity: 0; }
-.sidebar-brand:hover .sidebar-brand-panel { opacity: 1; }
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -188,6 +181,10 @@
   background: var(--bg-raised);
 }
 .side-panel-title {
+  /* The header is space-between, so let the title claim the row and centre
+     inside it. Stays centred if a close button is ever added beside it. */
+  flex: 1;
+  text-align: center;
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--text);
@@ -773,6 +770,13 @@
   align-items: center; justify-content: center;
 }
 
+/* The "+" of a mixed number. "6 2/3" is shown as written first, then the
+   operator arrives — the reader watches the notation turn into the sum it
+   already was. Holding it back with opacity rather than not rendering it
+   keeps the spacing identical, so nothing shifts sideways when it lands. */
+.term-op { transition: opacity calc(0.3s * var(--anim-k, 1)) ease; }
+.term-op--held { opacity: 0; }
+
 .lesson-layout--single-equation .term-cell {
   font-size: 3.2rem;
   padding: 18px 28px;
@@ -1068,7 +1072,7 @@
 
 .var-slider-name {
   position: absolute;
-  background: #60a5fa;
+  background: var(--sc, #60a5fa);
   color: #0b1220;
   font-size: 11px;
   font-weight: 700;
@@ -1105,13 +1109,17 @@
   background: var(--border);
   outline: none;
   cursor: pointer;
-  accent-color: #60a5fa;
+  accent-color: var(--sc, #60a5fa);
 }
 .lesson-layout--single-graph .var-slider-input,
 .lesson-layout--graph-equation .var-slider-input {
   writing-mode: vertical-lr;
   direction: rtl;
-  -webkit-appearance: slider-vertical;
+  /* NOT slider-vertical: that hands the rail back to the browser, which paints
+     the unfilled half of a FOCUSED range white — so the one slider you had just
+     dragged was the one that lost its colour. With appearance:none the track
+     below is ours, and looks the same focused or not. */
+  -webkit-appearance: none;
   width: 6px;
   height: 100%;
 }
@@ -1120,28 +1128,104 @@
   width: 100%;
   height: 6px;
 }
+/* The visible handle is the rounded chip carrying the variable's name
+   (.var-slider-name) — this one only exists to be grabbed, so it keeps its hit
+   area and gives up its paint. Two visible handles on one rail read as two
+   controls. */
 .var-slider-input::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #60a5fa;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  background: transparent;
+  border: none;
+  box-shadow: none;
   cursor: pointer;
 }
 .var-slider-input::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #60a5fa;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  background: transparent;
+  border: none;
+  box-shadow: none;
   cursor: pointer;
 }
-.var-slider-input::-moz-range-track {
-  background: var(--border);
-  border-radius: 2px;
+/* The filled part of the rail is drawn HERE rather than left to the browser's
+   accent-color. Chrome repaints the unfilled half of a FOCUSED range in white,
+   so the slider you just dragged lost its colour — and styling the track to
+   stop that also switches the automatic fill off. Painting both halves from
+   --pct settles both at once, and matches where the name chip already sits. */
+/* -webkit- and -moz- track selectors are written as SEPARATE rules on purpose.
+   Grouping them invalidates the whole rule in both engines — each one throws
+   out the selector list the moment it meets a prefix it does not know — which
+   is exactly how the gradient below silently did nothing at all. */
+.var-slider-input::-webkit-slider-runnable-track { border-radius: 2px; background: var(--border); }
+.var-slider-input::-moz-range-track              { border-radius: 2px; background: var(--border); }
+
+.lesson-layout--single-graph .var-slider-input::-webkit-slider-runnable-track,
+.lesson-layout--graph-equation .var-slider-input::-webkit-slider-runnable-track {
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(to top, var(--sc) var(--pct), var(--border) var(--pct));
+}
+.lesson-layout--single-graph .var-slider-input::-moz-range-track,
+.lesson-layout--graph-equation .var-slider-input::-moz-range-track {
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(to top, var(--sc) var(--pct), var(--border) var(--pct));
+}
+.lesson-layout--text-graph .var-slider-input::-webkit-slider-runnable-track,
+.lesson-layout--grid-graph .var-slider-input::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, var(--sc) var(--pct), var(--border) var(--pct));
+}
+.lesson-layout--text-graph .var-slider-input::-moz-range-track,
+.lesson-layout--grid-graph .var-slider-input::-moz-range-track {
+  background: linear-gradient(to right, var(--sc) var(--pct), var(--border) var(--pct));
+}
+
+/* ── Radical ── */
+/* One drawing laid over the whole radical — tick, hook, rising stroke and bar
+   together, so the pieces always meet (TermCell's Radical draws it from the
+   radical's measured size). The radicand is the only thing in the flow: the
+   room on its left for the hook, and the index's place in the notch, are
+   written by that same measurement. */
+.expr-radical { position: relative; }
+.radical-sign {
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* Sized by the measurement; nothing before it. */
+  width: 0;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  stroke: currentColor;
+  /* The fraction bar's grey: the bar of a root is the same kind of line, and
+     the two sit side by side in ∛27 + 2/3. */
+  opacity: 0.8;
+  transition: opacity calc(0.3s * var(--anim-k, 1)) ease;
+}
+.radical-index {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--mono);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-h);
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity calc(0.3s * var(--anim-k, 1)) ease;
+}
+.radical-sign--held { opacity: 0; }
+.radical-arg {
+  display: inline-flex;
+  align-items: center;
+  /* Room above the chip for the bar, and a little past its right edge: a
+     printed bar runs slightly beyond what it covers. */
+  padding: 9px 6px 0 4px;
 }
 
 /* ── ArithmeticDisplay ── */
@@ -1947,6 +2031,9 @@
 @keyframes cmtFadeIn   { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes cmtPop      { from { opacity: 0; transform: scale(0.7) } to { opacity: 1; transform: scale(1) } }
 @keyframes geoLabelIn  { from { opacity: 0; transform: scale(0.4) } to { opacity: 1; transform: scale(1) } }
+/* Trig-circle overlay labels — opacity only: the element's transform is its
+   radial anchoring, so a transform-animating keyframe would fight it. */
+@keyframes tcLabelIn   { from { opacity: 0 } to { opacity: 1 } }
 
 .dev-drawer {
   position: fixed;
@@ -2494,9 +2581,29 @@
    Left side right-aligned (cluster toward =), right side left-aligned.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* The space the equation has to fit inside. The equation itself is laid out at
+   its natural size and scaled down into here, so the scale can be recomputed
+   from the same measurement every time rather than compounding. */
+.equation-fit {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 .equation-display {
+  /* Scaling from the centre keeps the = on the panel's centre line, which is
+     the whole point of pinning it there. */
+  transform-origin: center center;
+  /* Long and gentle. A resize is not an event the reader should notice — it is
+     the panel making room, and at 0.4s it read as a jolt between steps. */
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* minmax(0, 1fr), not 1fr: a bare 1fr still takes its content as its minimum
+     width, so the longer side pushed its column wider and dragged the = across
+     with it. Every step that adds a term — a distribution turning one group
+     into four — moved the one thing on screen that must not move. Pinned to
+     exact halves, the = sits still and a long side overflows its half instead. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 20px;
   width: 100%;
@@ -2511,6 +2618,100 @@
 
 .equation-side[data-side="left"]  { justify-content: flex-end; }
 .equation-side[data-side="right"] { justify-content: flex-start; }
+/* Each side may run past its half rather than widen it — widening is what moved
+   the = — so overflow stays visible instead of being clipped or scrolled. */
+.equation-side { overflow: visible; min-width: 0; }
+
+/* A one-sided equation is a single thing on the panel, so it takes the whole
+   width and sits in the middle of it. The three-column grid exists to pin the
+   "=" to the centre line; with no "=" there is nothing to pin, and leaving the
+   empty middle column and right half in place pushed the one term that IS
+   there off to the left — emptying the sign was not enough, its column and the
+   two 20px gutters were still holding the space. */
+.equation-display--one-sided {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+.equation-display--one-sided .equals-sign,
+.equation-display--one-sided .equation-side[data-side="right"] { display: none; }
+.equation-display--one-sided .equation-side[data-side="left"] { justify-content: center; }
+
+/* ── The trace of a solve ──
+   The initial equation, small and quiet, above the live one; hovering it opens
+   the whole road. Written as LaTeX text: the boxed chips exist to be animated,
+   and nothing in the history ever moves. */
+.equation-fit { position: relative; }
+
+.eq-trace {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  z-index: 30;
+  outline: none;
+  animation: eqTraceIn calc(0.45s * var(--anim-k, 1)) ease both;
+}
+@keyframes eqTraceIn {
+  from { opacity: 0; transform: translate(-50%, 6px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.eq-trace-initial {
+  opacity: 0.5;
+  cursor: default;
+  transition: opacity 0.25s ease;
+}
+.eq-trace:hover .eq-trace-initial,
+.eq-trace:focus-visible .eq-trace-initial { opacity: 0.9; }
+
+.eq-trace-panel {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  min-width: 100%;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(10, 10, 20, 0.94);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -4px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.eq-trace:hover .eq-trace-panel,
+.eq-trace:focus-within .eq-trace-panel {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.eq-trace-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+.eq-trace-num {
+  min-width: 1.4em;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-align: right;
+}
+/* The last line is where the equation is now — marked, so the list reads as a
+   road ending at the thing on screen. */
+.eq-trace-step:last-child .eq-trace-num { color: #60a5fa; }
+
+.eq-trace-tex {
+  font-size: 17px;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+.eq-trace-initial .eq-trace-tex { font-size: 16px; }
 
 .equals-sign {
   font-size: 2.2rem;
@@ -2559,6 +2760,21 @@
   to   { opacity: 1; transform: scale(1)    translateY(0);    }
 }
 
+/* The "×3" that rides beside each half of a fraction while it is amplified.
+   Lifted to the body and positioned in viewport pixels, like the other
+   transient marks the equation animations put on screen, so the panel's own
+   scaling and overflow never clip it. */
+.eq-times-mark {
+  position: fixed;
+  pointer-events: none;
+  z-index: 60;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: calc(15px * var(--eq-scale, 1) + 2px);
+  font-weight: 700;
+  color: #60a5fa;
+  white-space: nowrap;
+}
+
 .term-cell {
   display: inline-flex;
   align-items: center;
@@ -2572,7 +2788,7 @@
   color: var(--text-h);
   box-shadow: 0 0 0 0px transparent;
   white-space: nowrap;
-  animation: termEnter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: termEnter calc(0.35s * var(--anim-k, 1)) cubic-bezier(0.34, 1.56, 0.64, 1) both;
   will-change: transform, opacity, box-shadow;
 }
 
@@ -2594,6 +2810,29 @@
   align-self: flex-start;
   margin-top: 0.1em;
 }
+
+/* An exponent on an expression-tree power (the ² of 10²) sits OUTSIDE the
+   number chip, as a sibling in .expr-group — so 1em resolves against the
+   ambient size, not against the chip 1.65rem digits, and then the unicode
+   superscript glyph is drawn at about half of that again. Two shrinks deep it
+   was barely visible. Sized absolutely here so it reads against the digits it
+   belongs to; an exponent INSIDE a cell (x², a³) already inherits that size
+   and is left alone. */
+.expr-group > .term-exp {
+  font-size: 2.3rem;
+}
+/* An exponent that is an expression (2ⁿ, rⁿ⁻¹) is small raised text rather
+   than superscript glyphs, sized to read like the ² of a plain power beside it. */
+.expr-group > .term-exp--expr {
+  font-size: 1.9rem;
+  display: inline-flex;
+  align-items: baseline;
+  line-height: 1;
+}
+.exp-group { display: inline-flex; align-items: baseline; }
+.exp-leaf,
+.exp-op { display: inline-block; }
+.exp-op { opacity: 0.85; padding: 0 0.05em; }
 
 /* ── Fraction cell ── */
 
@@ -2697,6 +2936,23 @@
   padding: 0 1px;
 }
 
+/* ── A list ("3 ; 7 ; 11") ──
+   Items side by side with nothing between them to read as an operation: a gap
+   where the + would have been, and a negative item's minus kept against its
+   number. */
+.term-wrap--list:not(:first-child) { padding-left: 22px; }
+.lesson-layout--single-equation .term-wrap--list:not(:first-child) { padding-left: 34px; }
+.term-wrap--list > .term-op--sign { padding-left: 0; padding-right: 3px; }
+/* The "…" of a sequence: written on the line, at the size of the terms. */
+.eq-fn-text--ellipsis {
+  font-family: var(--mono);
+  font-size: 1.65rem;
+  font-weight: 500;
+  color: var(--text-h);
+  padding: 0 4px;
+}
+.lesson-layout--single-equation .eq-fn-text--ellipsis { font-size: 3.2rem; }
+
 /* ═══════════════════════════════════════════════════════════════════════════
    TEXT BOX DISPLAY
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -2722,7 +2978,7 @@
   padding: 12px 14px;
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity 0.28s ease, transform 0.28s ease;
+  transition: opacity calc(0.28s * var(--anim-k, 1)) ease, transform calc(0.28s * var(--anim-k, 1)) ease;
   flex-shrink: 0;
 }
 .tb-card--in {
@@ -4595,6 +4851,188 @@
   z-index: 2;
 }
 .lib-card-wrap:hover .lib-card-edit { opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   POLYNOMIAL LONG DIVISION
+   ───────────────────────────────────────────────────────────────────────────
+   Shares the equation slot: a page shows an equation or a division, never both.
+   The tableau is much taller than an equation, so a paired layout that stacks
+   its two panels turns side-by-side while a division is up (see .has-division
+   below). The slot already animates its own position, so that swap glides.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.div-tableau {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  /* Horizontal centring only. `margin: auto` also centred it vertically, so
+     every row that arrived re-centred the whole block and the lines already on
+     screen slid upward — the tableau has to stay put and grow downward. */
+  margin: 0 auto;
+  padding: 12px 8px;
+  /* Much larger than an equation: this is the whole page's subject, and the
+     tableau's indentation only reads at size. Capped so a comment layer still
+     has room around it. */
+  font-size: clamp(1.15rem, 2.1vw, 1.75rem);
+  color: #eef2ff;
+}
+
+/* Where the next subtraction comes from, above the tableau. */
+.div-working {
+  min-height: 2.4em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+.div-working--on { opacity: 1; }
+.div-working-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12em;
+  padding: 0.35em 0.9em;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.045);
+  animation: divWorkIn calc(0.5s * var(--anim-k, 1)) ease both;
+}
+@keyframes divWorkIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+.div-paren { color: #5eead4; }
+.div-eq    { margin: 0 0.45em; color: #6b7280; }
+
+.div-body {
+  display: flex;
+  align-items: flex-start;
+}
+.div-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-right: 0.9em;
+}
+.div-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-left: 0.9em;
+  border-left: 2px solid rgba(255,255,255,0.22);
+  align-self: stretch;
+  min-height: 3.2em;
+}
+.div-quotient-rule {
+  height: 2px;
+  align-self: stretch;
+  min-width: 5em;
+  background: rgba(255,255,255,0.22);
+  margin: 0.3em 0;
+}
+/* Terms land one per round, each fading in beside the last. The sizer and the
+   visible terms share one grid cell, so the column is already as wide as the
+   finished quotient before the first term arrives — nothing reflows sideways. */
+.div-quotient {
+  display: grid;
+  padding: 0.16em 0;
+}
+.div-quotient > * {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: baseline;
+  white-space: nowrap;
+}
+.div-quotient-sizer { visibility: hidden; pointer-events: none; }
+.div-quotient-term {
+  display: inline-flex;
+  align-items: baseline;
+  animation: divTermIn calc(0.55s * var(--anim-k, 1)) ease both;
+}
+.div-sign {
+  color: #fbbf24;
+  margin: 0 0.28em;
+}
+@keyframes divTermIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.div-row {
+  position: relative;
+  padding: 0.16em 0;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-5px);
+  /* Slow on purpose — a line that snaps in is a line the reader misses. */
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.div-row--in { opacity: 1; transform: none; }
+/* Pale: this line is scaffolding, not a result. */
+.div-row--taken.div-row--in { opacity: 0.72; }
+.div-row--ruled::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255,255,255,0.28);
+}
+.div-stage { display: contents; }
+.div-minus { color: #6b7280; }
+.div-remainder {
+  font-size: 0.55em;
+  color: #6b7280;
+  letter-spacing: 0.04em;
+}
+.div-remainder--exact { color: #4ade80; }
+
+/* The equation slot centres its content, which is right for an equation — one
+   line that never changes height. A tableau grows for as long as the division
+   runs, so it is pinned to the top of the slot instead and builds downward. */
+.has-division .display-slot--equation {
+  justify-content: flex-start;
+  align-items: center;
+}
+/* The top gap lives on the tableau, not the slot: the slot's padding is already
+   spoken for by the layout rules, and this way it cannot be overridden by them. */
+.has-division .display-slot--equation > .div-tableau { margin-top: 1.75rem; }
+
+/* One panel, two possible occupants: the equation and the division tableau.
+   Exactly one is visible. The tableau renders nothing at all when idle, so only
+   the equation needs hiding — and it goes out of flow as well as out of sight,
+   or its empty height would push the tableau down the panel.
+
+   NOT a child combinator. This has broken twice: once when a rewrite of this
+   block dropped the rules entirely, and again when the equation gained an
+   .equation-fit wrapper for auto-scaling, which pushed .equation-display one
+   level deeper and silently stopped `>` from matching. A descendant selector
+   survives the equation being wrapped again. */
+.display-slot--equation .equation-display { transition: opacity 0.3s ease; }
+.has-division .display-slot--equation .equation-fit,
+.has-division .display-slot--equation .equation-display {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.lesson-layout--text-equation.has-division .display-slot--text {
+  left: 0; right: 52%; top: 0; bottom: 0;
+}
+.lesson-layout--text-equation.has-division .display-slot--text::after {
+  left: auto; right: 0; top: 24px; bottom: 24px;
+  width: 3px; height: auto;
+}
+.lesson-layout--text-equation.has-division .display-slot--equation,
+.lesson-layout--graph-equation.has-division .display-slot--equation,
+.lesson-layout--geo-equation.has-division .display-slot--equation,
+.lesson-layout--grid-equation.has-division .display-slot--equation {
+  left: 50%; right: 0; top: 0; bottom: 0;
+}
+.lesson-layout--graph-equation.has-division .display-slot--graph,
+.lesson-layout--geo-equation.has-division .display-slot--geo,
+.lesson-layout--grid-equation.has-division .display-slot--table {
+  left: 0; right: 52%; top: 0; bottom: 0;
+}
 
 /* ── Card grid ────────────────────────────────────────────────────────── */
 .card-grid {
@@ -6699,3 +7137,279 @@
   cursor: pointer;
 }
 .auth-forgot:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL PAIRS THAT HAD NO LAYOUT
+   A page now names one or two panels (src/data/panels.js) and the layout is
+   derived, so every pair has to resolve to something. These seven never
+   existed as named layouts; they follow the two conventions already in use
+   above — text is the narrow left column, an equation is the short bottom
+   band, and two visuals split down the middle. Nothing above is changed.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Text + 3D (panels 0,5) — same shape as text-geo ── */
+.lesson-layout--text-3d .display-slot--text {
+  left: 70px; width: calc(35% - 70px); top: 0; bottom: 0; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--text-3d .display-slot--text::after {
+  content: ''; position: absolute; top: 24px; bottom: 24px; right: 0;
+  width: 3px; border-radius: 2px; background: var(--border);
+}
+.lesson-layout--text-3d .display-slot--3d {
+  left: calc(35% + 2px); right: 168px; top: 14px; bottom: 14px;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+
+/* ── Geo 2D + Graph (panels 1,4) — geometry left, graph right (the graph keeps
+      the right-hand side because that is where its sliders live) ── */
+.lesson-layout--graph-geo .display-slot--geo {
+  left: 140px; right: calc(50% + 2px); top: 0; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--graph-geo .display-slot--geo::after {
+  content: ''; position: absolute; top: 24px; bottom: 24px; right: 0;
+  width: 3px; border-radius: 2px; background: var(--border);
+}
+.lesson-layout--graph-geo .display-slot--graph {
+  left: calc(50% + 2px); right: 140px; top: 0; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--graph-geo.has-sliders .display-slot--graph { bottom: 164px; }
+.lesson-layout--graph-geo .display-slot--slider {
+  left: calc(50% + 2px); right: 140px; top: auto; bottom: 0; height: 164px; width: auto;
+  opacity: 1; pointer-events: auto;
+}
+
+/* ── 3D + Graph (panels 1,5) ── */
+.lesson-layout--graph-3d .display-slot--3d {
+  left: 140px; right: calc(50% + 2px); top: 14px; bottom: 14px;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--graph-3d .display-slot--graph {
+  left: calc(50% + 2px); right: 140px; top: 0; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--graph-3d.has-sliders .display-slot--graph { bottom: 164px; }
+.lesson-layout--graph-3d .display-slot--slider {
+  left: calc(50% + 2px); right: 140px; top: auto; bottom: 0; height: 164px; width: auto;
+  opacity: 1; pointer-events: auto;
+}
+
+/* ── Chart + Geo 2D (panels 2,4) — table left, like grid-graph ── */
+.lesson-layout--grid-geo .display-slot--table {
+  left: 140px; right: calc(50% + 2px); top: 0; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--grid-geo .display-slot--table::after {
+  content: ''; position: absolute; top: 24px; bottom: 24px; right: 0;
+  width: 3px; border-radius: 2px; background: var(--border);
+}
+.lesson-layout--grid-geo .display-slot--geo {
+  left: calc(50% + 2px); right: 140px; top: 0; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+
+/* ── Chart + 3D (panels 2,5) ── */
+.lesson-layout--grid-3d .display-slot--table {
+  left: 140px; right: calc(50% + 2px); top: 0; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--grid-3d .display-slot--table::after {
+  content: ''; position: absolute; top: 24px; bottom: 24px; right: 0;
+  width: 3px; border-radius: 2px; background: var(--border);
+}
+.lesson-layout--grid-3d .display-slot--3d {
+  left: calc(50% + 2px); right: 140px; top: 14px; bottom: 14px;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+
+/* ── 3D + Equation (panels 3,5) — same stack as geo-equation ── */
+.lesson-layout--equation-3d .display-slot--3d {
+  left: 168px; right: 168px; top: 14px; bottom: calc(38% + 6px);
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--equation-3d .display-slot--equation {
+  left: 100px; right: 100px; top: 62%; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+  align-items: center; justify-content: center;
+}
+
+/* ── Geo 2D + 3D (panels 4,5) — the flat construction beside the solid ── */
+.lesson-layout--geo-3d .display-slot--geo {
+  left: 140px; right: calc(50% + 2px); top: 0; bottom: 0;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+.lesson-layout--geo-3d .display-slot--geo::after {
+  content: ''; position: absolute; top: 24px; bottom: 24px; right: 0;
+  width: 3px; border-radius: 2px; background: var(--border);
+}
+.lesson-layout--geo-3d .display-slot--3d {
+  left: calc(50% + 2px); right: 140px; top: 14px; bottom: 14px;
+  width: auto; height: auto;
+  opacity: 1; pointer-events: auto;
+}
+
+/* The 3D slot's rounded frame, extended to the new layouts that show it. */
+.lesson-layout--text-3d     .display-slot--3d,
+.lesson-layout--graph-3d    .display-slot--3d,
+.lesson-layout--grid-3d     .display-slot--3d,
+.lesson-layout--equation-3d .display-slot--3d,
+.lesson-layout--geo-3d      .display-slot--3d {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(100, 120, 200, 0.06);
+}
+
+/* ── Panel picker (Builder) — replaces the layout dropdown ─────────────────
+   Six toggles, one or two on at a time. Same visual weight as the select it
+   replaces, so the row keeps its height. */
+.lb-panel-picker {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.lb-panel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  opacity: 0.62;
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.lb-panel-btn:hover { opacity: 0.85; }
+.lb-panel-btn--on {
+  opacity: 1;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.lb-panel-digit {
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.55;
+}
+.lb-panel-btn--on .lb-panel-digit { opacity: 0.9; }
+
+/* ── Chart panel ───────────────────────────────────────────────────────────
+   Charts share the table slot: a page shows a table or a chart, never both,
+   so the two stack and whichever has no content draws nothing. */
+.chart-display {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── Equation annotations ──────────────────────────────────────────────────
+   An underline with a note, drawn under part of a formula. Lives on the OUTER
+   (unscaled) box: the equation itself is transform-scaled, so its measured
+   rects are already in scaled pixels and land in this same space. The text
+   still tracks --eq-scale so a shrunk equation gets a shrunk note. */
+/* ── Arrows between terms ──
+   Drawn on the same unscaled layer as the annotations, from the terms' measured
+   positions: the container sits at the corner of the panel, and the curve and
+   its note are placed in its pixels. */
+.eq-arrow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.eq-arrow-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+.eq-arrow-text {
+  position: absolute;
+  width: max-content;
+  white-space: nowrap;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  /* About two thirds of the digits in the boxes — a note has to be read from
+     the back of the room like the terms it links. */
+  font-size: calc(26px * var(--eq-scale, 1) + 4px);
+  font-weight: 600;
+  line-height: 1.15;
+  /* Sits on top of the arc; the below variant hangs under it. */
+  transform: translate(-50%, -100%);
+}
+.eq-arrow-text--below { transform: translate(-50%, 0); }
+
+.eq-annot {
+  position: absolute;
+  pointer-events: none;
+  z-index: 3;
+}
+.eq-annot-bar {
+  /* Holds the brace SVG now, so no background of its own — it used to BE the
+     rule. Width and transform-origin stay: the unfurl is the same movement. */
+  width: 100%;
+  line-height: 0;
+  transform-origin: center;
+  opacity: 0.95;
+}
+.eq-annot-bar svg { display: block; width: 100%; overflow: visible; }
+/* Carries the eye from a bracket down to a note that had to move out of its
+   neighbour's way. Same colour as the annotation, thinner than the bracket —
+   it is a connector, not part of the mark. */
+.eq-annot-leader {
+  position: absolute;
+  left: 50%;
+  width: 1.5px;
+  background: currentColor;
+  opacity: 0.5;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.eq-annot-text {
+  margin-top: 5px;
+  text-align: center;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: calc(13px * var(--eq-scale, 1) + 3px);
+  font-weight: 600;
+  line-height: 1.2;
+  transform: translateX(-50%);
+  margin-left: 50%;
+  width: max-content;
+  /* A note wraps rather than spreads. Left to run its natural width, two words
+     of prose reached far past the two characters they describe and shoved every
+     neighbour down a line for no reason. Wide enough that a single word of
+     ordinary length still fits on one line — breaking "separateur" was never
+     the point, only stopping a phrase from spanning the whole panel. */
+  max-width: 104px;
+  white-space: normal;
+  /* The break point is chosen in JS — a soft hyphen placed in the middle of a
+     word that is too long — so nothing here may pre-empt it. hyphens:auto is
+     gone because it needs a dictionary it does not always have, and
+     break-word is gone because it is what cut between two letters. A word
+     with no soft hyphen in it now overflows rather than being chopped, which
+     is visible and fixable instead of silently wrong. */
+  overflow-wrap: normal;
+}

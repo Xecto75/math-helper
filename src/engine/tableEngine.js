@@ -27,7 +27,7 @@ function computeLayout(cols, rows) {
 function cellId(gid, col, row) { return `${gid}_c${col}_${row}` }
 
 // Build all cell objects for a given grid layout (cx/cy stored for surgical animation)
-function buildCells(gid, cols, rows, values, headerRow, layout) {
+function buildCells(gid, cols, rows, values, headerRow, headerCol, layout) {
   const { x0, y0, cellW, cellH } = layout
   const map = {}
   for (let row = 0; row < rows; row++) {
@@ -39,7 +39,9 @@ function buildCells(gid, cols, rows, values, headerRow, layout) {
         cy: y0 + row * cellH + cellH / 2,
         value: values[row]?.[col] ?? '',
         opacity: 0,
-        isHeader: headerRow && row === 0,
+        // A grid that compares two axes — a times table, a dice-pair table —
+        // needs its left column read as headings too, not just its top row.
+        isHeader: (headerRow && row === 0) || (headerCol && col === 0),
       }
     }
   }
@@ -106,12 +108,16 @@ export async function createGrid(tableRef, gid, cols, rows, values = [], opts = 
   const d = tableRef?.current
   if (!d?.isReady?.()) return
 
-  // Erase any existing grid with this id before drawing a new one
-  if (registry.has(gid)) await eraseGrid(tableRef, gid)
+  // The panel holds ONE grid: setGrid below stores a single geometry, so a
+  // second grid drawn beside the first inherits its cell positions and the
+  // two end up printed on top of each other. Whatever is there goes first,
+  // whatever its id — same id or not, it is the same panel.
+  for (const other of [...registry.keys()]) await eraseGrid(tableRef, other)
 
   const layout  = computeLayout(cols, rows)
   const color   = opts.color ?? 'rgba(255,255,255,0.38)'
   const headerRow = opts.headerRow ?? false
+  const headerCol = opts.headerCol ?? false
   const { x0, y0, cellW, cellH, totalW, totalH } = layout
   const x1 = x0 + totalW
   const y1 = y0 + totalH
@@ -153,11 +159,11 @@ export async function createGrid(tableRef, gid, cols, rows, values = [], opts = 
   )
 
   // ── 4. Fade in cell values ─────────────────────────────────────────────────
-  const cells = buildCells(gid, cols, rows, values, headerRow, layout)
+  const cells = buildCells(gid, cols, rows, values, headerRow, headerCol, layout)
   d.addCells(cells)
   await d.fadeInCells(Object.keys(cells), 400)
 
-  registry.set(gid, { cols, rows, values: values.map(r => [...(r ?? [])]), layout, color, headerRow })
+  registry.set(gid, { cols, rows, values: values.map(r => [...(r ?? [])]), layout, color, headerRow, headerCol })
 }
 
 export async function eraseGrid(tableRef, gid) {
@@ -380,7 +386,7 @@ export async function addRow(tableRef, gid, rowValues = []) {
       cy: newY0 + rows * cellH + cellH / 2,
       value: rowValues[col] ?? '',
       opacity: 0,
-      isHeader: false,
+      isHeader: (e.headerCol ?? false) && col === 0,
     }
   }
   d.addCells(newCells)

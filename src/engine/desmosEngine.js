@@ -1049,13 +1049,16 @@ export async function addSegment(calc, id, x1, y1, x2, y2, opts = {}) {
 
   // A name — u, AB, u_1 — written beside the middle, in the segment's colour. A
   // vector's name wears its arrow. Desmos sets a label in LaTeX when it sits
-  // between backticks, and \overrightarrow spans the whole name; a combining
+  // between backticks, and \vec sets ONE arrow over the whole name (\overrightarrow
+  // comes out as a line with a separate head); a combining
   // arrow character covers one letter at most, and the label font has no glyph
   // for it anyway.
   const name     = String(opts.name ?? '').trim()
   const nameId   = `seg_name_${id}`
-  const nameText = !name ? '' : arrow === 'end' ? `\`\\overrightarrow{${name}}\`` : name
-  const NAME_OP  = 0.6
+  const nameText = !name ? '' : arrow === 'end' ? `\`\\vec{${name}}\`` : name
+  // Desmos draws a label at its point's opacity: at 0.6 the name came out paler
+  // than the arrow it names.
+  const NAME_OP  = 1
   const prevSeg  = registry.get(`seg::${id}`)
   // Only a name that was not there before arrives with a fade. One that was
   // there is just rewritten: same id, new name, and nothing leaves the screen.

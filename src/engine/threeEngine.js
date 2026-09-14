@@ -451,6 +451,7 @@ export function removeShape3D(threeRef, id) {
     for (let i = 0; i < 20; i++) d.fadeOutLabel3D?.(`sl_${id}_${i}`, animMs(240))
     for (let i = 0; i < 20; i++) d.fadeOutLabel3D?.(`cmt_${id}_${i}`, animMs(240))
     d.fadeOutLabel3D?.(`tx_${id}`, animMs(240))
+    for (const m of entry.angleMarks ?? []) d.fadeOutLabel3D?.(`mangl_${id}_${m}`, animMs(240))
     return fadeGroup(group, 'out', 240).then(() => finishRemoveShape3D(threeRef, id))
   }
   return finishRemoveShape3D(threeRef, id)
@@ -464,6 +465,7 @@ function finishRemoveShape3D(threeRef, id) {
     for (let i = 0; i < 20; i++) display.removeLabel3D(`sl_${id}_${i}`)
     for (let i = 0; i < 20; i++) display.removeLabel3D(`cmt_${id}_${i}`)
     display.removeLabel3D(`tx_${id}`)
+    for (const m of registry.get(id)?.angleMarks ?? []) display.removeLabel3D(`mangl_${id}_${m}`)
   }
   registry.delete(id)
 }
@@ -1116,6 +1118,113 @@ export function showAngles3D(threeRef, id, colorRaw, showValues = false) {
     })()
   }
   }) // end Promise
+}
+
+/**
+ * ONE angle marked anywhere on a flat figure — not only between a shape's own
+ * consecutive sides, which is all showAngles3D and highlightAngle3D can see.
+ * Its three points are given the way snapping gives them (vN, eN@t, eN:d on
+ * the shape `id`), so the angle DEC of a square with E on BC is marked from the
+ * square's own corner and edge: it stays on the figure, and no coordinate is
+ * typed. A filled wedge with its rim, and a label just outside it — the
+ * measure, the author's own text, or nothing at all ("-").
+ */
+export function markAngle3D(threeRef, id, markId, fromRef, vertexRef, toRef, opts = {}) {
+  const display = threeRef?.current
+  const entry = registry.get(id)
+  if (!display || !entry?.vertices?.length) return Promise.resolve()
+  const P = resolveShapePoint(id, fromRef)
+  const V = resolveShapePoint(id, vertexRef)
+  const Q = resolveShapePoint(id, toRef)
+  if (!P || !V || !Q) throw new Error('markAngle : ancrage invalide — attendu vN, eN@fraction ou eN:distance')
+
+  // Same arc size as the shape's own corner arcs, so a marked angle and a
+  // shown one read as the same kind of mark.
+  const verts = entry.vertices
+  const n = verts.length
+  let avgEdge = 0
+  for (let k = 0; k < n; k++) {
+    const [ax, ay] = verts[k], [bx, by] = verts[(k + 1) % n]
+    avgEdge += Math.hypot(bx - ax, by - ay)
+  }
+  avgEdge /= n
+  const arcR = Math.max(avgEdge * 0.17, 0.15)
+
+  const a1 = Math.atan2(P[1] - V[1], P[0] - V[0])
+  const a2 = Math.atan2(Q[1] - V[1], Q[0] - V[0])
+  let diff = a2 - a1
+  while (diff > Math.PI)   diff -= 2 * Math.PI
+  while (diff <= -Math.PI) diff += 2 * Math.PI
+  const deg  = Math.abs(diff) * 180 / Math.PI
+  const is90 = Math.abs(deg - 90) < 3
+
+  const color    = resolveHex(opts.color)
+  const colorCss = `#${color.toString(16).padStart(6, '0')}`
+  const childId  = `mang_${id}_${markId}`
+  const labelId  = `mangl_${id}_${markId}`
+  removeChildFromGroup(display, id, childId)
+  display.removeLabel3D?.(labelId)
+
+  const rim = []
+  const shape = new THREE.Shape()
+  shape.moveTo(0, 0)
+  if (is90) {
+    // A right angle is a small square in the corner, not an arc.
+    const s  = arcR * 0.8
+    const u1 = [Math.cos(a1), Math.sin(a1)], u2 = [Math.cos(a2), Math.sin(a2)]
+    for (const [x, y] of [[s * u1[0], s * u1[1]], [s * (u1[0] + u2[0]), s * (u1[1] + u2[1])], [s * u2[0], s * u2[1]]]) {
+      shape.lineTo(x, y)
+      rim.push(new THREE.Vector3(x, y, 0.01))
+    }
+  } else {
+    const steps = Math.max(6, Math.round(Math.abs(diff) / Math.PI * 32))
+    for (let k = 0; k <= steps; k++) {
+      const a = a1 + diff * (k / steps)
+      const x = arcR * Math.cos(a), y = arcR * Math.sin(a)
+      shape.lineTo(x, y)
+      rim.push(new THREE.Vector3(x, y, 0.01))
+    }
+  }
+  shape.closePath()
+  const fillMat = new THREE.MeshBasicMaterial({ color, opacity: 0, transparent: true, side: THREE.DoubleSide })
+  const rimMat  = new THREE.LineBasicMaterial({ color, opacity: 0, transparent: true })
+  const group = new THREE.Group()
+  group.position.set(V[0], V[1], 0.02)
+  group.scale.set(0, 0, 1)
+  group.add(new THREE.Mesh(new THREE.ShapeGeometry(shape), fillMat))
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rim), rimMat))
+  addChildToGroup(display, id, childId, group)
+  // Remembered on the shape, so clearing its highlights or removing it takes
+  // these marks and their labels along.
+  entry.angleMarks = entry.angleMarks ?? new Set()
+  entry.angleMarks.add(markId)
+
+  const growDur = animMs(360)
+  const raw  = String(opts.label ?? '').trim()
+  const text = raw === '-' ? '' : (raw || `${+deg.toFixed(1)}°`)
+  if (text) {
+    const shapeGroup = display.getObject(id)
+    const gx = shapeGroup?.position.x ?? 0, gy = shapeGroup?.position.y ?? 0
+    const mid = a1 + diff / 2
+    const lr  = arcR * (is90 ? 1.9 : 1.6)
+    display.addLabel3D(labelId, gx + V[0] + lr * Math.cos(mid), gy + V[1] + lr * Math.sin(mid), 0.05,
+      text, { color: colorCss, fontSize: 17, fadeIn: growDur })
+  }
+
+  return new Promise(resolve => {
+    const t0 = performance.now()
+    const ease = x => x < 0.5 ? 2 * x * x : -1 + (4 - 2 * x) * x
+    ;(function tick() {
+      if (!group.parent) { resolve(); return }
+      const p = Math.min((performance.now() - t0) / growDur, 1)
+      const e = ease(p)
+      group.scale.set(e, e, 1)
+      fillMat.opacity = 0.35 * e
+      rimMat.opacity  = 0.95 * e
+      if (p < 1) requestAnimationFrame(tick)
+      else resolve()
+    })()
+  })
 }
 
 export function highlightAngle3D(threeRef, id, angleIndex, colorRaw = 'cyan') {
@@ -2041,6 +2150,11 @@ export function clearHighlights3D(threeRef, id) {
     display.resetLabelColor?.(`sl_${id}_${i}`)
     display.removeLabel3D?.(`angval_${id}_${i}`)
   }
+  for (const m of entry?.angleMarks ?? []) {
+    removeChildFromGroup(display, id, `mang_${id}_${m}`)
+    display.removeLabel3D?.(`mangl_${id}_${m}`)
+  }
+  if (entry) entry.angleMarks = new Set()
   for (let i = 0; i < 6; i++) removeChildFromGroup(display, id, `fh_${id}_${i}`)
 }
 

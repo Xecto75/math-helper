@@ -64,6 +64,7 @@ const FUNCS = {
   S2l: 'geo3d-label-sides',
   S2a: 'geo3d-show-angles',
   S2A: 'geo3d-highlight-angle',
+  S2Ma: 'geo3d-mark-angle',
   S2E: 'geo3d-highlight-edge',    S2Ex: 'geo3d-remove-edge-highlight',
   S2F: 'geo3d-highlight-face',    S2Fx: 'geo3d-remove-face-highlight',
   S3m: 'geo3d-show-volume-measures', S3mx: 'geo3d-remove-volume-measures',

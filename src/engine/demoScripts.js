@@ -2364,6 +2364,26 @@ export function demoGeo3dHighlightAngle(idRaw, angleIndexRaw, colorRaw) {
   }
 }
 
+// ── geo3d-mark-angle ──────────────────────────────────────────────────────────
+// One angle between three anchors on a shape (vN / eN@t / eN:d).
+export function demoGeo3dMarkAngle(idRaw, markIdRaw, fromRaw, vertexRaw, toRaw, colorRaw, labelRaw) {
+  const id     = String(idRaw ?? '').trim() || 'shape1'
+  const markId = String(markIdRaw ?? '').trim() || 'm1'
+  const from   = String(fromRaw ?? '').trim() || 'v1'
+  const vertex = String(vertexRaw ?? '').trim() || 'v0'
+  const to     = String(toRaw ?? '').trim() || 'v2'
+  const opts = {}
+  const color = String(colorRaw ?? '').trim()
+  if (color) opts.color = color
+  // Blank writes the measure; "-" writes nothing; anything else is the label.
+  const label = String(labelRaw ?? '').trim()
+  if (label) opts.label = label
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `markAngle("${id}", ${from} → ${vertex} → ${to})` },
+    { type: 'ggb-3d-mark-angle', id, markId, from, vertex, to, opts },
+  ] }
+}
+
 export function demoGeo3dShowArrow(idRaw, arrowIdRaw, fromRaw, toRaw, colorRaw) {
   return {
     snapshot: null,

@@ -68,7 +68,7 @@ import {
   demoGraphBatchAddPoints, demoGraphBatchShowProjections, demoGraphTrigCircle,
   demoGeo3dCreate, demoGeo3dRemove, demoGeo3dClear,
   demoGeo3dMove, demoGeo3dHighlight, demoGeo3dLabelSides,
-  demoGeo3dShowAngles, demoGeo3dHighlightAngle, demoGeo3dHighlightEdge, demoGeo3dRemoveEdgeHighlight,
+  demoGeo3dShowAngles, demoGeo3dHighlightAngle, demoGeo3dMarkAngle, demoGeo3dHighlightEdge, demoGeo3dRemoveEdgeHighlight,
   demoGeo3dHighlightFace, demoGeo3dRemoveFaceHighlight,
   demoGeo3dShowTick, demoGeo3dRemoveTick,
   demoGeo3dShowArrow, demoGeo3dRemoveArrow, demoGeo3dClearHighlights, demoGeo3dSetView, demoGeo3dAddText,
@@ -866,6 +866,7 @@ export default function App() {
       case 'geo3d-label-sides':    return demoGeo3dLabelSides(inputs.id, inputs.labels)
       case 'geo3d-show-angles':       return demoGeo3dShowAngles(inputs.id, inputs.color, inputs.showValues)
       case 'geo3d-highlight-angle':   return demoGeo3dHighlightAngle(inputs.id, inputs.angleIndex, inputs.color)
+      case 'geo3d-mark-angle':        return demoGeo3dMarkAngle(inputs.id, inputs.markId, inputs.from, inputs.vertex, inputs.to, inputs.color, inputs.label)
       case 'geo3d-highlight-edge':    return demoGeo3dHighlightEdge(inputs.id, inputs.edgeIndex, inputs.color)
       case 'geo3d-remove-edge-highlight': return demoGeo3dRemoveEdgeHighlight(inputs.id, inputs.edgeIndex)
       case 'geo3d-highlight-face':    return demoGeo3dHighlightFace(inputs.id, inputs.faceIndex, inputs.color)

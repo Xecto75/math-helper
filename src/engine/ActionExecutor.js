@@ -1064,6 +1064,11 @@ case 'ggb-2d-snap': {
       break
     }
 
+    case 'ggb-3d-mark-angle': {
+      await threeEngine.markAngle3D(threeRef, action.id, action.markId, action.from, action.vertex, action.to, action.opts ?? {})
+      break
+    }
+
     case 'ggb-3d-highlight-edge': {
       await threeEngine.highlightEdge3D(threeRef, action.id, action.edgeIndex, action.color)
       break

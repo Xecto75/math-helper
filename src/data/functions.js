@@ -1431,6 +1431,8 @@ export const CATEGORIES = [
           { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'poly1' },
           { id: 'points',  label: 'Corners (x,y;x,y;…)', type: 'text', default: '0,0;4,0;2,3.46', placeholder: '0,0;4,0;2,3.46' },
           { id: 'color',   label: 'Color (optional)', type: 'color-name', default: '' },
+          { id: 'fill',    label: 'Fill', type: 'select', default: 'yes',
+            options: [{ value: 'yes', label: 'Filled' }, { value: 'no', label: 'Outline only' }] },
         ],
       },
       {
@@ -1520,6 +1522,7 @@ export const CATEGORIES = [
           { id: 'to',     label: 'To (a point on the other side)', type: 'text', default: 'v2' },
           { id: 'color',  label: 'Color (blank = reserved blue)', type: 'color-name', default: '' },
           { id: 'label',  label: 'Label (blank = the measure, "-" = none)', type: 'text', default: '' },
+          { id: 'size',   label: 'Size (blank = normal, 0.6 for an angle inside another)', type: 'text', default: '' },
         ],
       },
       {

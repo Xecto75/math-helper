@@ -1148,7 +1148,10 @@ export function markAngle3D(threeRef, id, markId, fromRef, vertexRef, toRef, opt
     avgEdge += Math.hypot(bx - ax, by - ay)
   }
   avgEdge /= n
-  const arcR = Math.max(avgEdge * 0.17, 0.15)
+  // Size scales it: an angle drawn inside another at the same vertex (40° inside
+  // 100°) only reads as an angle of its own when its arc is the smaller one.
+  const size = Math.min(3, Math.max(0.2, Number(opts.size) || 1))
+  const arcR = Math.max(avgEdge * 0.17, 0.15) * size
 
   const a1 = Math.atan2(P[1] - V[1], P[0] - V[0])
   const a2 = Math.atan2(Q[1] - V[1], Q[0] - V[0])

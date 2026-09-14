@@ -374,9 +374,10 @@ A coloured edge or angle REQUIRES whatever refers to it to carry the same colour
   S2c:[id,type,a,b,c,color]            — create flat 2D shape. a/b/c are SEPARATE
                                                           numeric args (not one "6,4" string) and
                                                           there is ONE color. Flip/rotate are S2f/S2r.
-  S2p:[shapeId,points,color]           — polygon from its CORNERS: "x,y;x,y;…" in
+  S2p:[shapeId,points,color,fill]      — polygon from its CORNERS: "x,y;x,y;…" in
                                                           order, not closed. For the figure a problem
                                                           draws when it is nobody's named shape.
+                                     fill "no" = outline only, nothing tinting the inside
   S2s:[shapeId,parentId,anchors,color] — NEW shape whose corners sit ON an existing
                                                           one. anchors = ONE comma string; 2 = segment,
                                                           3+ = polygon. See SNAPPING below.
@@ -391,8 +392,8 @@ A coloured edge or angle REQUIRES whatever refers to it to carry the same colour
                                                           computed length.
   S2a:[id,color,showValues]            — show all interior angle arcs; showValues=true also labels each arc with its measured degrees
   S2A:[id,angleIndex,color]            — pop+recolor one angle arc
-  S2Ma:[id,markId,from,vertex,to,color,label] — mark ONE angle between three anchors on a shape (vN / eN@t /
-                                         eN:d), e.g. angle DEC with E on edge BC; label "" = its measure, "-" = none
+  S2Ma:[id,markId,from,vertex,to,color,label,size] — mark ONE angle between three anchors on a shape (vN / eN@t /
+                                         eN:d), e.g. angle DEC with E on edge BC; label "" = its measure, "-" = none; size 0.6 for an angle inside another
   S2E:[id,edgeIndex,color]             — animated highlight on one edge
   S2tk:[id,edgeIndex,ticks,color]      — congruent-side tick mark(s) at an edge's midpoint (ticks=1-3; use a different count for a different equal-side pair)
   S2tx:[id,edgeIndex]                  — remove tick mark(s) from an edge

@@ -487,12 +487,15 @@ export function demoChartRemove(idRaw) {
 }
 
 // ── geo3d-polygon-points ──────────────────────────────────────────────────────
-export function demoGeo3dPolygonPoints(idRaw, pointsRaw, colorRaw) {
+export function demoGeo3dPolygonPoints(idRaw, pointsRaw, colorRaw, fillRaw) {
   const id     = (idRaw || 'poly1').trim()
   const points = String(pointsRaw || '').trim()
   if (!points) throw new Error('Points: "x,y;x,y;…", at least two.')
   const opts = {}
   const color = (colorRaw || '').trim(); if (color) opts.color = color
+  // "no" draws the outline only: a figure made of lines, with nothing tinting
+  // the inside and muddying the colours of what is marked on it.
+  if (String(fillRaw ?? '').trim() === 'no') opts.fillOpacity = 0
   const script = [
     { type: 'showTitle', text: `polygon("${id}", "${points}")` },
     { type: 'ggb-2d-polygon', id, points, opts },
@@ -2366,7 +2369,7 @@ export function demoGeo3dHighlightAngle(idRaw, angleIndexRaw, colorRaw) {
 
 // ── geo3d-mark-angle ──────────────────────────────────────────────────────────
 // One angle between three anchors on a shape (vN / eN@t / eN:d).
-export function demoGeo3dMarkAngle(idRaw, markIdRaw, fromRaw, vertexRaw, toRaw, colorRaw, labelRaw) {
+export function demoGeo3dMarkAngle(idRaw, markIdRaw, fromRaw, vertexRaw, toRaw, colorRaw, labelRaw, sizeRaw) {
   const id     = String(idRaw ?? '').trim() || 'shape1'
   const markId = String(markIdRaw ?? '').trim() || 'm1'
   const from   = String(fromRaw ?? '').trim() || 'v1'
@@ -2378,6 +2381,9 @@ export function demoGeo3dMarkAngle(idRaw, markIdRaw, fromRaw, vertexRaw, toRaw, 
   // Blank writes the measure; "-" writes nothing; anything else is the label.
   const label = String(labelRaw ?? '').trim()
   if (label) opts.label = label
+  // Blank is the normal size; 0.6 suits an angle drawn inside another.
+  const sizeS = String(sizeRaw ?? '').trim()
+  if (sizeS !== '' && Number(sizeS) > 0) opts.size = Number(sizeS)
   return { snapshot: null, script: [
     { type: 'showTitle', text: `markAngle("${id}", ${from} → ${vertex} → ${to})` },
     { type: 'ggb-3d-mark-angle', id, markId, from, vertex, to, opts },

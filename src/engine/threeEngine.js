@@ -51,11 +51,31 @@ const FLAT_TYPES = new Set([
 // the 4th decimal of an angle computed from them.
 const r6 = n => Math.round(n * 1000000) / 1000000
 
+// The centre of GRAVITY of a flat shape — the point it would balance on — and
+// not the middle of its bounding box. For a right triangle or a slanted figure
+// the two are visibly apart, and a figure set on its box's middle sits off to
+// one side of where the eye puts its centre. A polygon's area centroid; the
+// plain average of its points when it has no area (a segment).
+function centroidOf(verts) {
+  let a2 = 0, cx = 0, cy = 0
+  for (let i = 0; i < verts.length; i++) {
+    const [x1, y1] = verts[i], [x2, y2] = verts[(i + 1) % verts.length]
+    const cross = x1 * y2 - x2 * y1
+    a2 += cross
+    cx += (x1 + x2) * cross
+    cy += (y1 + y2) * cross
+  }
+  if (Math.abs(a2) < 1e-9) {
+    return [
+      verts.reduce((s, v) => s + v[0], 0) / verts.length,
+      verts.reduce((s, v) => s + v[1], 0) / verts.length,
+    ]
+  }
+  return [cx / (3 * a2), cy / (3 * a2)]
+}
+
 function centerVertices(verts) {
-  const xs = verts.map(v => v[0])
-  const ys = verts.map(v => v[1])
-  const cx = (Math.min(...xs) + Math.max(...xs)) / 2
-  const cy = (Math.min(...ys) + Math.max(...ys)) / 2
+  const [cx, cy] = centroidOf(verts)
   return verts.map(([x, y]) => [r6(x - cx), r6(y - cy)])
 }
 
@@ -420,6 +440,28 @@ export function createShape3D(threeRef, id, type, a, b, c, opts = {}) {
 // with no repeated side length (e.g. scalene triangles), and silently caps
 // at 3 distinct groups since that's the max the tick notation supports.
 // Pass { autoTicks: false } in opts to createShape3D to opt out.
+// How big the figure a mark belongs to is: the average side of the shape at the
+// root of what it is snapped to. Marks sized from it keep the same proportion
+// to the figure however far the view has zoomed in or out to frame it — a tick
+// set in world units turned into a fat bar on a small figure the view blew up.
+// A snapped piece is measured by the whole figure, not by itself: a short
+// segment inside a big square gets the square's ticks.
+function figureScale(id) {
+  let entry = registry.get(id)
+  for (let hops = 0; entry?.snappedTo && registry.get(entry.snappedTo) && hops < 8; hops++) {
+    entry = registry.get(entry.snappedTo)
+  }
+  const verts = entry?.vertices
+  if (!verts?.length) return 5
+  const n = verts.length
+  let sum = 0
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = verts[i], [x2, y2] = verts[(i + 1) % n]
+    sum += Math.hypot(x2 - x1, y2 - y1)
+  }
+  return (n === 2 ? sum / 2 : sum / n) || 5
+}
+
 function autoTickEqualSides(threeRef, id, verts) {
   const n = verts?.length ?? 0
   if (n < 3) return
@@ -961,9 +1003,12 @@ export function showEqualTick3D(threeRef, id, edgeIndexRaw, ticksRaw, colorRaw) 
   // without competing with the figure. Short, thin, and set close enough that a
   // double reads as ONE symbol — at the old spacing (90% of their own length)
   // two ticks looked like two separate single marks on different sides.
-  const tickLen = Math.min(eLen * 0.18, 0.26)
+  // Proportional to the figure (see figureScale): the same look as the old
+  // 0.26 / 0.022 on a figure with sides around 5.
+  const scale   = figureScale(id)
+  const tickLen = Math.min(eLen * 0.18, scale * 0.052)
   const spacing = tickLen * 0.42
-  const halfT   = 0.022
+  const halfT   = scale * 0.0045
   const hex     = resolveHex(colorRaw)
   const group   = new THREE.Group()
 
@@ -1573,6 +1618,12 @@ export function createPolygonFromPoints3D(threeRef, id, pointsRaw, opts = {}) {
       return [r4(x), r4(y)]
     })
   if (vertices.length < 2) throw new Error("polygon : au moins 2 points (2 = segment, 3+ = polygone)")
+  // Centred on its centre of gravity, like every shape Create 2D Shape builds.
+  // Coordinates get copied from the problem as it is written — 0,0 at a corner
+  // — and the figure still has to land in the middle of the canvas. Only the
+  // position moves: the shape and its proportions are exactly as typed.
+  const centred = centerVertices(vertices)
+  for (let i = 0; i < vertices.length; i++) vertices[i] = centred[i]
 
   const hexColor = resolveHex(opts.color ?? 'blue')
   display.setDisplayMode("2d")
@@ -1661,15 +1712,16 @@ export function nameVertices3D(threeRef, id, names = [], opts = {}) {
     ? `#${resolveHex(opts.color).toString(16).padStart(6, '0')}`
     : '#e8e8e8'
 
+  // Pinned to the corner itself and pushed outward in SCREEN pixels, so a name
+  // stays beside its point whatever the size of the figure and the zoom.
+  const OFF_PX = 17
   verts.forEach((v, i) => {
     const raw = names[i] !== undefined ? String(names[i]).trim() : ''
     if (!raw || raw === '-') { display.removeLabel3D(`vn_${id}_${i}`); return }
     let dx = v[0] - cx, dy = v[1] - cy
     const m = Math.hypot(dx, dy) || 1
-    const off = 0.7
-    display.addLabel3D(`vn_${id}_${i}`,
-      r4(v[0] + (dx / m) * off), r4(v[1] + (dy / m) * off), 0.1,
-      raw, { color, fontSize: opts.fontSize ?? 17 })
+    display.addLabel3D(`vn_${id}_${i}`, r4(v[0]), r4(v[1]), 0.1,
+      raw, { color, fontSize: opts.fontSize ?? 17, offsetPx: [(dx / m) * OFF_PX, (dy / m) * OFF_PX] })
   })
 }
 
@@ -2058,8 +2110,11 @@ export function showArrow3D(threeRef, id, arrowId, fromRef, toRef, colorRaw = 'y
   const length = Math.sqrt(dx * dx + dy * dy) || 1
   const angle  = Math.atan2(dy, dx)
 
-  const halfT   = 0.028               // shaft half-thickness
-  const headLen = Math.min(0.26, length * 0.20)
+  // Thickness and head from the figure's size (see figureScale), for the same
+  // reason as the ticks: in world units they grew fat when the view zoomed in.
+  const scale   = figureScale(id)
+  const halfT   = scale * 0.0056      // shaft half-thickness
+  const headLen = Math.min(scale * 0.052, length * 0.20)
   const shaftL  = length - headLen    // shaft goes 0 → shaftL
   const headHW  = headLen * 0.55      // arrowhead half-width
 

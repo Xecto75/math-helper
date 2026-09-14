@@ -1425,7 +1425,7 @@ export const CATEGORIES = [
       },
       {
         id: 'geo3d-polygon-points', label: 'Polygon from Points',
-        description: 'A shape given by its corners instead of a type and side lengths — for the figure a problem actually draws, which is usually nobody\'s named shape. Points are "x,y;x,y;…" in order, not closed. 2 points = segment, 3+ = polygon.',
+        description: 'A shape given by its corners instead of a type and side lengths — for the figure a problem actually draws, which is usually nobody\'s named shape. Points are "x,y;x,y;…" in order, not closed. 2 points = segment, 3+ = polygon. The shape is centred on its centre of gravity and the view frames it, so the corners can be copied as the problem gives them.',
         status: 'ready', use3D: true,
         inputs: [
           { id: 'shapeId', label: 'Shape ID', type: 'text', default: 'poly1' },

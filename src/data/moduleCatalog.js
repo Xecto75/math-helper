@@ -340,9 +340,10 @@ comes back EXACTLY as typed. A triangle given 3 sides has a height it COMPUTES �
 choose it. Never assume it: read it as [id]h (a 6,5,7 triangle is 3.87 tall, not 4), and if a second
 shape has to match that height, it cannot be hand-typed — build the lesson around what gM shows.
 
-SIZE: view is ~12 world units tall — keep every side value 2-10 so the shape, its labels and its
-  arcs all fit. Oversized values are auto-zoomed to fit but render small and cramped: teach
-  30-40-50 as a 3-4-5 and put the real numbers in S2l labels or the equation.
+SIZE & PLACE: every shape is centred on its centre of gravity (S2p too, so its corners can be copied
+  from the problem as written), and the view zooms in on a figure that is much too small and out on
+  one that is too big. Keep side values roughly 2-10 anyway: a 30-40-50 triangle is framed the same,
+  but it reads better as a 3-4-5 with the real numbers in S2l labels or the equation.
 
 INDICES:
   right-triangle : v0=BL v1=BR(90°, ALWAYS) v2=top · e0=base e1=vertical e2=hyp

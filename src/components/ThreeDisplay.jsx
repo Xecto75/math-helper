@@ -4,6 +4,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { animCss, animMs } from '../engine/animSpeed.js'
 
 const ORTHO_HALF = 6  // half-height in world units for 2D ortho view
+// The closest the 2D view zooms in on its own: a lone short segment filling the
+// whole panel is not a figure, it is a magnifying glass.
+const MIN_ORTHO_HALF = 1.5
 
 const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
   const containerRef = useRef(null)
@@ -24,6 +27,12 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
   const labelsRef    = useRef(new Map())
   const overlayRef   = useRef(null)
   const fitPendingRef = useRef(false)
+  // True once a step on this page moved the camera itself (Set View): the view
+  // is still widened when something would be cut off, but never zoomed back in.
+  const userViewRef  = useRef(false)
+  // The auto-fit animation that is running, so a newer fit replaces an older
+  // one instead of two of them pulling the zoom in turn.
+  const fitAnimRef   = useRef(null)
 
   // ── Auto-fit the 2D view ───────────────────────────────────────────────────
   // The ortho frustum is a fixed 12 world units tall, so a shape built from
@@ -31,11 +40,12 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
   // student saw a corner of it. Widen the frustum until everything on screen —
   // shapes AND their labels — is inside it.
   //
-  // Only ever widens: the floor is whatever zoom is already in effect (never
-  // below ORTHO_HALF), so a small shape still renders at exactly the size it
-  // always did rather than being blown up to fill the panel. The centre is left
-  // where it is (0,0, or wherever S2v panned to), so this cannot fight a
-  // deliberate camera move — it just makes sure nothing is cut off.
+  // And the other way: a figure that uses only a small part of the panel is
+  // zoomed IN until it fills most of it — "only a small part" meaning less than
+  // about half, so labels arriving one after another do not make the camera
+  // breathe in and out. The centre is left where it is: every shape sits on its
+  // centre of gravity at 0,0, and a page that panned or zoomed on purpose (S2v)
+  // is only ever widened, never zoomed back in.
   const fit2D = useCallback(({ margin = 1.15, duration = 0.4 } = {}) => {
     if (!is2DRef.current) return
     const ortho = orthoCamRef.current
@@ -68,26 +78,42 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       for (const [, lbl] of labelsRef.current) {
         const w = (lbl.el.offsetWidth  || 0) * pxToWorld
         const t = (lbl.el.offsetHeight || 0) * pxToWorld
-        // Matches the anchoring the render loop applies to each label.
-        const left = lbl.align === 'left'  ? lbl.worldPos.x
-                   : lbl.align === 'right' ? lbl.worldPos.x - w
-                   :                         lbl.worldPos.x - w / 2
+        // Matches the anchoring the render loop applies to each label, pixel
+        // offset included.
+        const px = lbl.worldPos.x + (lbl.offsetPx?.[0] ?? 0) * pxToWorld
+        const py = lbl.worldPos.y + (lbl.offsetPx?.[1] ?? 0) * pxToWorld
+        const left = lbl.align === 'left'  ? px
+                   : lbl.align === 'right' ? px - w
+                   :                         px - w / 2
         minX = Math.min(minX, left);  maxX = Math.max(maxX, left + w)
-        minY = Math.min(minY, lbl.worldPos.y - t / 2)
-        maxY = Math.max(maxY, lbl.worldPos.y + t / 2)
+        minY = Math.min(minY, py - t / 2)
+        maxY = Math.max(maxY, py + t / 2)
       }
       const dx = Math.max(Math.abs(maxX - cx), Math.abs(minX - cx))
       const dy = Math.max(Math.abs(maxY - cy), Math.abs(minY - cy))
       return Math.max(dy, dx / asp) * margin
     }
 
-    const toH = Math.max(solve(fromH), solve(solve(fromH)))
-    if (!Number.isFinite(toH) || toH <= fromH + 0.01) return
+    const fitAt = (h) => Math.max(solve(h), solve(solve(h)))
+    const need  = fitAt(fromH)
+    if (!Number.isFinite(need) || need <= 0) return
+    let toH
+    if (need > fromH + 0.01) {
+      toH = need                                                  // too big: widen
+    } else if (!userViewRef.current && need < fromH * 0.45) {
+      // Much too small. Labels are a fixed size in PIXELS, so they take more of
+      // the world the further out the view is — solve again at the new zoom.
+      toH = Math.max(MIN_ORTHO_HALF, fitAt(need * 1.12) * 1.12)
+    } else return
+    if (Math.abs(toH - fromH) < 0.01) return
 
-    const ease = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
-    const dur  = Math.max(animMs(duration * 1000), 1)
-    const t0   = performance.now()
+    const ease  = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
+    const dur   = Math.max(animMs(duration * 1000), 1)
+    const t0    = performance.now()
+    const token = {}
+    fitAnimRef.current = token
     const tick = () => {
+      if (fitAnimRef.current !== token) return
       const p = ease(Math.min((performance.now() - t0) / dur, 1))
       orthoHalfRef.current = fromH + (toH - fromH) * p
       if (p < 1) requestAnimationFrame(tick)
@@ -116,6 +142,8 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
         orthoHalfRef.current = ORTHO_HALF
         orthoOffXRef.current = 0
         orthoOffYRef.current = 0
+        userViewRef.current  = false
+        fitAnimRef.current   = null
         cameraRef.current      = orthoCamRef.current
         if (controls) controls.enabled = false
         if (axes)     axes.visible     = false
@@ -210,6 +238,11 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
         defaultColor: color,
         worldPos:  new THREE.Vector3(x, y, z),
         align:     style.align ?? 'center',   // 'left' | 'center' | 'right' — horizontal anchor at worldPos
+        // Screen pixels to push the label off its point (x right, y UP). A
+        // corner's name sits the same distance from its corner at any zoom —
+        // an offset in world units flew away from a small figure the moment the
+        // view zoomed in on it, and crowded a big one zoomed out.
+        offsetPx:  style.offsetPx ?? null,
         fadeStart: style.fadeIn ? performance.now() : null,
         fadeDur:   style.fadeIn ?? 0,
       })
@@ -280,6 +313,10 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       if (is2DRef.current) {
         const ortho = orthoCamRef.current
         if (!ortho) return
+        // The lesson is framing this page itself: the auto-fit stops zooming in,
+        // and any fit still animating gives way to this move.
+        userViewRef.current = true
+        fitAnimRef.current  = null
         // Read from the actual camera frustum (not the ref) so that if setDisplayMode
         // reset the ref without updating the frustum, we start from the true visual state.
         const fromH = (ortho.top - ortho.bottom) / 2 || orthoHalfRef.current
@@ -510,8 +547,8 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       const nowMs = performance.now()
       for (const [, lbl] of labelsRef.current) {
         const v = lbl.worldPos.clone().project(cam)
-        const x = (v.x + 1) / 2 * W
-        const y = (-v.y + 1) / 2 * H
+        const x = (v.x + 1) / 2 * W + (lbl.offsetPx?.[0] ?? 0)
+        const y = (-v.y + 1) / 2 * H - (lbl.offsetPx?.[1] ?? 0)
         const hAnchor = lbl.align === 'left' ? '0%' : lbl.align === 'right' ? '-100%' : '-50%'
         lbl.el.style.transform = `translate(calc(${hAnchor} + ${x}px), calc(-50% + ${y}px))`
         let opacity = v.z > 1 ? 0 : 1

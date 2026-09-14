@@ -2381,7 +2381,8 @@ export function demoGeo3dMarkAngle(idRaw, markIdRaw, fromRaw, vertexRaw, toRaw, 
   // Blank writes the measure; "-" writes nothing; anything else is the label.
   const label = String(labelRaw ?? '').trim()
   if (label) opts.label = label
-  // Blank is the normal size; 0.6 suits an angle drawn inside another.
+  // Blank is the normal size. An angle inside a wider one needs none: it is
+  // pushed out past it by itself.
   const sizeS = String(sizeRaw ?? '').trim()
   if (sizeS !== '' && Number(sizeS) > 0) opts.size = Number(sizeS)
   return { snapshot: null, script: [

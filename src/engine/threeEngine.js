@@ -500,6 +500,7 @@ export function removeShape3D(threeRef, id) {
 }
 
 function finishRemoveShape3D(threeRef, id) {
+  const anglePoints = forgetWedges(id)
   threeRef?.current?.removeObject(id)
   // Labels are tracked separately — remove them explicitly
   const display = threeRef?.current
@@ -510,6 +511,8 @@ function finishRemoveShape3D(threeRef, id) {
     for (const m of registry.get(id)?.angleMarks ?? []) display.removeLabel3D(`mangl_${id}_${m}`)
   }
   registry.delete(id)
+  // Angles of other shapes pushed out past this one's settle back.
+  if (display) restackPoints(display, anglePoints)
 }
 
 export function clearAll3D(threeRef) {
@@ -517,6 +520,7 @@ export function clearAll3D(threeRef) {
   display?.clearObjects()
   display?.clearLabels3D()
   registry.clear()
+  wedges.clear()
   // Mode is NOT reset here — caller presets it before the render gap
 }
 
@@ -1048,6 +1052,297 @@ export function removeEqualTick3D(threeRef, id, edgeIndexRaw) {
   removeChildFromGroup(display, id, `tick_${id}_${i}`)
 }
 
+// ── Angles that overlap ──────────────────────────────────────────────────────
+// Every angle drawn on a flat figure — a shape's own corner arcs and the marks
+// placed anywhere — is remembered with the point it opens from. Two that open
+// from the same point and share part of their opening were drawn one on top of
+// the other, the small one lost inside the big one (36.9° inside 73.7°). So at
+// each point the angles are ranked from the widest down: the widest keeps its
+// radius, and each smaller one that overlaps a wider one is pushed OUT past it,
+// far enough to show as a ring of its own, its label moving with it. The label
+// of an angle partly covered that way goes to the part of it still in view.
+// Angles side by side, sharing only a side, are left exactly as they were.
+const wedges = new Map()   // `${shapeId}::${key}` → wedge
+let wedgeSeq = 0
+const TAU = Math.PI * 2
+
+function registerWedge(shapeId, key, spec) {
+  const w = { shapeId, key, k: 1, target: 1, growing: true, seq: ++wedgeSeq, labelAt: null, ...spec }
+  wedges.set(`${shapeId}::${key}`, w)
+  return w
+}
+
+// Where a wedge opens from, in the world — live from its shape, which may have
+// moved since it was drawn.
+function wedgePoint(w) {
+  const parent = w.group.parent
+  return parent ? [parent.position.x + w.group.position.x, parent.position.y + w.group.position.y] : w.point
+}
+
+// A wedge's opening as [start, width], start in [0, 2π).
+function wedgeSpan(w) {
+  const s = w.diff >= 0 ? w.a1 : w.a1 + w.diff
+  return [((s % TAU) + TAU) % TAU, Math.abs(w.diff)]
+}
+
+// The parts of a's opening that b's opening shares, as [from, to] in a's terms.
+function sharedParts(a, b) {
+  const [s1, w1] = wedgeSpan(a), [s2, w2] = wedgeSpan(b)
+  const parts = []
+  for (const turn of [-1, 0, 1]) {
+    const lo = Math.max(s1, s2 + turn * TAU), hi = Math.min(s1 + w1, s2 + w2 + turn * TAU)
+    if (hi - lo > 1e-3) parts.push([lo, hi])
+  }
+  return parts
+}
+
+function wedgeHolds(w, phi) {
+  const [s, width] = wedgeSpan(w)
+  return (((phi - s) % TAU) + TAU) % TAU <= width + 1e-6
+}
+
+// How far a wedge reaches in the direction phi when drawn at scale k: its
+// radius, or for a right angle's square the distance out to the square's edge.
+function wedgeReach(w, phi, k) {
+  if (!w.is90) return w.baseR * k
+  const [s] = wedgeSpan(w)
+  const t = Math.min((((phi - s) % TAU) + TAU) % TAU, Math.PI / 2)
+  return (w.side * k) / Math.max(Math.cos(t), Math.sin(t))
+}
+
+// The parts two wedges share, or null when they don't overlap — or are the
+// same angle twice (a corner arc and a mark on it), which is one angle, not two
+// to pull apart.
+function wedgeOverlap(a, b) {
+  const parts = sharedParts(a, b)
+  const shared = parts.reduce((sum, [lo, hi]) => sum + hi - lo, 0)
+  if (shared <= 1e-3) return null
+  const same = Math.abs(Math.abs(a.diff) - Math.abs(b.diff)) < 0.02 && shared > Math.abs(a.diff) - 0.02
+  return same ? null : parts
+}
+
+// Directions of every side or segment of the flat figures that runs through
+// `point` — the lines a label set beside that point must not sit on (the height
+// AH inside the angle BAC, the segment AE inside DAB).
+function linesThrough(display, point) {
+  const dirs = []
+  for (const [sid, entry] of registry) {
+    const g = display.getObject?.(sid)
+    const verts = entry?.vertices
+    if (!g || !(entry.isFlat || g.userData?.isFlat) || !(verts?.length >= 2)) continue
+    const n = verts.length
+    for (let i = 0; i < (n === 2 ? 1 : n); i++) {
+      const ax = g.position.x + verts[i][0], ay = g.position.y + verts[i][1]
+      const bx = g.position.x + verts[(i + 1) % n][0], by = g.position.y + verts[(i + 1) % n][1]
+      const ex = bx - ax, ey = by - ay, len2 = ex * ex + ey * ey
+      if (len2 < 1e-12) continue
+      const u = ((point[0] - ax) * ex + (point[1] - ay) * ey) / len2
+      if (u < -1e-6 || u > 1 + 1e-6) continue
+      if (Math.hypot(ax + u * ex - point[0], ay + u * ey - point[1]) > 1e-3) continue
+      if (u > 1e-6)     dirs.push(Math.atan2(ay - point[1], ax - point[0]))
+      if (u < 1 - 1e-6) dirs.push(Math.atan2(by - point[1], bx - point[0]))
+    }
+  }
+  return dirs
+}
+
+// Half the width and height of a wedge's label on screen, in pixels: measured
+// once it is on the page, estimated from its text before.
+function wedgeLabelHalf(w, label) {
+  const el = label?.el
+  if (el?.offsetWidth) return [el.offsetWidth / 2, el.offsetHeight / 2]
+  const f = w.labelFont ?? 17
+  return [(String(w.labelText ?? '').length * f * 0.6 + 2) / 2, f * 0.6]
+}
+
+function restackAt(display, point) {
+  const here = []
+  for (const [key, w] of wedges) {
+    // A shape taken off the canvas some other way takes its angles with it.
+    if (!w.group.parent || display.getObject?.(w.shapeId) !== w.group.parent) { wedges.delete(key); continue }
+    const p = wedgePoint(w)
+    if (Math.hypot(p[0] - point[0], p[1] - point[1]) < 1e-3) here.push(w)
+  }
+  if (!here.length) return
+  here.sort((a, b) => {
+    const d = Math.abs(b.diff) - Math.abs(a.diff)
+    return Math.abs(d) > 0.02 ? d : a.seq - b.seq
+  })
+
+  // Radii, widest first: each angle clears every wider one it overlaps by a
+  // ring in the middle of what they share, and never touches it anywhere in it
+  // (a right angle's square reaches further out at its corner).
+  const placed = []
+  for (const w of here) {
+    let k = 1
+    for (const o of placed) {
+      const parts = wedgeOverlap(o, w)
+      if (!parts) continue
+      const gap = 0.5 * Math.max(w.unitR, o.unitR)
+      for (const [lo, hi] of parts) {
+        const mid = (lo + hi) / 2
+        k = Math.max(k, (wedgeReach(o, mid, o.target) + gap) / wedgeReach(w, mid, 1))
+        for (let s = 0; s <= 8; s++) {
+          const phi = lo + (hi - lo) * s / 8
+          k = Math.max(k, (wedgeReach(o, phi, o.target) + gap * 0.4) / wedgeReach(w, phi, 1))
+        }
+      }
+    }
+    w.target = k
+    placed.push(w)
+  }
+
+  // Labels. An angle that overlaps nothing keeps its label where it always was,
+  // on its bisector. One that does is placed with more care, since the lines
+  // and wedges around it crowd it: in the widest part of its opening that no
+  // smaller angle covers and no line from the point cuts through (the label of
+  // BAC goes between AH and AC, not across the height), at the spot where the
+  // text clears the lines on both sides of it.
+  const lines = linesThrough(display, point)
+  const ppu = display.getPixelsPerUnit?.() || 50
+  here.forEach((w, i) => {
+    if (!w.labelId) return
+    const covers = here.slice(i + 1).filter(o => wedgeOverlap(w, o))
+    const inner  = here.slice(0, i).filter(o => wedgeOverlap(o, w))
+    const p = wedgePoint(w)
+    const inside = w.labelMode === 'inside'
+    let dir = w.a1 + w.diff / 2
+    // Outside: as far beyond its arc as a label always sits (0.6 of the arc, 0.9
+    // for a square) — beyond the arc it was pushed out to, not 1.6 times it.
+    let r = inside ? 0.6 * w.baseR * w.target : w.baseR * (w.target + (w.is90 ? 0.9 : 0.6))
+    if (!covers.length && !inner.length) {
+      w.labelAt = [p[0] + r * Math.cos(dir), p[1] + r * Math.sin(dir)]
+      return
+    }
+
+    // What of its opening is left in view, cut at every line from the point.
+    const [s, width] = wedgeSpan(w)
+    const free = []
+    let at = s
+    for (const [lo, hi] of covers.flatMap(o => wedgeOverlap(w, o)).sort((a, b) => a[0] - b[0])) {
+      if (lo > at) free.push([at, lo])
+      at = Math.max(at, hi)
+    }
+    if (s + width > at) free.push([at, s + width])
+    const cuts = lines.map(d => s + ((((d - s) % TAU) + TAU) % TAU))
+    let best = null
+    for (const [lo, hi] of free) {
+      let from = lo
+      for (const d of [...cuts.filter(d => d > lo + 1e-3 && d < hi - 1e-3).sort((a, b) => a - b), hi]) {
+        if (!best || d - from > best[1] - best[0]) best = [from, d]
+        from = d
+      }
+    }
+    const covered = covers.length > 0 && (!best || best[1] - best[0] < Math.min(0.26, width * 0.3))
+
+    if (covered) {
+      // Covered all the way across: out past the angles over it and their labels.
+      if (!inside) {
+        const over = covers.filter(o => wedgeHolds(o, dir)).map(o => wedgeReach(o, dir, o.target))
+        if (over.length) r = Math.max(r, Math.max(...over) + 1.7 * w.unitR)
+      }
+    } else if (best) {
+      const [lo, hi] = best
+      dir = (lo + hi) / 2
+      if (inside) {
+        // A value written inside its wedge stays inside what shows of it: in
+        // the band between the angle under it and its own edge.
+        const under = inner.filter(o => wedgeHolds(o, dir)).map(o => wedgeReach(o, dir, o.target))
+        if (under.length) r = (Math.max(...under) + wedgeReach(w, dir, w.target)) / 2
+      }
+      if (hi - lo > 1e-3 && hi - lo < Math.PI - 0.05) {
+        // The text is a fixed size on screen, so this is worked out in pixels.
+        // How far its box reaches across each line (6px to spare), the nearest
+        // spot where it clears both, then: no nearer than it would sit anyway,
+        // and turned so it keeps as much room from one line as from the other.
+        const [hw, hh] = wedgeLabelHalf(w, display.getLabel3D?.(w.labelId))
+        const dLo = hw * Math.abs(Math.sin(lo)) + hh * Math.abs(Math.cos(lo)) + 6
+        const dHi = hw * Math.abs(Math.sin(hi)) + hh * Math.abs(Math.cos(hi)) + 6
+        const det = Math.sin(lo - hi)
+        const cx  = (dLo * -Math.cos(hi) - Math.cos(lo) * dHi) / det
+        const cy  = (-Math.sin(lo) * dHi - dLo * Math.sin(hi)) / det
+        const rcPx = Math.hypot(cx, cy)
+        const balance = (rad) => {
+          let a = lo, b = hi
+          for (let it = 0; it < 24; it++) {
+            const m = (a + b) / 2
+            if ((rad * Math.sin(m - lo) - dLo) - (rad * Math.sin(hi - m) - dHi) > 0) b = m
+            else a = m
+          }
+          return (a + b) / 2
+        }
+        if (!inside) {
+          // Within reason: a gap too narrow for the text keeps it by its arc.
+          const rad = Math.min(Math.max(r * ppu, rcPx), r * ppu * 2.2)
+          dir = balance(rad)
+          r = rad / ppu
+        } else if (rcPx <= wedgeReach(w, Math.atan2(cy, cx), w.target) * ppu) {
+          // Inside only if it fits inside; otherwise it stays where it was.
+          const rad = Math.max(r * ppu, rcPx)
+          dir = balance(rad)
+          r = rad / ppu
+        }
+      }
+    }
+    w.labelAt = [p[0] + r * Math.cos(dir), p[1] + r * Math.sin(dir)]
+  })
+
+  for (const w of here) {
+    const label = w.labelId ? display.getLabel3D?.(w.labelId) : null
+    if (w.growing) {
+      // Still growing in (or pulsing): it takes its new place as it goes.
+      w.k = w.target
+      if (label && w.labelAt) label.worldPos.set(w.labelAt[0], w.labelAt[1], label.worldPos.z)
+      continue
+    }
+    const fromK = w.group.scale.x, toK = w.target
+    const fromL = label ? [label.worldPos.x, label.worldPos.y] : null
+    const toL   = w.labelAt
+    const labelMoves = !!(fromL && toL) && Math.hypot(toL[0] - fromL[0], toL[1] - fromL[1]) > 1e-4
+    w.k = toK
+    if (Math.abs(toK - fromK) < 1e-4 && !labelMoves) continue
+    // Already on screen: it moves out (or back in), never jumps there.
+    const token = {}
+    w.tween = token
+    const t0 = performance.now(), dur = Math.max(animMs(320), 1)
+    const ease = x => x < 0.5 ? 2 * x * x : -1 + (4 - 2 * x) * x
+    ;(function tick() {
+      if (w.tween !== token || !w.group.parent) return
+      const p = Math.min((performance.now() - t0) / dur, 1)
+      const e = ease(p)
+      const s = fromK + (toK - fromK) * e
+      w.group.scale.set(s, s, 1)
+      if (labelMoves) {
+        label.worldPos.set(fromL[0] + (toL[0] - fromL[0]) * e, fromL[1] + (toL[1] - fromL[1]) * e, label.worldPos.z)
+      }
+      if (p < 1) requestAnimationFrame(tick)
+      else display.fitView2D?.()
+    })()
+  }
+}
+
+// Take a shape's angles (all, or those passing `test`) out of the stacking and
+// hand back the points they opened from, so what is left there can settle.
+// Called BEFORE their objects are removed: the point is read from the shape.
+function forgetWedges(shapeId, test = null) {
+  const points = []
+  for (const [key, w] of wedges) {
+    if (w.shapeId !== shapeId || (test && !test(w))) continue
+    points.push(wedgePoint(w))
+    wedges.delete(key)
+  }
+  return points
+}
+
+function restackPoints(display, points) {
+  const done = []
+  for (const p of points) {
+    if (!p || done.some(q => Math.hypot(p[0] - q[0], p[1] - q[1]) < 1e-3)) continue
+    done.push(p)
+    restackAt(display, p)
+  }
+}
+
 export function showAngles3D(threeRef, id, colorRaw, showValues = false) {
   const display = threeRef?.current
   if (!display?.isReady()) return Promise.resolve()
@@ -1074,7 +1369,9 @@ export function showAngles3D(threeRef, id, colorRaw, showValues = false) {
   avgEdge /= n
   const arcR = Math.max(avgEdge * 0.17, 0.15)
 
-  // Remove existing angle arcs (parented to shape group)
+  // Remove existing angle arcs (parented to shape group) — out of the stacking
+  // first, so what is left at their corners settles once the new ones are in.
+  const oldPoints = forgetWedges(id, w => w.key.startsWith('c:'))
   for (let i = 0; i < 20; i++) removeChildFromGroup(display, id, `ang_${id}_${i}`)
 
   const growDur = animMs(300)   // ms: arc sweeps open
@@ -1084,6 +1381,7 @@ export function showAngles3D(threeRef, id, colorRaw, showValues = false) {
 
   return new Promise(resolve => {
   let doneCount = 0
+  const newPoints = []
 
   for (let i = 0; i < n; i++) {
     const [px, py] = verts[(i + n - 1) % n]
@@ -1142,26 +1440,36 @@ export function showAngles3D(threeRef, id, colorRaw, showValues = false) {
     arcGroup.scale.set(0, 0, 1)
     arcGroup.add(new THREE.Mesh(arcGeo, arcMat))
     addChildToGroup(display, id, `ang_${id}_${i}`, arcGroup)
+    const wedge = registerWedge(id, `c:${i}`, {
+      group: arcGroup, a1: angle1, diff, is90, baseR: arcR, side: arcR, unitR: arcR,
+      labelId: showValues ? `angval_${id}_${i}` : null, labelMode: 'inside', point: [gx + cx, gy + cy],
+      labelText: `${parseFloat((Math.abs(diff) * 180 / Math.PI).toFixed(2))}°`, labelFont: 15,
+    })
+    newPoints.push(wedgePoint(wedge))
 
     const startAt = performance.now() + i * stagger
     const ease    = t => t < 0.5 ? 2*t*t : -1 + (4-2*t)*t
 
     ;(function tick() {
-      if (!arcGroup.parent) { if (++doneCount === n) resolve(); return }
+      if (!arcGroup.parent) { wedge.growing = false; if (++doneCount === n) resolve(); return }
       const elapsed = performance.now() - startAt
       if (elapsed < 0) { requestAnimationFrame(tick); return }
       if (elapsed < growDur) {
         const e = ease(elapsed / growDur)
-        arcGroup.scale.set(e, e, 1)
+        arcGroup.scale.set(e * wedge.k, e * wedge.k, 1)
         arcMat.opacity = 0.35 * e
         requestAnimationFrame(tick)
       } else {
-        arcGroup.scale.set(1, 1, 1)
+        arcGroup.scale.set(wedge.k, wedge.k, 1)
         arcMat.opacity = 0.35
+        wedge.growing = false
         if (++doneCount === n) resolve()
       }
     })()
   }
+  // Every corner is in: each one's place among the angles already at its point
+  // (a mark, another shape's corner) is settled before any of it shows.
+  restackPoints(display, [...newPoints, ...oldPoints])
   }) // end Promise
 }
 
@@ -1193,8 +1501,8 @@ export function markAngle3D(threeRef, id, markId, fromRef, vertexRef, toRef, opt
     avgEdge += Math.hypot(bx - ax, by - ay)
   }
   avgEdge /= n
-  // Size scales it: an angle drawn inside another at the same vertex (40° inside
-  // 100°) only reads as an angle of its own when its arc is the smaller one.
+  // Size scales it. An angle inside a wider one at the same point needs none: it
+  // is pushed out past the wider one by itself (see restackAt).
   const size = Math.min(3, Math.max(0.2, Number(opts.size) || 1))
   const arcR = Math.max(avgEdge * 0.17, 0.15) * size
 
@@ -1210,6 +1518,7 @@ export function markAngle3D(threeRef, id, markId, fromRef, vertexRef, toRef, opt
   const colorCss = `#${color.toString(16).padStart(6, '0')}`
   const childId  = `mang_${id}_${markId}`
   const labelId  = `mangl_${id}_${markId}`
+  const oldPoints = forgetWedges(id, w => w.key === `m:${markId}`)
   removeChildFromGroup(display, id, childId)
   display.removeLabel3D?.(labelId)
 
@@ -1250,27 +1559,35 @@ export function markAngle3D(threeRef, id, markId, fromRef, vertexRef, toRef, opt
   const growDur = animMs(360)
   const raw  = String(opts.label ?? '').trim()
   const text = raw === '-' ? '' : (raw || `${+deg.toFixed(1)}°`)
+  const shapeGroup = display.getObject(id)
+  const gx = shapeGroup?.position.x ?? 0, gy = shapeGroup?.position.y ?? 0
+  const wedge = registerWedge(id, `m:${markId}`, {
+    group, a1, diff, is90, baseR: arcR, side: arcR * 0.8, unitR: arcR / size,
+    labelId: text ? labelId : null, labelMode: 'outside', point: [gx + V[0], gy + V[1]],
+    labelText: text, labelFont: 17,
+  })
+  // Its place among the angles already at this point — and theirs, now that it
+  // is there — is settled before anything shows, so it grows straight to it.
+  restackPoints(display, [wedgePoint(wedge), ...oldPoints])
   if (text) {
-    const shapeGroup = display.getObject(id)
-    const gx = shapeGroup?.position.x ?? 0, gy = shapeGroup?.position.y ?? 0
     const mid = a1 + diff / 2
     const lr  = arcR * (is90 ? 1.9 : 1.6)
-    display.addLabel3D(labelId, gx + V[0] + lr * Math.cos(mid), gy + V[1] + lr * Math.sin(mid), 0.05,
-      text, { color: colorCss, fontSize: 17, fadeIn: growDur })
+    const [lx, ly] = wedge.labelAt ?? [gx + V[0] + lr * Math.cos(mid), gy + V[1] + lr * Math.sin(mid)]
+    display.addLabel3D(labelId, lx, ly, 0.05, text, { color: colorCss, fontSize: 17, fadeIn: growDur })
   }
 
   return new Promise(resolve => {
     const t0 = performance.now()
     const ease = x => x < 0.5 ? 2 * x * x : -1 + (4 - 2 * x) * x
     ;(function tick() {
-      if (!group.parent) { resolve(); return }
+      if (!group.parent) { wedge.growing = false; resolve(); return }
       const p = Math.min((performance.now() - t0) / growDur, 1)
       const e = ease(p)
-      group.scale.set(e, e, 1)
+      group.scale.set(e * wedge.k, e * wedge.k, 1)
       fillMat.opacity = 0.35 * e
       rimMat.opacity  = 0.95 * e
       if (p < 1) requestAnimationFrame(tick)
-      else resolve()
+      else { wedge.growing = false; resolve() }
     })()
   })
 }
@@ -1289,6 +1606,8 @@ export function highlightAngle3D(threeRef, id, angleIndex, colorRaw = 'cyan') {
 
   let arcGroup = shapeGroup.userData.children?.[`ang_${id}_${i}`]
   let mat
+  // Its place among overlapping angles (see restackAt): the pulse is around it.
+  let wedge = arcGroup ? wedges.get(`${id}::c:${i}`) : null
 
   if (!arcGroup && entry?.vertices?.length) {
     // Arc doesn't exist yet — build it on the fly with the highlight color
@@ -1344,11 +1663,19 @@ export function highlightAngle3D(threeRef, id, angleIndex, colorRaw = 'cyan') {
     arcGroup.scale.set(0, 0, 1)
     arcGroup.add(new THREE.Mesh(arcGeo, mat))
     addChildToGroup(display, id, `ang_${id}_${i}`, arcGroup)
+    wedge = registerWedge(id, `c:${i}`, {
+      group: arcGroup, a1: angle1, diff, is90, baseR: arcR, side: arcR, unitR: arcR,
+      labelId: null, labelMode: 'inside',
+      point: [shapeGroup.position.x + cx, shapeGroup.position.y + cy],
+    })
+    restackPoints(display, [wedgePoint(wedge)])
   } else {
     const mesh = arcGroup?.children.find(c => c.isMesh)
     if (!mesh) return Promise.resolve()
     mat = mesh.material
     mat.color.copy(newColor)
+    // While it pulses, a change at its point is taken up by the pulse itself.
+    if (wedge) wedge.growing = true
   }
 
   // Animate: if arc was just created, grow from 0; otherwise pulse from current scale
@@ -1363,14 +1690,16 @@ export function highlightAngle3D(threeRef, id, angleIndex, colorRaw = 'cyan') {
       const targetScale = fromScale < 0.1
         ? (t < 0.65 ? t / 0.65 * 1.3 : 1.3 - (t - 0.65) / 0.35 * 0.3)
         : 1 + 0.38 * s
-      arcGroup.scale.set(targetScale, targetScale, 1)
+      const kk = wedge?.k ?? 1
+      arcGroup.scale.set(targetScale * kk, targetScale * kk, 1)
       mat.color.copy(newColor).lerp(flashColor, s * 0.7)
       mat.opacity = 0.35 + 0.45 * s
       if (t < 1) requestAnimationFrame(tick)
       else {
-        arcGroup.scale.set(1, 1, 1)
+        arcGroup.scale.set(kk, kk, 1)
         mat.color.copy(newColor)
         mat.opacity = 0.55
+        if (wedge) wedge.growing = false
         resolve()
       }
     }
@@ -2201,6 +2530,8 @@ export function clearHighlights3D(threeRef, id) {
   if (!display) return
   const entry = registry.get(id)
   if (entry) entry.edgeColors = {}
+  // Its angles leave the stacking; the ones left at their points settle back.
+  const anglePoints = forgetWedges(id)
   for (let i = 0; i < 20; i++) {
     removeChildFromGroup(display, id, `ang_${id}_${i}`)
     removeChildFromGroup(display, id, `eh_${id}_${i}`)
@@ -2214,6 +2545,7 @@ export function clearHighlights3D(threeRef, id) {
   }
   if (entry) entry.angleMarks = new Set()
   for (let i = 0; i < 6; i++) removeChildFromGroup(display, id, `fh_${id}_${i}`)
+  restackPoints(display, anglePoints)
 }
 
 export function setView3D(threeRef, opts = {}) {

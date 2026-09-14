@@ -946,9 +946,14 @@ export default function App() {
       numberlineRef.current?.clearAll()
       threeEngine.clearAll3D(threeRef)
       // Preset 2D/3D mode immediately so the 120ms wait doesn't flash the wrong view
-      if (pg.layout === 'single-3d') {
-        const firstCreate = pg.steps?.find(s => s.funcId === 'geo3d-create-2d' || s.funcId === 'geo3d-create')
-        threeRef.current?.setDisplayMode(firstCreate?.funcId === 'geo3d-create-2d' ? '2d' : '3d')
+      // The mode comes from the first step that puts a SHAPE on the panel, and
+      // every flat creator counts: a page opening on Polygon from Points or a
+      // snapped shape used to be preset to 3D, which showed for a moment until
+      // the shape itself switched the panel to 2D.
+      if (/3d/.test(pg.layout ?? '')) {
+        const FLAT_CREATORS = new Set(['geo3d-create-2d', 'geo3d-polygon-points', 'geo3d-snap-shape'])
+        const firstCreate = pg.steps?.find(s => FLAT_CREATORS.has(s.funcId) || s.funcId === 'geo3d-create')
+        threeRef.current?.setDisplayMode(FLAT_CREATORS.has(firstCreate?.funcId) ? '2d' : '3d')
       }
       latestEquationSnapRef.current = null
       setEquationSnapTracked(null)

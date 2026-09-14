@@ -129,6 +129,9 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
     setDisplayMode(mode) {
       const want2D = mode === '2d'
       is2DRef.current = want2D
+      // Written on the panel so the mode can be read from outside (tests, and
+      // anything that has to know which view is on screen).
+      if (containerRef.current) containerRef.current.dataset.mode = want2D ? '2d' : '3d'
       const controls = controlsRef.current
       const axes     = axesGroupRef.current
       const g3d      = grid3DRef.current

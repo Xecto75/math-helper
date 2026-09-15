@@ -1275,6 +1275,18 @@ case 'ggb-2d-snap': {
       break
     }
 
+    case 'ggb-conic-elements': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.showConicElements(calc, action.id, action.funcId, action.opts ?? {})
+      break
+    }
+
+    case 'ggb-remove-conic-elements': {
+      const calc = graphApi(); if (!calc) break
+      await graphEngine.removeConicElements(calc, action.id)
+      break
+    }
+
     case 'ggb-show-projection': {
       const calc = graphApi(); if (!calc) break
       await graphEngine.showAxisProjection(calc, action.id, action.pointId, action.opts ?? {})

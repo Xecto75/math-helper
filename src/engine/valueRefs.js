@@ -18,7 +18,7 @@
  */
 import { getSideLengths, getShapeHeight, getShapeRadius, getVertexAngle } from './geometryEngine.js'
 import { get3DShapeValue } from './threeEngine.js'
-import { getPointCoords, getSegmentValue, getFunctionExpr, getFunctionParam, getSliderValue } from './desmosEngine.js'
+import { getPointCoords, getSegmentValue, getFunctionExpr, getFunctionParam, getSliderValue, getConicValue } from './desmosEngine.js'
 import { getCellValue } from './tableEngine.js'
 
 // Named scalars saved from a solved equation via eq-save-result (see
@@ -40,7 +40,7 @@ export function clearSavedValues() { savedValues.clear() }
 // global regex used in RichText.jsx; harmless for the anchored one in
 // demoScripts.js. Do not reorder without keeping that in mind.
 export const VALUE_TOKEN_PATTERN =
-  'r\\d+c\\d+|a\\d+|x1|y1|x2|y2|len|expr|h|r|l|d|R|a|v|x|y|\\d+'
+  'r\\d+c\\d+|a\\d+|x1|y1|x2|y2|len|expr|h|r|l|d|R|a|b|c|e|k|p|v|x|y|\\d+'
 
 // Matches a token against each source in turn (geometry/flat-2D shape →
 // volumetric 3D solid → graph point → graph segment → graph function →
@@ -77,6 +77,11 @@ export function resolveValueRef(rawId, token) {
   // type, matching exactly the letters shown by geo3d-show-volume-measures.
   const shapeVal = get3DShapeValue(id, token)
   if (shapeVal !== undefined) return shapeVal
+
+  // A conic's numbers (graph-conic-elements), by the id its elements were shown
+  // under — its points themselves are graph points, read as [idF]x below.
+  const conicVal = getConicValue(id, token)
+  if (conicVal !== undefined) return conicVal
 
   // Named value: a saved equation result first (eq-save-result), else a
   // slider's current dragged value — both addressed directly by name.

@@ -8,6 +8,9 @@ import { animMs } from './animSpeed.js'
 
 const registry = new Map()
 let _vp = { left: -10, right: 10, bottom: -7.5, top: 7.5 }
+// True once a step on this page set the view itself (adjustView/setViewport):
+// automatic framing may still widen the view, but never closes in over it.
+let _vpByLesson = false
 
 // ── Trig-circle HTML overlay ───────────────────────────────────────────────
 const _tcListeners = new Set()
@@ -875,9 +878,12 @@ function toDesmos(expr) {
   // typed, Desmos reads the "=" as a second, broken comparison and plots
   // nothing at all.
   s = s.replace(/>=|\u2265/g, '\\ge').replace(/<=|\u2264/g, '\\le')
-  // a/b → \frac{a}{b}  (handles -\sqrt{x}/n, \sqrt{x}/n, -n/m, n/m)
+  // a/b → \frac{a}{b}  (handles -\sqrt{x}/n, \sqrt{x}/n, -n/m, n/m) — but not
+  // when the number is an exponent, or the tail of a longer number: "x^2/9" is
+  // (x²)/9, and turning its "2/9" into a fraction drew x^(2/9) instead, so an
+  // ellipse written "x^2/9 + y^2/4 = 1" came out as a small star.
   s = s.replace(
-    /(-?(?:\\sqrt\{[^}]+\}|\\pi|\d+(?:\.\d+)?))\/(\d+(?:\.\d+)?)/g,
+    /(?<![\^\d.])(-?(?:\\sqrt\{[^}]+\}|\\pi|\d+(?:\.\d+)?))\/(\d+(?:\.\d+)?)/g,
     (_, num, den) => `\\frac{${num}}{${den}}`
   )
   return s
@@ -1274,6 +1280,494 @@ export async function removeHorizontalLine(calc, id) {
   if (!e) return
   registry.delete(`hl::${id}`)
   await fadeOut(calc, [e.calcId], e.fadeProps ?? { lineOpacity: 1 })
+}
+
+// ── Characteristic elements of a conic ───────────────────────────────────────
+// The vertices, foci, centre, directrix, asymptotes and axes of a curve already
+// plotted — computed from the curve itself, so a lesson never types a focus it
+// could get wrong. The relation is sampled and fitted to
+// Ax² + Bxy + Cy² + Dx + Ey + F = 0: it is recognised whatever form it was
+// written in ("y = 2(x-1)^2 + 3", "(x-2)^2/9 + (y+1)^2/4 = 1",
+// "4x^2 + 9y^2 - 16x = 20", "xy = 4") and wherever it sits, tilted or not.
+// Every point drawn is a real graph point: its coordinates are [id]x / [id]y
+// like any other, so a comment or an equation points at the focus without
+// working it out again.
+
+const CONIC_FIT = [-2.37, -1.13, 0.41, 1.73, 2.91].flatMap(x => [-2.11, -0.53, 0.87, 2.29].map(y => [x, y]))
+const CONIC_CHECK = [[-3.3, 1.4], [2.6, -2.9], [0.2, 3.7], [-1.8, -3.1], [4.1, 0.9], [-0.6, 0.15], [3.3, 3.3], [-4.2, -0.4]]
+
+// A number as Desmos reads it: fixed-point, never "1e-7".
+function conicNum(v) {
+  let s = (Math.abs(v) < 5e-9 ? 0 : v).toFixed(8)
+  if (s.includes('.')) s = s.replace(/0+$/, '').replace(/\.$/, '')
+  return s === '-0' ? '0' : s
+}
+
+// A number as a reader sees it in a label: two decimals at most, a real minus.
+function conicShow(v) {
+  const r = Math.round(v * 100) / 100
+  return String(Math.abs(r) < 0.005 ? 0 : r).replace('-', '−')
+}
+
+function solveLinear(M, b) {
+  const n = b.length
+  const A = M.map((row, i) => [...row, b[i]])
+  for (let col = 0; col < n; col++) {
+    let piv = col
+    for (let r = col + 1; r < n; r++) if (Math.abs(A[r][col]) > Math.abs(A[piv][col])) piv = r
+    if (Math.abs(A[piv][col]) < 1e-12) return null
+    ;[A[col], A[piv]] = [A[piv], A[col]]
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue
+      const f = A[r][col] / A[col][col]
+      for (let c = col; c <= n; c++) A[r][c] -= f * A[col][c]
+    }
+  }
+  return A.map((row, i) => row[n] / row[i])
+}
+
+// [A, B, C, D, E, F], scaled so the largest square term is 1 — or null when the
+// relation is not a curve of degree two in x and y.
+function conicCoefficients(expr) {
+  const src = bareExpr(expr)
+  if (!src || /[<>]|\\le|\\ge/.test(src)) return null
+  const eq = src.indexOf('=')
+  let lhs = eq >= 0 ? src.slice(0, eq).trim() : 'y'
+  const rhs = eq >= 0 ? src.slice(eq + 1).trim() : src
+  if (/^[a-zA-Z]\w*\(\s*x\s*\)$/.test(lhs)) lhs = 'y'
+  // "xy" and "x(y+1)" are products here, not a name and a call.
+  const prep = s => s.replace(/(?<![a-zA-Z])([xy])(?=[xy(])/g, '$1*')
+  let left, right
+  try {
+    left  = parse(prep(lhs)).compile()
+    right = parse(prep(rhs)).compile()
+  } catch { return null }
+  const scope = Object.fromEntries([...sliders].map(([name, s]) => [name, s.value]))
+  const g = (x, y) => {
+    try {
+      const v = Number(left.evaluate({ ...scope, x, y })) - Number(right.evaluate({ ...scope, x, y }))
+      return Number.isFinite(v) ? v : NaN
+    } catch { return NaN }
+  }
+  const mono = (x, y) => [x * x, x * y, y * y, x, y, 1]
+  const N = Array.from({ length: 6 }, () => new Array(6).fill(0))
+  const r = new Array(6).fill(0)
+  for (const [x, y] of CONIC_FIT) {
+    const v = g(x, y)
+    if (!Number.isFinite(v)) return null
+    const m = mono(x, y)
+    for (let i = 0; i < 6; i++) {
+      r[i] += m[i] * v
+      for (let j = 0; j < 6; j++) N[i][j] += m[i] * m[j]
+    }
+  }
+  const coef = solveLinear(N, r)
+  if (!coef) return null
+  // A conic, not something merely close to one: the fit has to give the
+  // relation back exactly at points it never saw.
+  for (const [x, y] of CONIC_CHECK) {
+    const v = g(x, y)
+    const fit = mono(x, y).reduce((s, mi, i) => s + mi * coef[i], 0)
+    if (!Number.isFinite(v) || Math.abs(v - fit) > 1e-6 * Math.max(1, Math.abs(v))) return null
+  }
+  const scale = Math.max(Math.abs(coef[0]), Math.abs(coef[1]), Math.abs(coef[2]))
+  if (scale < 1e-9 * Math.max(1, ...coef.slice(3).map(Math.abs))) return null
+  return coef.map(c => { const v = c / scale; return Math.abs(v) < 1e-10 ? 0 : v })
+}
+
+// What the conic is and where its parts are, from its coefficients: turned to
+// its own axes (the angle that removes the xy term), then completed squares.
+function describeConic([A, B, C, D, E, F]) {
+  const th = 0.5 * Math.atan2(B, A - C)
+  const cs = Math.cos(th), sn = Math.sin(th)
+  const u = [cs, sn], v = [-sn, cs]
+  const l1 = A * cs * cs + B * sn * cs + C * sn * sn
+  const l2 = A * sn * sn - B * sn * cs + C * cs * cs
+  const d1 = D * cs + E * sn
+  const d2 = -D * sn + E * cs
+  const EPS = 1e-7
+  if (Math.abs(l1) > EPS && Math.abs(l2) > EPS) {
+    const s0 = -d1 / (2 * l1), t0 = -d2 / (2 * l2)
+    const F0 = F - l1 * s0 * s0 - l2 * t0 * t0
+    if (Math.abs(F0) < 1e-9 * Math.max(1, Math.abs(F))) return null   // a point, or two crossing lines
+    const q1 = -F0 / l1, q2 = -F0 / l2
+    if (q1 < 0 && q2 < 0) return null                                 // no real point at all
+    const centre = [s0 * u[0] + t0 * v[0], s0 * u[1] + t0 * v[1]]
+    if (q1 > 0 && q2 > 0) {
+      const [aa, bb, main, minor] = q1 >= q2 ? [q1, q2, u, v] : [q2, q1, v, u]
+      const circle = Math.abs(aa - bb) < 1e-7 * aa
+      return { type: circle ? 'circle' : 'ellipse', centre, main, minor,
+        a: Math.sqrt(aa), b: Math.sqrt(bb), c: circle ? 0 : Math.sqrt(aa - bb) }
+    }
+    const [aa, bb, main, minor] = q1 > 0 ? [q1, -q2, u, v] : [q2, -q1, v, u]
+    return { type: 'hyperbola', centre, main, minor, a: Math.sqrt(aa), b: Math.sqrt(bb), c: Math.sqrt(aa + bb) }
+  }
+  // No square along one direction: a parabola, whose axis runs along it.
+  const [lam, dw, w, dz, z] = Math.abs(l1) > EPS ? [l1, d1, u, d2, v] : [l2, d2, v, d1, u]
+  if (Math.abs(dz) < EPS) return null                                // two parallel lines
+  const s0 = -dw / (2 * lam)
+  const t0 = (lam * s0 * s0 - F) / dz
+  return { type: 'parabola', vertex: [s0 * w[0] + t0 * z[0], s0 * w[1] + t0 * z[1]], axis: z, across: w,
+    f: -dz / (4 * lam) }                                              // vertex → focus, along the axis
+}
+
+// Which parts to draw: the ones named ("foyers, directrice", "vertices") in any
+// of the lesson languages, or the ones a figure of that conic usually shows.
+function conicShowSet(raw, type) {
+  const words = String(raw ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .split(/[,;|]/).map(s => s.trim()).filter(Boolean)
+  if (!words.length) {
+    return new Set({
+      parabola:  ['vertices', 'foci', 'directrix', 'axes'],
+      ellipse:   ['centre', 'vertices', 'foci'],
+      circle:    ['centre'],
+      hyperbola: ['centre', 'vertices', 'foci', 'asymptotes'],
+    }[type])
+  }
+  const set = new Set()
+  for (const w of words) {
+    if (/^(all|tou|tod|alle)/.test(w)) ['centre', 'vertices', 'foci', 'directrix', 'asymptotes', 'axes'].forEach(k => set.add(k))
+    else if (/^(vert|som|sch)/.test(w)) set.add('vertices')
+    else if (/^(foc|foy|bren)/.test(w)) set.add('foci')
+    else if (/^(cent|mitt)/.test(w))    set.add('centre')
+    else if (/^(dir|leit)/.test(w))     set.add('directrix')
+    else if (/^(asy|asi)/.test(w))      set.add('asymptotes')
+    else if (/^(ax|eje|ach)/.test(w))   set.add('axes')
+  }
+  return set
+}
+
+// The side a label sits on, from the direction it should lean: one of the
+// eight Desmos orientations.
+function conicLabelSide([dx, dy]) {
+  if (Math.hypot(dx, dy) < 1e-9) return 'below_left'
+  const sides = ['right', 'above_right', 'above', 'above_left', 'left', 'below_left', 'below', 'below_right']
+  return sides[((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) % 8) + 8) % 8]
+}
+
+function conicLineLatex([px, py], [dx, dy]) {
+  if (Math.abs(dx) < 1e-9) return `x=${conicNum(px)}`
+  const m = dy / dx
+  const q = conicNum(py - m * px)
+  return `y=${conicNum(m)}x${q.startsWith('-') ? '' : '+'}${q}`
+}
+
+function conicLineLabel([px, py], [dx, dy]) {
+  if (Math.abs(dx) < 1e-9) return `x = ${conicShow(px)}`
+  const m = dy / dx, q = py - m * px
+  if (Math.abs(m) < 1e-9) return `y = ${conicShow(q)}`
+  const mr = Math.round(m * 100) / 100
+  const mt = mr === 1 ? '' : mr === -1 ? '−' : conicShow(mr)
+  const qr = Math.round(q * 100) / 100
+  return `y = ${mt}x` + (Math.abs(qr) < 0.005 ? '' : qr > 0 ? ` + ${conicShow(qr)}` : ` − ${conicShow(-qr)}`)
+}
+
+// How much of the plane a figure of this conic needs: its points and enough of
+// the curve around them to read its shape (a hyperbola's branches beyond the
+// foci, a parabola opening out past its focus).
+function conicExtent(shape) {
+  const at = (P, k, dir) => [P[0] + k * dir[0], P[1] + k * dir[1]]
+  const pts = []
+  if (shape.type === 'parabola') {
+    const { vertex: V, axis, across, f } = shape
+    const r = Math.max(Math.abs(f), 0.25)
+    const open = f >= 0 ? axis : [-axis[0], -axis[1]]
+    pts.push(V, at(V, f, axis), at(V, -f, axis))
+    for (const s of [-1, 1]) pts.push(at(at(V, 4 * r, open), s * 4 * r, across))
+  } else {
+    const { centre: O, main: m, minor: n, a, b, c, type } = shape
+    const ka = type === 'hyperbola' ? Math.max(2 * a, c + a) : a
+    const kb = type === 'hyperbola' ? 2 * b : b
+    for (const s of [-1, 1]) for (const t of [-1, 1]) pts.push(at(at(O, s * ka, m), t * kb, n))
+  }
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1])
+  return { left: Math.min(...xs), right: Math.max(...xs), bottom: Math.min(...ys), top: Math.max(...ys) }
+}
+
+// The places along a line where its equation may be written: where it was
+// meant to go first, then spread over the part of the line inside the view.
+function conicLineSpots({ P, d, anchor }, vp) {
+  const L = vp.left, R = vp.right
+  const Bo = Math.min(vp.bottom, vp.top), T = Math.max(vp.bottom, vp.top)
+  const padX = (R - L) * 0.08, padY = (T - Bo) * 0.08
+  let lo = -Infinity, hi = Infinity
+  for (const [p, dd, a, b] of [[P[0], d[0], L + padX, R - padX], [P[1], d[1], Bo + padY, T - padY]]) {
+    if (Math.abs(dd) < 1e-12) { if (p < a || p > b) return [anchor]; continue }
+    const s1 = (a - p) / dd, s2 = (b - p) / dd
+    lo = Math.max(lo, Math.min(s1, s2))
+    hi = Math.min(hi, Math.max(s1, s2))
+  }
+  if (!(hi > lo)) return [anchor]
+  return [anchor, ...[0.15, 0.3, 0.5, 0.7, 0.85].map(t => [P[0] + (lo + (hi - lo) * t) * d[0], P[1] + (lo + (hi - lo) * t) * d[1]])]
+}
+
+const CONIC_SIDES = {
+  right: [1, 0], above_right: [1, 1], above: [0, 1], above_left: [-1, 1],
+  left: [-1, 0], below_left: [-1, -1], below: [0, -1], below_right: [1, -1],
+}
+
+// Where the labels of a conic's elements go. A label is a fixed size on
+// screen, so this works in pixels at the current view: each label tries the
+// eight sides of its point, starting from the one it leans toward, and takes
+// the first that stays clear of the curve, of the lines drawn with it, of the
+// other points, of the labels already placed (the curve's own name included)
+// and of the edge of the graph — or, when none is entirely clear, the least
+// crowded of them.
+function conicLabelPlacer(calc, [A, B, C, D, E, F], dots, lines) {
+  const { px, py } = pixelsPerUnit(calc)
+  const vp = getViewport()
+  const g = (x, y) => A * x * x + B * x * y + C * y * y + D * x + E * y + F
+  // A little larger than the text Desmos draws, and as close to its point as
+  // Desmos puts it: labels that only touch read as one run-on line.
+  const H = 20, GAP = 4
+  const boxAt = ([x, y], text, side) => {
+    const W = String(text).length * 7.5 + 12
+    const [sx, sy] = CONIC_SIDES[side]
+    const lean = sx && sy ? 0.7 : 1
+    const cx = x + sx * (GAP * lean + W / 2) / px
+    const cy = y + sy * (GAP * lean + H / 2) / py
+    return { x0: cx - W / 2 / px, x1: cx + W / 2 / px, y0: cy - H / 2 / py, y1: cy + H / 2 / py }
+  }
+  const placed = []
+  for (const e of registry.values()) {
+    if (e.label && CONIC_SIDES[e.orientation] && Number.isFinite(e.x) && Number.isFinite(e.y)) {
+      placed.push(boxAt([e.x, e.y], e.label, e.orientation))
+    }
+  }
+  const crossesCurve = b => {
+    let below = false, above = false
+    for (let i = 0; i <= 4; i++) for (let j = 0; j <= 2; j++) {
+      const v = g(b.x0 + (b.x1 - b.x0) * i / 4, b.y0 + (b.y1 - b.y0) * j / 2)
+      if (v < 0) below = true
+      else if (v > 0) above = true
+      if (below && above) return true
+    }
+    return false
+  }
+  const crossesLine = (b, { P, d }) => {
+    let below = false, above = false
+    for (const [x, y] of [[b.x0, b.y0], [b.x1, b.y0], [b.x0, b.y1], [b.x1, b.y1]]) {
+      const s = d[0] * (y - P[1]) - d[1] * (x - P[0])
+      if (s < 0) below = true
+      else if (s > 0) above = true
+    }
+    return below && above
+  }
+  const overlapPx = (a, b) =>
+    Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * px *
+    Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)) * py
+
+  const evaluate = (spots, text, lean, own) => {
+    const want = Math.atan2(lean[1], lean[0])
+    const off = side => {
+      const [sx, sy] = CONIC_SIDES[side]
+      const dd = Math.abs(Math.atan2(sy, sx) - want) % (2 * Math.PI)
+      return dd > Math.PI ? 2 * Math.PI - dd : dd
+    }
+    const sides = Object.keys(CONIC_SIDES).sort((s1, s2) => off(s1) - off(s2))
+    let best = null
+    for (const P of spots) sides.forEach((side, rank) => {
+      const b = boxAt(P, text, side)
+      // What makes a label unreadable — the curve through it, a point under it,
+      // text over text, the edge of the graph — is counted apart from what only
+      // makes it a little worse: a dashed line under it, a side it did not lean
+      // to, a slide along its line away from where it was meant to sit.
+      let hard = 0
+      if (crossesCurve(b)) hard += 500
+      for (const q of dots) {
+        if (q === own) continue
+        if (q[0] >= b.x0 - 3 / px && q[0] <= b.x1 + 3 / px && q[1] >= b.y0 - 3 / py && q[1] <= b.y1 + 3 / py) hard += 400
+      }
+      for (const o of placed) hard += 3 * overlapPx(b, o)
+      if (b.x0 < vp.left || b.x1 > vp.right || b.y0 < Math.min(vp.bottom, vp.top) || b.y1 > Math.max(vp.bottom, vp.top)) hard += 400
+      let cost = hard + rank * 6 + Math.hypot((P[0] - spots[0][0]) * px, (P[1] - spots[0][1]) * py) / 12
+      for (const l of lines) if (crossesLine(b, l)) cost += 150
+      if (!best || cost < best.cost) best = { side, at: P, b, cost, hard }
+    })
+    return best
+  }
+  return { evaluate, commit: best => { placed.push(best.b); return best } }
+}
+
+export async function showConicElements(calc, id, funcId, opts = {}) {
+  const fn = registry.get(`fn::${funcId}`)
+  if (!fn) throw new Error(`Conic elements: no curve "${funcId}" is plotted`)
+  const coef  = conicCoefficients(fn.expr)
+  const shape = coef && describeConic(coef)
+  if (!shape) throw new Error(`Conic elements: "${fn.expr}" is not a parabola, an ellipse, a circle or a hyperbola`)
+
+  const color  = opts.color ? (Array.isArray(opts.color) ? rgbToHex(opts.color) : opts.color) : '#60a5fa'
+  const labels = ['names', 'coords', 'none'].includes(opts.labels) ? opts.labels : 'both'
+  const wanted = conicShowSet(opts.show, shape.type)
+  const nameOf = { vertex: opts.names?.vertex || 'V', focus: opts.names?.focus || 'F', centre: opts.names?.centre || 'C' }
+  const SUB = ['', '₁', '₂', '₃', '₄']
+  const at  = (P, k, dir) => [P[0] + k * dir[0], P[1] + k * dir[1]]
+  const neg = dir => [-dir[0], -dir[1]]
+  // A direction turned to point up — or right, when it lies flat — so "above"
+  // and "the far side" mean the same whichever way the conic is turned.
+  const up    = dir => (dir[1] > 1e-9 || (Math.abs(dir[1]) <= 1e-9 && dir[0] > 0)) ? dir : neg(dir)
+  const right = dir => (dir[0] > 1e-9 || (Math.abs(dir[0]) <= 1e-9 && dir[1] > 0)) ? dir : neg(dir)
+
+  const points = []   // { code, kind, name, P, side }
+  const lines  = []   // { code, kind, P, d, anchor, side } — a line through P along d, its equation written at anchor
+  let numbers
+  if (shape.type === 'parabola') {
+    const { vertex: V, axis, across, f } = shape
+    const open  = f >= 0 ? axis : neg(axis)          // the way it opens
+    const aside = right(across)
+    const reach = Math.abs(f)
+    const foot  = at(V, -f, axis)                      // where the axis meets the directrix
+    numbers = { h: V[0], k: V[1], c: reach, p: 2 * reach, e: 1 }
+    points.push({ code: 'V', kind: 'vertices', name: nameOf.vertex, P: V, side: at(neg(open), 0.9, aside) })
+    points.push({ code: 'F', kind: 'foci', name: nameOf.focus, P: at(V, f, axis), side: aside })
+    lines.push({ code: 'D', kind: 'directrix', P: foot, d: across, anchor: at(foot, Math.max(2.5, 3 * reach), aside), side: neg(open) })
+    lines.push({ code: 'AX', kind: 'axes', P: V, d: axis, anchor: at(V, Math.max(3, 5 * reach), open), side: aside })
+  } else {
+    const { centre: O, a, b, c, type } = shape
+    const m = right(shape.main), n = up(shape.minor)
+    numbers = { h: O[0], k: O[1], a, b, c, e: c / a, ...(type === 'circle' ? { r: a } : {}) }
+    // Where each label leans before the placer looks for room: an ellipse's
+    // vertices outward, a hyperbola's inward between its branches, and the foci
+    // below the axis, apart from the vertices above it.
+    const hyper = type === 'hyperbola'
+    points.push({ code: 'C', kind: 'centre', name: nameOf.centre, P: O, side: hyper ? neg(n) : at(neg(m), 0.9, n) })
+    if (type !== 'circle') {
+      points.push({ code: 'V1', kind: 'vertices', name: nameOf.vertex + SUB[1], P: at(O, -a, m), side: at(hyper ? m : neg(m), 0.9, n) })
+      points.push({ code: 'V2', kind: 'vertices', name: nameOf.vertex + SUB[2], P: at(O, a, m), side: at(hyper ? neg(m) : m, 0.9, n) })
+      if (type === 'ellipse') {
+        points.push({ code: 'V3', kind: 'vertices', name: nameOf.vertex + SUB[3], P: at(O, -b, n), side: at(neg(n), 0.9, m) })
+        points.push({ code: 'V4', kind: 'vertices', name: nameOf.vertex + SUB[4], P: at(O, b, n), side: at(n, 0.9, m) })
+      }
+      points.push({ code: 'F1', kind: 'foci', name: nameOf.focus + SUB[1], P: at(O, -c, m), side: hyper ? at(neg(m), 0.9, neg(n)) : neg(n) })
+      points.push({ code: 'F2', kind: 'foci', name: nameOf.focus + SUB[2], P: at(O, c, m), side: hyper ? at(m, 0.9, neg(n)) : neg(n) })
+      const dd = (a * a) / c
+      lines.push({ code: 'D1', kind: 'directrix', P: at(O, -dd, m), d: n, anchor: at(at(O, -dd, m), 0.9 * b, n), side: neg(m) })
+      lines.push({ code: 'D2', kind: 'directrix', P: at(O, dd, m), d: n, anchor: at(at(O, dd, m), 0.9 * b, n), side: m })
+      if (type === 'hyperbola') {
+        for (const [code, s] of [['A1', 1], ['A2', -1]]) {
+          const raw = [a * m[0] + s * b * n[0], a * m[1] + s * b * n[1]]
+          const len = Math.hypot(raw[0], raw[1])
+          const dir = up([raw[0] / len, raw[1] / len])
+          // Written on the side the branches are not: toward the conjugate axis.
+          const nrm  = [-dir[1], dir[0]]
+          const away = (nrm[0] * n[0] + nrm[1] * n[1]) * (dir[0] * n[0] + dir[1] * n[1]) >= 0 ? nrm : neg(nrm)
+          lines.push({ code, kind: 'asymptotes', P: O, d: dir, anchor: at(O, 1.6 * c, dir), side: away })
+        }
+      }
+      lines.push({ code: 'AX1', kind: 'axes', P: O, d: m, anchor: at(O, type === 'ellipse' ? 1.35 * a : 1.25 * c, m), side: n })
+      lines.push({ code: 'AX2', kind: 'axes', P: O, d: n, anchor: at(O, (type === 'ellipse' ? 1.35 : 1.5) * b, n), side: m })
+    }
+  }
+
+  const old = new Map([...registry.entries()].filter(([, e]) => e.conic === id))
+  registry.set(`con::${id}`, { conic: id, funcId, type: shape.type, ...numbers, calcIds: [], fadeProps: { pointOpacity: 1 } })
+  old.delete(`con::${id}`)
+
+  // The view makes room for every point first, so the labels are placed at the
+  // scale the reader will actually see them.
+  const shownPoints = points.filter(el => wanted.has(el.kind))
+  const shownLines  = lines.filter(el => wanted.has(el.kind))
+  for (const el of shownPoints) {
+    const coords = `(${conicShow(el.P[0])}, ${conicShow(el.P[1])})`
+    el.label = labels === 'none' ? '' : labels === 'names' ? el.name : labels === 'coords' ? coords : `${el.name}${coords}`
+    registry.set(`pt::${id}${el.code}`, { conic: id, funcId, numX: el.P[0], numY: el.P[1] })
+  }
+  // A conic drawn small in a wide view leaves its labels no room — a vertex and
+  // a focus half a unit apart end up fifteen pixels apart. Unless the lesson
+  // framed the page itself, the view closes in on the conic first.
+  if (!_vpByLesson) {
+    const ext = conicExtent(shape)
+    const cx = (ext.left + ext.right) / 2, cy = (ext.bottom + ext.top) / 2
+    const w = Math.max((ext.right - ext.left) * 1.45, 4), h = Math.max((ext.top - ext.bottom) * 1.45, 4)
+    const target = squareBounds(calc, { left: cx - w / 2, right: cx + w / 2, bottom: cy - h / 2, top: cy + h / 2 })
+    if (target.right - target.left < (_vp.right - _vp.left) * 0.5) {
+      const from = { ..._vp }
+      _vp = target
+      await animateViewport(calc, from, _vp)
+    }
+  }
+  await ensureVisible(calc)
+  const placer = conicLabelPlacer(calc, coef, shownPoints.map(el => el.P), shownLines)
+  for (const el of shownPoints) {
+    if (!el.label) { el.orient = conicLabelSide(el.side); continue }
+    let best = placer.evaluate([el.P], el.label, el.side, el.P)
+    // Nowhere clear for the name and its coordinates — points crowded close on
+    // the screen, a vertex just beside a focus: the name alone, rather than
+    // text over text or over the curve. The coordinates are still [idF]x/[idF]y.
+    if (best.hard >= 250 && labels === 'both') {
+      const short = placer.evaluate([el.P], el.name, el.side, el.P)
+      if (short.cost < best.cost) { best = short; el.label = el.name }
+    }
+    el.orient = placer.commit(best).side
+  }
+  for (const el of shownLines) {
+    el.text = conicLineLabel(el.P, el.d)
+    if (labels === 'none') { el.orient = conicLabelSide(el.side); continue }
+    const spot = placer.commit(placer.evaluate(conicLineSpots(el, getViewport()), el.text, el.side, null))
+    el.orient = spot.side
+    el.anchor = spot.at
+  }
+
+  // Shown again under the same id (another list, another colour): what is
+  // already on the graph changes in place, and only what is new fades in.
+  const risingPoints = [], risingLines = []
+  const put = (key, entry, expr, rising, prop) => {
+    const again = old.has(key)
+    old.delete(key)
+    calc.setExpression({ ...expr, [prop]: again ? 1 : 0 })
+    registry.set(key, { conic: id, funcId, ...entry })
+    if (!again) rising.push(expr.id)
+  }
+  for (const el of shownPoints) {
+    const cId = `con_${id}_${el.code}`
+    // A real point: [idF]x, a projection, the view keeping it in frame.
+    put(`pt::${id}${el.code}`,
+      { calcId: cId, calcIds: [cId], numX: el.P[0], numY: el.P[1], color, fadeProps: { pointOpacity: 1 } },
+      { id: cId, latex: `(${conicNum(el.P[0])},${conicNum(el.P[1])})`, color, showLabel: !!el.label, label: el.label,
+        labelOrientation: el.orient, pointStyle: 'POINT' },
+      risingPoints, 'pointOpacity')
+  }
+  for (const el of shownLines) {
+    const lId = `conl_${id}_${el.code}`
+    put(`conl::${id}${el.code}`,
+      { calcIds: [lId], fadeProps: { lineOpacity: 1 } },
+      { id: lId, latex: conicLineLatex(el.P, el.d), color, lineWidth: 2, lineStyle: el.kind === 'axes' ? 'DOTTED' : 'DASHED' },
+      risingLines, 'lineOpacity')
+    if (labels === 'none') continue
+    // Its equation, written beside it where the placer found room.
+    const tId = `conlab_${id}_${el.code}`
+    put(`conlab::${id}${el.code}`,
+      { calcIds: [tId], fadeProps: { pointOpacity: 1 } },
+      { id: tId, latex: `(${conicNum(el.anchor[0])},${conicNum(el.anchor[1])})`, color, showLabel: true,
+        label: el.text, labelOrientation: el.orient, pointSize: 1 },
+      risingPoints, 'pointOpacity')
+  }
+
+  // What an earlier call showed under this id and this one does not leaves the
+  // way it came.
+  const leaving = [...old.entries()]
+  leaving.forEach(([key]) => registry.delete(key))
+  await Promise.all([
+    fadeIn(calc, risingPoints, { pointOpacity: 1 }),
+    fadeIn(calc, risingLines, { lineOpacity: 1 }),
+    ...leaving.map(([, e]) => fadeOut(calc, e.calcIds ?? [], e.fadeProps ?? { pointOpacity: 1 })),
+  ])
+  return { type: shape.type, ...numbers }
+}
+
+export async function removeConicElements(calc, id) {
+  const gone = [...registry.entries()].filter(([, e]) => e.conic === id)
+  gone.forEach(([key]) => registry.delete(key))
+  await Promise.all(gone.map(([, e]) => fadeOut(calc, e.calcIds ?? [], e.fadeProps ?? { pointOpacity: 1 })))
+}
+
+// Live value getter for valueRefs.js: a conic's numbers, by the id its
+// elements were shown under — [id]a/b (semi-axes), c (centre or vertex → focus),
+// p (focus → directrix), e (eccentricity), h/k (vertex or centre), r (circle).
+export function getConicValue(id, token) {
+  const e = registry.get(`con::${id}`)
+  if (!e || !['a', 'b', 'c', 'p', 'e', 'h', 'k', 'r'].includes(token)) return undefined
+  return Number.isFinite(e[token]) ? e[token] : undefined
 }
 
 export async function markRoots(calc, id, funcId, opts = {}) {
@@ -1690,6 +2184,7 @@ export function adjustView(calc, cx = 0, cy = 0, range = 10) {
   // 'range' = vertical (y) span; x follows from the pixel ratio.
   const hy   = range / 2
   const hx   = hy * pixelAspect(calc)
+  _vpByLesson = true
   const from = { ..._vp }
   _vp = { left: cx - hx, right: cx + hx, bottom: cy - hy, top: cy + hy }
   return animateViewport(calc, from, _vp)
@@ -1697,6 +2192,7 @@ export function adjustView(calc, cx = 0, cy = 0, range = 10) {
 
 export function setViewport(calc, xMin, xMax, yMin, yMax) {
   const from = { ..._vp }
+  _vpByLesson = true
   _vp = squareBounds(calc, { left: xMin, right: xMax, bottom: yMin, top: yMax })
   return animateViewport(calc, from, _vp)
 }
@@ -1911,6 +2407,7 @@ export function clearAll(calc) {
   // in a clump at the centre for a frame before the next draw wipes them.
   _emitTrigOverlay([])
   _vp = { left: -10, right: 10, bottom: -7.5, top: 7.5 }
+  _vpByLesson = false
   calc?.setBlank()
   _emitSliders()
   _emitLiveEquations()
@@ -2043,7 +2540,7 @@ export function nameFunc(calc, id, funcId, label, x, y, opts = {}) {
     id: cId, latex: `(${x0},${+yVal.toFixed(6)})`,
     color, showLabel: true, label: _fmtLabel(label), labelOrientation: orientation, hidden: true,
   })
-  registry.set(`lbl::${id}`, { calcId: cId, funcId, x: x0, y: yVal })
+  registry.set(`lbl::${id}`, { calcId: cId, funcId, x: x0, y: yVal, label: _fmtLabel(label), orientation })
 }
 
 export function removeNameFunc(calc, id) {

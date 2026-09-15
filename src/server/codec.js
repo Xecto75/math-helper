@@ -101,6 +101,7 @@ const FUNCS = {
   fgb: 'graph-angle-between',      fgx: 'graph-remove-angle',
   fB:  'graph-batch-add-points',   fBP: 'graph-batch-show-projections',
   fTC: 'graph-trig-circle',
+  fK:  'graph-conic-elements',     fKx: 'graph-remove-conic-elements',
 
   // ── Data tables ──────────────────────────────────────────────────────────────
   Tc: 'tab-create-grid',    Tx: 'tab-erase-grid',     Ta: 'tab-add-column',

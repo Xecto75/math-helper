@@ -27,6 +27,11 @@ export const T = {
     'num.7': 'sept',
     'num.8': 'huit',
     'num.9': 'neuf',
+
+    // ── Conic elements (the letter written beside each point) ────────────────
+    'conic.vertex': 'S',
+    'conic.focus':  'F',
+    'conic.centre': 'C',
   },
 
   en: {
@@ -57,6 +62,11 @@ export const T = {
     'num.7': 'seven',
     'num.8': 'eight',
     'num.9': 'nine',
+
+    // ── Conic elements (the letter written beside each point) ────────────────
+    'conic.vertex': 'V',
+    'conic.focus':  'F',
+    'conic.centre': 'C',
   },
 }
 

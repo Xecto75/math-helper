@@ -1077,6 +1077,35 @@ export function demoGraphMarkRoots(funcIdRaw) {
   return { snapshot: null, script }
 }
 
+// ── graph-conic-elements ──────────────────────────────────────────────────────
+// The names written on the graph follow the lesson's language (S for a sommet,
+// V for a vertex); the ids the lesson reads them back by never change.
+export function demoGraphConicElements(funcIdRaw, showRaw, idRaw, labelsRaw, colorRaw, lang = 'en') {
+  const funcId = (funcIdRaw || '').trim()
+  if (!funcId) throw new Error('Enter the ID of the plotted conic.')
+  const id    = (idRaw || '').trim() || funcId
+  const named = String(colorRaw ?? '').trim()
+  const opts  = {
+    show:   String(showRaw ?? ''),
+    labels: String(labelsRaw ?? '').trim() || 'both',
+    color:  named ? resolveColor(named) : undefined,
+    names:  { vertex: t('conic.vertex', lang), focus: t('conic.focus', lang), centre: t('conic.centre', lang) },
+  }
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `conicElements("${funcId}")` },
+    { type: 'ggb-conic-elements', id, funcId, opts },
+  ] }
+}
+
+export function demoGraphRemoveConicElements(idRaw) {
+  const id = (idRaw || '').trim()
+  if (!id) throw new Error('Enter the ID the elements were shown under.')
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `removeConicElements("${id}")` },
+    { type: 'ggb-remove-conic-elements', id },
+  ] }
+}
+
 // ── graph-trig-circle ────────────────────────────────────────────────────────
 export function demoGraphTrigCircle() {
   return {

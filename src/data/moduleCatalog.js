@@ -466,9 +466,13 @@ REFERENCING A SOLID: [id]a/r/h/l/d/R — the same letters S3m labels: cube→a �
   Function (fp) : [id]expr = its expression as text · [id]N = the Nth number in it L→R, either a
                   literal ("2x+4" → [id]0=2, [id]1=4) or a |slider| live value ("|a|x+|b|" → [id]0=a)
   Slider        : [name]v — by its own name, whichever function uses it
+  Conic (fK)    : its points are graph points — [idF]x [idF]y, [idV1]x … · its numbers [id]a [id]b [id]c
+                  [id]p [id]e [id]h [id]k [id]r
 
 fp with |name| sliders auto-shows a live equation badge — nothing to call.
-ORDERING: fp before fV/fr/fn/fP/ft/fs on the same function. fp needs an id arg. fP needs a non-root x.`,
+CONICS: plot the conic with fp in any form ("x^2/9 + y^2/4 = 1", "y = (x-1)^2/8"), then fK shows its vertices, foci,
+  directrix, asymptotes — never work those out and place them with fa/fh/fsg yourself.
+ORDERING: fp before fV/fr/fn/fP/ft/fs/fK on the same function. fp needs an id arg. fP needs a non-root x.`,
     funcs: `FUNCTIONS [positional args]:
   fp:[expr,id,hideLabel]                               — plot f(x); id required ("f","g"). Auto-labels "f(x) = expr" near the curve unless hideLabel=1 — no fn for the same curve unless you need another x or custom text.
                                     fp also takes an INEQUALITY and shades the region it describes: "x > -2", "x >= -2",
@@ -516,6 +520,13 @@ ORDERING: fp before fV/fr/fn/fP/ft/fs on the same function. fp needs an id arg. 
   fB:[points,showCoords,color]                         — batch add points "id:x:y:label|..." (parallel)
   fBP:[pointIds]                                       — batch show projections "id1|id2|..." (parallel)
   fTC:[]                                               — draw complete unit circle (all 16 standard angles)
+  fK:[funcId,show,id,labels,color]                     — CHARACTERISTIC ELEMENTS of the conic fp plotted (parabola, ellipse, circle,
+                                    hyperbola; any form, position or tilt), computed from the curve: show = comma list of
+                                    vertices|foci|centre|directrix|asymptotes|axes, blank = the usual ones for that conic;
+                                    labels both|names|coords|none. Its points are graph points id+code (id "P": PV PF for a
+                                    parabola, PC PV1 PV2 (PV3 PV4 ellipse) PF1 PF2) → cg at [PF]x,[PF]y; numbers [P]a [P]b [P]c
+                                    [P]p [P]e [P]h [P]k [P]r.
+  fKx:[id]                                             — remove the elements shown under that id
 `,
   },
 

@@ -64,6 +64,7 @@ import {
   demoGraphDivideSegment, demoGraphRemoveDivideSegment,
   demoGraphSetViewport, demoGraphNameFunc, demoGraphTangent,
   demoGraphAddHorizontalLine, demoGraphMarkRoots, demoGraphShowProjection, demoGraphPlotDerivative,
+  demoGraphConicElements, demoGraphRemoveConicElements,
   demoGraphRiemannSum, demoGraphDrawVector, demoGraphAngleBetween, demoGraphRemoveAngle, demoGraphDrawAngle, demoGraphTransformFunction,
   demoGraphBatchAddPoints, demoGraphBatchShowProjections, demoGraphTrigCircle,
   demoGeo3dCreate, demoGeo3dRemove, demoGeo3dClear,
@@ -773,6 +774,8 @@ export default function App() {
       case 'graph-tangent':                return demoGraphTangent(inputs.funcId, inputs.x0, inputs.y0)
       case 'graph-horizontal-line':        return demoGraphAddHorizontalLine(inputs.y)
       case 'graph-mark-roots':             return demoGraphMarkRoots(inputs.funcId)
+      case 'graph-conic-elements':         return demoGraphConicElements(inputs.funcId, inputs.show, inputs.id, inputs.labels, inputs.color, langRef.current)
+      case 'graph-remove-conic-elements':  return demoGraphRemoveConicElements(inputs.id)
       case 'graph-show-projection':        return demoGraphShowProjection(inputs.pointId, inputs.showValues)
       case 'graph-trig-circle':            return demoGraphTrigCircle()
       case 'graph-batch-add-points':       return demoGraphBatchAddPoints(inputs.points, inputs.showCoords, inputs.color)

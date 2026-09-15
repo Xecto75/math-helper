@@ -109,7 +109,7 @@ export const CATEGORIES = [
       {
         id:          'eq-replace-variable',
         label:       'Replace Variable',
-        description: 'Fade symbolic letters and replace with numeric values — equation must already be on the page. A value can be a hardcoded number OR a live reference to whatever created it, so it never goes out of sync: [id]0/[id]h/[id]r/[id]aN (2D or flat-2D shape side/height/radius/vertex-angle), [id]a/[id]r/[id]h/[id]l/[id]d/[id]R (a 3D solid\'s dimension — matches the letter shown by Show Volume Measures for that shape type), [id]x/[id]y (a graph point), [id]x1/[id]y1/[id]x2/[id]y2/[id]len (a graph segment), [id]r<row>c<col> (a table cell, 0-indexed), [funcId]N (the Nth number written in a plotted expression, left to right — a literal like "2x+4"\'s 2/4 OR a |slider| var\'s live value), [sliderName]v (a slider addressed directly by its own name).',
+        description: 'Fade symbolic letters and replace with numeric values — equation must already be on the page. A value can be a hardcoded number OR a live reference to whatever created it, so it never goes out of sync: [id]0/[id]h/[id]r/[id]aN (2D or flat-2D shape side/height/radius/vertex-angle), [id]a/[id]r/[id]h/[id]l/[id]d/[id]R (a 3D solid\'s dimension — matches the letter shown by Show Volume Measures for that shape type), [id]x/[id]y (a graph point), [id]x1/[id]y1/[id]x2/[id]y2/[id]len (a graph segment), [id]r<row>c<col> (a table cell, 0-indexed), [funcId]N (the Nth number written in a plotted expression, left to right — a literal like "2x+4"\'s 2/4 OR a |slider| var\'s live value), [sliderName]v (a slider addressed directly by its own name), [id]a/[id]b/[id]c/[id]p/[id]e/[id]h/[id]k/[id]r (a conic\'s numbers from Conic Elements — its points are graph points, e.g. [idF]x/[idF]y).',
         status:      'ready',
         inputs: [
           { id: 'replacements', label: 'Replacements (a=v,b=v,...)', type: 'text', default: 'a=2,b=-3,c=1', placeholder: 'a=2,b=-3,c=1  or  m=[fx1]0,b=[fx1]1  or  a=[a]v,b=[b]v' },
@@ -979,6 +979,34 @@ export const CATEGORIES = [
             ],
           },
           { id: 'value', label: 'Value', type: 'number', default: 2 },
+        ],
+      },
+      {
+        id: 'graph-conic-elements',
+        label: 'conicElements',
+        description: 'Show the characteristic elements of a conic already plotted with plotFunction — parabola, ellipse, circle or hyperbola, written in any form, anywhere, even tilted ("y = 2(x-1)^2 + 3", "(x-2)^2/9 + (y+1)^2/4 = 1", "x^2 - y^2 = 4", "xy = 4"). Computed from the curve, never typed: vertices, foci, centre, directrix, asymptotes, axes (blank = the usual ones for that conic). Each point is a real graph point whose ID is this ID followed by its code — with ID "P": PV (vertex of a parabola), PF (its focus), PC (centre), PV1…PV4, PF1, PF2 — so a comment or an equation reads it as [PF]x and [PF]y. The names written on the graph follow the lesson language (S for sommet in French). The conic\'s numbers: [P]a, [P]b, [P]c (centre or vertex → focus), [P]p (focus → directrix), [P]e, [P]h and [P]k (vertex or centre), [P]r (circle).',
+        status: 'ready', useGraph: true,
+        inputs: [
+          { id: 'funcId', label: 'Conic (its function ID)', type: 'func-id', default: '' },
+          { id: 'show',   label: 'Elements (blank = the usual ones)', type: 'text', default: '', placeholder: 'vertices, foci, directrix, asymptotes, centre, axes' },
+          { id: 'id',     label: 'ID (blank = the conic\'s)', type: 'text', default: '' },
+          { id: 'labels', label: 'Labels', type: 'select', default: 'both',
+            options: [
+              { value: 'both',   label: 'Name and coordinates' },
+              { value: 'names',  label: 'Names only' },
+              { value: 'coords', label: 'Coordinates only' },
+              { value: 'none',   label: 'None' },
+            ] },
+          { id: 'color',  label: 'Color (blank = reserved blue)', type: 'color-name', default: '' },
+        ],
+      },
+      {
+        id: 'graph-remove-conic-elements',
+        label: 'removeConicElements',
+        description: 'Fade out every element Conic Elements showed under an ID',
+        status: 'ready', useGraph: true,
+        inputs: [
+          { id: 'id', label: 'ID', type: 'text', default: '' },
         ],
       },
     ],

@@ -417,10 +417,16 @@ export function createShape3D(threeRef, id, type, a, b, c, opts = {}) {
     display.setDisplayMode('3d')
     const geo = buildVolumetricGeometry(type, a, b, c)
     group = buildVolumetricGroup(geo, hexColor, opts.opacity ?? 0.6)
+    // A solid stands ON the floor grid instead of sinking halfway through it:
+    // lifted by how far its lowest point sits below its own centre.
+    geo.computeBoundingBox()
+    group.position.y = -(geo.boundingBox?.min.y ?? 0)
     registry.set(id, { type, isFlat: false, a, b, c, opts })
   }
 
   display.addObject(id, group)
+  // The camera looks at the middle of the solids, which is now above the floor.
+  if (!FLAT_TYPES.has(type)) display.frame3D?.()
 
   if (FLAT_TYPES.has(type) && !group.userData.isCircle && opts.autoTicks !== false) {
     autoTickEqualSides(threeRef, id, group.userData.vertices)

@@ -14,6 +14,8 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
   const rendererRef  = useRef(null)
   const cameraRef    = useRef(null)   // active camera (switches by mode)
   const perspCamRef  = useRef(null)
+  // The glide frame3D is running, so a newer one replaces it.
+  const frame3DRef   = useRef(null)
   const orthoCamRef  = useRef(null)
   const controlsRef  = useRef(null)
   const is2DRef      = useRef(false)
@@ -346,9 +348,12 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
       } else {
         const persp = perspCamRef.current
         if (!persp) return
+        // Distances and directions are measured from the point the camera
+        // orbits — the middle of the solids (see frame3D) — not from the origin.
+        const target   = controlsRef.current?.target?.clone() ?? new THREE.Vector3()
         const pos      = persp.position
         const fromPos  = pos.clone()
-        const fromDist = pos.length() || 1
+        const fromDist = fromPos.distanceTo(target) || 1
         const toDist   = distance ?? (zoom != null ? fromDist / zoom : fromDist)
 
         // Presets change the VIEWING ANGLE (a new direction to look from);
@@ -363,14 +368,14 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
         }
         const toDir = preset && PRESETS[preset]
           ? new THREE.Vector3(...PRESETS[preset]).normalize()
-          : fromPos.clone().normalize()
-        const toPos = toDir.multiplyScalar(toDist)
+          : fromPos.clone().sub(target).normalize()
+        const toPos = target.clone().add(toDir.multiplyScalar(toDist))
 
         const t0   = performance.now()
         const tick = () => {
           const p = ease(Math.min((performance.now() - t0) / dur, 1))
           pos.lerpVectors(fromPos, toPos, p)
-          persp.lookAt(0, 0, 0)
+          persp.lookAt(target)
           if (p < 1) requestAnimationFrame(tick)
         }
         requestAnimationFrame(tick)
@@ -378,6 +383,43 @@ const ThreeDisplay = forwardRef(function ThreeDisplay(_, ref) {
     },
 
     fitView2D: fit2D,
+
+    // The 3D camera orbits and looks at the middle of the solids on the canvas.
+    // They stand on the floor grid, so that middle is above it: looking at the
+    // origin put a solid high in the frame and cut its top off. The first solid
+    // is framed at once, as it appears; a later one glides the view over.
+    frame3D(duration = 0.35) {
+      const controls = controlsRef.current
+      const persp    = perspCamRef.current
+      if (!controls || !persp || is2DRef.current) return
+      const solids = Object.values(objectsRef.current).filter(o => !o.userData?.isFlat)
+      if (!solids.length) return
+      const box = new THREE.Box3()
+      for (const o of solids) { o.updateMatrixWorld(true); box.expandByObject(o) }
+      if (box.isEmpty()) return
+      const delta = box.getCenter(new THREE.Vector3()).sub(controls.target)
+      if (delta.length() < 1e-4) return
+      const fromTarget = controls.target.clone()
+      const fromCam    = persp.position.clone()
+      const token = {}
+      frame3DRef.current = token
+      if (solids.length === 1) {
+        controls.target.copy(fromTarget).add(delta)
+        persp.position.copy(fromCam).add(delta)
+        return
+      }
+      const ease = x => x < 0.5 ? 2*x*x : -1 + (4-2*x)*x
+      const dur  = Math.max(1, animMs(duration * 1000))
+      const t0   = performance.now()
+      const tick = () => {
+        if (frame3DRef.current !== token) return
+        const p = ease(Math.min((performance.now() - t0) / dur, 1))
+        controls.target.copy(fromTarget).addScaledVector(delta, p)
+        persp.position.copy(fromCam).addScaledVector(delta, p)
+        if (p < 1) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    },
 
     // Convert a world-space (wx, wy) coordinate to page (viewport) pixel coordinates
     getWorldToScreen(wx, wy) {

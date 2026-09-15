@@ -2543,11 +2543,12 @@ export function demoGeo3dClear() {
 // Labels exactly the dimensions needed for THAT shape's volume formula —
 // cube→a, sphere→r, cone/cylinder→r,h, prism→l,w,h, pyramid→a,h,
 // tetrahedron/octahedron→a, torus→R,r.
-export function demoGeo3dShowVolumeMeasures(idRaw, colorRaw) {
+export function demoGeo3dShowVolumeMeasures(idRaw, colorRaw, valuesRaw) {
   const id = (idRaw || 'shape1').trim()
   const color = (colorRaw || '').trim()
   const opts = {}
   if (color) opts.color = color
+  if (String(valuesRaw ?? '').trim() === 'letters') opts.letters = true
   return {
     snapshot: null,
     script: [{ type: 'ggb-3d-show-volume-measures', id, opts }],

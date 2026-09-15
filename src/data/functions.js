@@ -1915,11 +1915,16 @@ export const CATEGORIES = [
       {
         id: 'geo3d-show-volume-measures',
         label: 'Show Volume Measures',
-        description: 'Labels exactly the dimensions needed for THIS shape\'s volume formula: cube→a, sphere→r, cone/cylinder→r+h, rectangular-prism→l+w+h, pyramid→a+h, tetrahedron/octahedron→a, torus→R+r',
+        description: 'Labels exactly the dimensions needed for THIS shape\'s volume formula: cube→a, sphere→r, cone/cylinder→r+h, rectangular-prism→l+w+h, pyramid→a+h, tetrahedron/octahedron→a, torus→R+r. Values "Letters only" writes r, h… without the numbers — the measure is drawn and finding it is the point.',
         status: 'ready', use3D: true,
         inputs: [
           { id: 'id',    label: 'ID', type: 'text', default: 'shape1' },
           { id: 'color', label: 'Color (optional)', type: 'color-name', default: '' },
+          { id: 'values', label: 'Values', type: 'select', default: 'show',
+            options: [
+              { value: 'show',    label: 'Letter and value (r = 3)' },
+              { value: 'letters', label: 'Letters only (r, h)' },
+            ] },
         ],
       },
       {

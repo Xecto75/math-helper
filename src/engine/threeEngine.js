@@ -2164,6 +2164,9 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
   const hex   = opts.color ? resolveHex(opts.color) : 0x60a5fa
   const color = `#${hex.toString(16).padStart(6, '0')}`
   const fmt   = v => parseFloat((v ?? 0).toFixed(2))
+  // Letters only writes the name of each measure without its value ("r", not
+  // "r = 3"): the dimension is shown on the solid, and finding it is the lesson.
+  const tag   = (name, v) => opts.letters ? name : `${name} = ${fmt(v)}`
 
   const holder = new THREE.Group()
   const labels = []  // { pos: [x,y,z] (local), text }
@@ -2181,14 +2184,14 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
       const s = a ?? 2, h2 = s / 2
       const p1 = [-h2, -h2, h2], p2 = [h2, -h2, h2]
       addSolid(p1, p2)
-      labels.push({ pos: mid(p1, p2, [0, -0.32, 0]), text: `a = ${fmt(s)}` })
+      labels.push({ pos: mid(p1, p2, [0, -0.32, 0]), text: tag('a', s) })
       break
     }
     case 'sphere': {
       const r = a ?? 1.5
       const p1 = [0, 0, 0], p2 = [r, 0, 0]
       addSolid(p1, p2)
-      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: `r = ${fmt(r)}` })
+      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: tag('r', r) })
       break
     }
     case 'cone':
@@ -2197,12 +2200,12 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
       const baseY = -h / 2, topY = h / 2
       const rp1 = [0, baseY, 0], rp2 = [r, baseY, 0]
       addSolid(rp1, rp2)
-      labels.push({ pos: mid(rp1, rp2, [0, -0.32, 0]), text: `r = ${fmt(r)}` })
+      labels.push({ pos: mid(rp1, rp2, [0, -0.32, 0]), text: tag('r', r) })
       // Height runs straight up the central axis (matches how h is drawn in
       // a textbook cross-section) rather than offset along the visible edge.
       const hp1 = [0, baseY, 0], hp2 = [0, topY, 0]
       addDashed(hp1, hp2)
-      labels.push({ pos: mid(hp1, hp2, [0.35, 0, 0]), text: `h = ${fmt(h)}` })
+      labels.push({ pos: mid(hp1, hp2, [0.35, 0, 0]), text: tag('h', h) })
       break
     }
     case 'prism': case 'box': case 'rectangular-prism': {
@@ -2212,13 +2215,13 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
       const hw = w / 2, hh = hgt / 2, hd = d / 2
       const l1 = [-hw, -hh, hd], l2 = [hw, -hh, hd]
       addSolid(l1, l2)
-      labels.push({ pos: mid(l1, l2, [0, -0.32, 0]), text: `l = ${fmt(w)}` })
+      labels.push({ pos: mid(l1, l2, [0, -0.32, 0]), text: tag('l', w) })
       const hp1 = [hw, -hh, hd], hp2 = [hw, hh, hd]
       addDashed(hp1, hp2)
-      labels.push({ pos: mid(hp1, hp2, [0.38, 0, 0]), text: `h = ${fmt(hgt)}` })
+      labels.push({ pos: mid(hp1, hp2, [0.38, 0, 0]), text: tag('h', hgt) })
       const d1 = [hw, -hh, hd], d2 = [hw, -hh, -hd]
       addSolid(d1, d2)
-      labels.push({ pos: mid(d1, d2, [0.38, -0.2, 0]), text: `d = ${fmt(d)}` })
+      labels.push({ pos: mid(d1, d2, [0.38, -0.2, 0]), text: tag('d', d) })
       break
     }
     case 'pyramid': case 'square-pyramid': {
@@ -2233,12 +2236,12 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
       const R = side * Math.SQRT2 / 2
       const bp1 = [0, baseY, R], bp2 = [R, baseY, 0]
       addSolid(bp1, bp2)
-      labels.push({ pos: mid(bp1, bp2, [0, -0.32, 0.15]), text: `a = ${fmt(side)}` })
+      labels.push({ pos: mid(bp1, bp2, [0, -0.32, 0.15]), text: tag('a', side) })
       // Height runs from the base center straight up to the apex (which sits
       // exactly here), matching the textbook convention — not offset to a side.
       const hp1 = [0, baseY, 0], hp2 = [0, topY, 0]
       addDashed(hp1, hp2)
-      labels.push({ pos: mid(hp1, hp2, [0.35, 0, 0]), text: `h = ${fmt(h)}` })
+      labels.push({ pos: mid(hp1, hp2, [0.35, 0, 0]), text: tag('h', h) })
       break
     }
     case 'tetrahedron': {
@@ -2251,7 +2254,7 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
       const p1 = [k, k, k], p2 = [-k, -k, k]
       addSolid(p1, p2)
       const edge = Math.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2)
-      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: `a = ${fmt(edge)}` })
+      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: tag('a', edge) })
       break
     }
     case 'octahedron': {
@@ -2262,17 +2265,17 @@ export function showVolumeMeasures3D(threeRef, id, opts = {}) {
       const p1 = [R, 0, 0], p2 = [0, R, 0]
       addSolid(p1, p2)
       const edge = Math.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2)
-      labels.push({ pos: mid(p1, p2, [0, 0.3, 0.15]), text: `a = ${fmt(edge)}` })
+      labels.push({ pos: mid(p1, p2, [0, 0.3, 0.15]), text: tag('a', edge) })
       break
     }
     case 'torus': {
       const R = a ?? 1.5, r = b ?? 0.4
       const p1 = [0, 0, 0], p2 = [R, 0, 0]
       addSolid(p1, p2)
-      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: `R = ${fmt(R)}` })
+      labels.push({ pos: mid(p1, p2, [0, 0.3, 0]), text: tag('R', R) })
       const p3 = [R, 0, 0], p4 = [R + r, 0, 0]
       addSolid(p3, p4)
-      labels.push({ pos: mid(p3, p4, [0, -0.3, 0]), text: `r = ${fmt(r)}` })
+      labels.push({ pos: mid(p3, p4, [0, -0.3, 0]), text: tag('r', r) })
       break
     }
     default:

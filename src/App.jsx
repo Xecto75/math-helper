@@ -881,7 +881,7 @@ export default function App() {
       case 'geo3d-clear-highlights':  return demoGeo3dClearHighlights(inputs.id)
       case 'geo3d-set-view':          return demoGeo3dSetView(inputs.zoom, inputs.panX, inputs.panY, inputs.distance, inputs.duration, inputs.preset)
       case 'geo3d-add-text':       return demoGeo3dAddText(inputs.labelId, inputs.text, inputs.x, inputs.y)
-      case 'geo3d-show-volume-measures': return demoGeo3dShowVolumeMeasures(inputs.id, inputs.color)
+      case 'geo3d-show-volume-measures': return demoGeo3dShowVolumeMeasures(inputs.id, inputs.color, inputs.values)
       case 'geo3d-remove-volume-measures': return demoGeo3dRemoveVolumeMeasures(inputs.id)
       case 'geo3d-clear':          return demoGeo3dClear()
       default: throw new Error(`Unknown function: "${funcId}"`)

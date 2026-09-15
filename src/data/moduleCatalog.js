@@ -438,7 +438,7 @@ REFERENCING A SOLID: [id]a/r/h/l/d/R — the same letters S3m labels: cube→a �
   S3t:[labelId,text,x,y]                        — floating text label at world position (y<0 = below shape)
   S3x:[id]                                      — remove shape by id
   S3C:[]                                        — clear all shapes and labels
-  S3m:[id,color]                                — label the dimensions THIS shape's VOLUME formula needs (auto by type: cube→a sphere→r cone/cylinder→r+h rect-prism→l+w+h pyramid→a+h tetra/octahedron→a torus→R+r). Prefer over hand-written S3t labels.
+  S3m:[id,color,values]                                — label the dimensions THIS shape's VOLUME formula needs (auto by type: cube→a sphere→r cone/cylinder→r+h rect-prism→l+w+h pyramid→a+h tetra/octahedron→a torus→R+r). Prefer over hand-written S3t labels. values "letters" writes only the letters (r, h…), no numbers — for finding them.
   S3mx:[id]                                     — remove volume-measure labels
   S2E:[id,edgeIndex,color]                      — highlight one edge. Box solids only: edgeIndex 0-11 of the 12 box edges.
   S2Ex:[id,edgeIndex]                           — remove one edge's highlight

@@ -178,7 +178,9 @@ function buildVolumetricGeometry(type, a, b, c) {
   }
 }
 
-function buildVolumetricGroup(geometry, hexColor, opacity = 0.82) {
+// See-through enough that what is drawn inside a solid — a dashed radius, a
+// height in the same blue — still reads through its body.
+function buildVolumetricGroup(geometry, hexColor, opacity = 0.6) {
   const group = new THREE.Group()
   const mat = new THREE.MeshPhongMaterial({
     color:       hexColor,
@@ -414,7 +416,7 @@ export function createShape3D(threeRef, id, type, a, b, c, opts = {}) {
   } else {
     display.setDisplayMode('3d')
     const geo = buildVolumetricGeometry(type, a, b, c)
-    group = buildVolumetricGroup(geo, hexColor, opts.opacity ?? 0.82)
+    group = buildVolumetricGroup(geo, hexColor, opts.opacity ?? 0.6)
     registry.set(id, { type, isFlat: false, a, b, c, opts })
   }
 

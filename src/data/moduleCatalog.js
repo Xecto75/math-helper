@@ -136,7 +136,7 @@ export const MODULES = {
   // ── Equation ───────────────────────────────────────────────────────────────
   equation: {
     label: 'Equation Solving',
-    description: 'Algebra: solve, distribute, combine, substitute, inverse trig, exponents',
+    description: 'Algebra: solve, distribute, combine, substitute, inverse trig, exponents, arithmetic and geometric sequences',
     rules: `eq ONCE per page, never again mid-solve. ef for ANY degree-1 single-variable eq (fractions,
 multi-term, constants both sides). Non-linear (quadratic/trig/log): ec/es/eo/ed/eD manually.
 
@@ -246,7 +246,7 @@ INTENT: algebra/solve-for-x → an equation layout with eq-*.`,
   // ── Charts ─────────────────────────────────────────────────────────────────
   chart: {
     label: 'Fraction circles',
-    description: 'Fraction circles (pies) — a quantity drawn, not a grid of cells',
+    description: 'Fraction circles (pies) — a quantity drawn, not a grid of cells; possibility trees and Venn diagrams (counting, basic probability)',
     rules: `Same panel as tables (2), nothing else in common: a table is cells you fill in, a chart is
 a quantity you draw. A page has ONE or the other, never both.
 
@@ -287,11 +287,15 @@ ONE colour per chart, and whatever refers to it in text or an equation carries t
                                        ("toggle" cycles the three). The drawing does not move; only the
                                        number under it is rewritten.
   cN:[chartId,sets]                     — the number sets drawn inside one another, ℝ ⊃ ℚ ⊃ 𝔻 ⊃ ℤ ⊃ ℕ,
+                                          each with a few examples in its own band. sets "" = those five;
+                                          otherwise one row per ring, outermost first, "symbol|name|ex,ex".
+                                          The nesting is the teaching: a list of definitions cannot show
+                                          that every natural number is also an integer.
   cT:[stages,count,headers,results,id]  — POSSIBILITY TREE: a column per stage, a path per outcome, and
                                        the complete outcomes down a last column. Outcomes comma
                                        separated ("P,F"); stages that differ are separated by "|"
                                        ("P,F | 1,2,3,4,5,6" is a coin then a die). With no "|" the same
-                                       outcomes repeat `count` times. Any number of outcomes per stage.
+                                       outcomes repeat "count" times. Any number of outcomes per stage.
                                        headers names the columns; results="0" hides the last one.
                                        Counting the leaves IS the multiplication rule — use it for
                                        dénombrement, compound experiments and OU/ET, not only for coins.
@@ -303,10 +307,6 @@ ONE colour per chart, and whatever refers to it in text or an equation carries t
   cVh:[expr,color,id]                                  — shade the region expr names: "A∩B", "A∪B", "A'", "A∩B'", "(A∪B)'",
                                     "A∩B∩C". Use ∩ or &, ∪ or U, ' for the complement, () to group. Each cVh cross-fades out
                                     of the previous one, so walk the cases with several cVh on ONE cV. expr="" clears it.
-                                          each with a few examples in its own band. sets "" = those five;
-                                          otherwise one row per ring, outermost first, "symbol|name|ex,ex".
-                                          The nesting is the teaching: a list of definitions cannot show
-                                          that every natural number is also an integer.
   cX:[chartId]                          — several at once with "a|b|c" — fade a chart out and drop it
 Several charts can share the panel — they lay out in a row automatically, so two pies side by side
 is just two cP with different ids.
@@ -458,7 +458,7 @@ REFERENCING A SOLID: [id]a/r/h/l/d/R — the same letters S3m labels: cube→a �
   // ── Graphing (Desmos) ──────────────────────────────────────────────────────
   graph: {
     label: 'Function Graphing',
-    description: 'Desmos graphing: plot, shade, intersections, derivatives, Riemann, unit circle, vectors, transforms',
+    description: 'Desmos graphing: plot, shade, intersections, derivatives, Riemann, unit circle, vectors, transforms, conics (vertices, foci, directrix, asymptotes)',
     layouts: ['sg', 'tg', 'ge'],
     rules: `REFERENCING WHAT IS PLOTTED — pull the value live, never retype it:
   Point (fa)    : [id]x  [id]y
@@ -668,10 +668,13 @@ something. If two fit, take the one whose STRUCTURE matches, not the one sharing
 COVERAGE — judged on the TOPIC, separately from which example fits:
   IN  — arithmetic and fractions, order of operations, algebra (linear, quadratic, systems), plane
         geometry, angles, perimeter/area/volume, right-triangle trigonometry, the unit circle,
-        functions (linear, quadratic, exponential), unit conversion, descriptive statistics.
-  OUT — derivatives, integrals, limits, sequences and series, vectors, matrices, probability
-        distributions, complex numbers, formal proofs, and everything past them up to research
-        level → too-advanced, however simply they are asked.
+        functions (linear, quadratic, exponential), conics (parabola, ellipse, circle, hyperbola:
+        vertices, foci, directrix, asymptotes), arithmetic and geometric sequences, vectors
+        (components, norm, sum, scalar multiple, angle between), counting and basic probability
+        (possibility trees, Venn diagrams), unit conversion, descriptive statistics.
+  OUT — derivatives, integrals, limits, series (sums), matrices, probability distributions,
+        complex numbers, formal proofs, and everything past them up to research level →
+        too-advanced, however simply they are asked.
 
 MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another display needs a formula panel; "comments" for point/edge annotations. geo2d XOR geo3d. Prefer geo2d; geo_canvas only for SVG constructions or vertex arrows.
 

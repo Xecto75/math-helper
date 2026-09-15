@@ -1,5 +1,11 @@
 # Résumé pour le prochain agent — math-engine
 
+## 🔴 RÈGLE #0 — NE JAMAIS CHANGER LES EXEMPLES SANS QUE L'UTILISATEUR LE DEMANDE
+
+Le 2026-09-14, l'utilisateur a écrit : « TU DEVRAIS JAMAIS CHANGER LES EXEMPLES SANS QUE JE TE LE DEMANDE ». Pour lui, c'est « probablement la règle la plus importante ». Ça vise les leçons d'exemple (`src/data/exampleLessons.js`, `src/data/exampleOverrides.json`, `builtinLessons.js`) et les exemples écrits dans les prompts de l'IA (les lignes EXAMPLES du routeur et du générateur dans `src/data/moduleCatalog.js`). Le générateur copie ces exemples, et l'utilisateur les soigne à la main.
+
+Ce qui s'est passé : pour rendre les coniques utilisables par l'API, j'avais ajouté trois lignes d'exemple au routeur. L'utilisateur m'a arrêté tout de suite et je les ai retirées. Pour qu'une nouvelle fonction soit utilisable par l'API, on ne modifie que la doc : fonctions, règles, couverture, descriptions des modules. On ne touche jamais un exemple. Si un exemple aiderait, le dire en une phrase et attendre un oui.
+
 ## 🔴 RÈGLE #1 — LA PLUS IMPORTANTE, LIRE AVANT TOUT LE RESTE
 
 L'utilisateur a explicitement dit que c'est **la chose la plus importante** à corriger dans mon comportement, alors la voici en premier, pas noyée plus bas.

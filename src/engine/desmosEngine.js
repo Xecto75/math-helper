@@ -1680,7 +1680,9 @@ export async function showConicElements(calc, id, funcId, opts = {}) {
     const cx = (ext.left + ext.right) / 2, cy = (ext.bottom + ext.top) / 2
     const w = Math.max((ext.right - ext.left) * 1.45, 4), h = Math.max((ext.top - ext.bottom) * 1.45, 4)
     const target = squareBounds(calc, { left: cx - w / 2, right: cx + w / 2, bottom: cy - h / 2, top: cy + h / 2 })
-    if (target.right - target.left < (_vp.right - _vp.left) * 0.5) {
+    // A narrow panel (text beside the graph) is limited by its width, where a
+    // conic filling half of it is still cramped — so the bar is two thirds.
+    if (target.right - target.left < (_vp.right - _vp.left) * 0.65) {
       const from = { ..._vp }
       _vp = target
       await animateViewport(calc, from, _vp)

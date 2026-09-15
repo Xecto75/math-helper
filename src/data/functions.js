@@ -151,7 +151,7 @@ export const CATEGORIES = [
       {
         id:          'eq-sci-expand',
         label:       'Write Out Scientific Notation',
-        description: 'Turn a term written as m × 10^n into the plain number it stands for, by MOVING THE COMMA one place per beat while the exponent counts down — 24,56 × 10² becomes 245,6 then 2456. A zero is laid down whenever the comma runs off the end of the digits, and a negative exponent walks it the other way (24,56 × 10⁻² → 0,2456). Write the term as "24,56 * 10^2" (or "24,56 x 10^2") in Create Equation first. Set a target exponent to stop early instead — in either direction: 4,45 × 10⁴ with target 2 becomes 445 × 10², which is how two terms are put on the same power of ten before they are added.',
+        description: 'Turn a term written as m × 10^n into the plain number it stands for, by MOVING THE COMMA one place per beat while the exponent counts down — 24,56 × 10² becomes 245,6 then 2456. A zero is laid down whenever the comma runs off the end of the digits, and a negative exponent walks it the other way (24,56 × 10⁻² → 0,2456). Write the term with an x or a × in Create Equation first: "24,56 x 10^2". Written with a *, it is multiplied out on the spot and there is nothing left to write out. Set a target exponent to stop early instead — in either direction: 4,45 × 10⁴ with target 2 becomes 445 × 10², which is how two terms are put on the same power of ten before they are added.',
         status:      'ready',
         inputs: [
           { id: 'side',  label: 'Side', type: 'select', default: 'left',

@@ -319,7 +319,7 @@ export function deepClone(node) {
 // ordinary linear-algebra terms, untouched by any of this) never match.
 export function needsExprTree(content) {
   // An exponent that is not a plain integer — 2^n, r^(n-1) — is structure too.
-  return /[()/!]|[*×·]|\^\s*(?!-?\d+(?![.\d]))/.test(content)
+  return /[()/!]|[*×·÷]|\^\s*(?!-?\d+(?![.\d]))/.test(content)
 }
 
 // ── Parser ───────────────────────────────────────────────────────────────────
@@ -441,6 +441,9 @@ export function parseTermExpr(content, labels, colors) {
       const c = s[i]
       if (c === '*' || c === '×' || c === '·') { i++; node = bin('*', node, parsePow()) }
       else if (c === '/')                      { i++; node = bin('/', node, parsePow()) }
+      // "3/4 ÷ 2/5" is the same division, written inline with its own sign the
+      // way it is on paper, rather than stacked into a fraction of fractions.
+      else if (c === '÷')                      { i++; node = { ...bin('/', node, parsePow()), divSign: true } }
       // Implicit multiplication: "2(x+4)", "(x+1)(x+2)" — no explicit
       // operator between a finished factor and the next '(' means '*'.
       // Without this the parser just stopped here and silently dropped

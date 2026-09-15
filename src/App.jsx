@@ -76,7 +76,7 @@ import {
   demoGeo3dShowVolumeMeasures, demoGeo3dRemoveVolumeMeasures,
   demoGeo2dFlip, demoGeo2dRotate,
   demoGeo3dSnapShape, demoGeo3dNameVertices, demoGeo3dPolygonPoints,
-  demoEquationAnnotate, demoEquationTermOp, demoSciExpand, demoFactorialExpand, demoCrossMultiply, demoEquationAnnotateClear, demoEquationArrow, demoEquationArrowClear, demoEquationArrowChain, demoEquationSequence,
+  demoEquationAnnotate, demoEquationTermOp, demoSciExpand, demoFactorialExpand, demoCrossMultiply, demoFractionOp, demoEquationAnnotateClear, demoEquationArrow, demoEquationArrowClear, demoEquationArrowChain, demoEquationSequence,
   demoChartPie, demoChartPieSet, demoChartPieMode, demoChartRemove, demoChartNumberSets, demoChartVenn, demoChartTree, demoChartTreePath, demoChartVennHighlight,
  demoTableCreateGrid, demoTableEraseGrid, demoTableAddColumn,
   demoTableRemoveColumn, demoTableAddRow, demoTableRemoveRow,
@@ -785,6 +785,7 @@ export default function App() {
       case 'graph-draw-angle':        return demoGraphDrawAngle(inputs.ax, inputs.ay, inputs.bx, inputs.by, inputs.cx, inputs.cy, inputs.color, inputs.id, inputs.label)
       case 'graph-transform-function':return demoGraphTransformFunction(inputs.funcId, inputs.transformType, inputs.value)
       case 'eq-cross-multiply':       return demoCrossMultiply(inputs.equation)
+      case 'eq-fraction-op':          return demoFractionOp(inputs.expression)
       case 'eq-factorial':            return demoFactorialExpand(inputs.side, inputs.index)
       case 'eq-sci-expand':           return demoSciExpand(inputs.side, inputs.index, inputs.target)
       case 'eq-term-op':              return demoEquationTermOp(inputs.side, inputs.index, inputs.op, inputs.value)

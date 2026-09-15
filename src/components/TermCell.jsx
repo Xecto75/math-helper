@@ -341,7 +341,9 @@ function ExprNode({ node, parentPrec = 0, isRightChild = false, color, comma, he
     // notation anyone writes. Same markup as the top-level one — .expr-fraction
     // is already an inline-flex column, so it nests without any new CSS, and
     // every query that hunts for fraction blocks keeps finding these too.
-    if (node.op === '/') {
+    // A division typed with ÷ stays on the line with its sign ("3/4 ÷ 2/5");
+    // only a plain / stacks.
+    if (node.op === '/' && !node.divSign) {
       return (
         <span className="expr-fraction" data-expr-id={node.id}>
           <span className="expr-fraction-row">
@@ -362,7 +364,7 @@ function ExprNode({ node, parentPrec = 0, isRightChild = false, color, comma, he
       node.b.base?.t === 'num' && node.b.base.v === 10
     const prec = (node.op === '+' || node.op === '-') ? 1 : 2
     const needsParens = prec < parentPrec || (prec === parentPrec && isRightChild)
-    const opSym = node.op === '*' ? '×' : node.op
+    const opSym = node.op === '*' ? '×' : node.op === '/' ? '÷' : node.op
     return (
       <span className="expr-group" data-expr-id={node.id}>
         {needsParens && <span className="pg-open">(</span>}
@@ -391,7 +393,7 @@ const opClass   = (term) => `term-op${term.mixedJoin ? ' term-op--held' : ''}${t
 // row of chips + connectors.
 function ExprTerm({ term, showOp, innerRef }) {
   const root = term.expr
-  const isTopFraction = root.t === 'bin' && root.op === '/'
+  const isTopFraction = root.t === 'bin' && root.op === '/' && !root.divSign
   if (isTopFraction) {
     return (
       <div className={wrapClass(term)} ref={innerRef} data-id={term.id}>

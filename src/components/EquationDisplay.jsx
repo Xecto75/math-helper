@@ -145,13 +145,13 @@ function nodeTex(n, parentPrec = 0, isRight = false, comma = false, exact = fals
       return par ? `\\left(${s}\\right)` : s
     }
     case 'bin': {
-      if (n.op === '/') {
+      if (n.op === '/' && !n.divSign) {
         return `\\frac{${nodeTex(n.a, 0, false, comma, exact)}}{${nodeTex(n.b, 0, false, comma, exact)}}`
       }
       const sci  = n.op === '*' && n.b?.t === 'pow' && n.b.base?.t === 'num' && n.b.base.v === 10
       const prec = (n.op === '+' || n.op === '-') ? 1 : 2
       const par  = prec < parentPrec || (prec === parentPrec && isRight)
-      const sym  = n.op === '*' ? ' \\times ' : ` ${n.op} `
+      const sym  = n.op === '*' ? ' \\times ' : n.op === '/' ? ' \\div ' : ` ${n.op} `
       const s    = nodeTex(n.a, prec, false, comma, sci || exact) + sym + nodeTex(n.b, prec, true, comma, exact)
       return par ? `\\left(${s}\\right)` : s
     }

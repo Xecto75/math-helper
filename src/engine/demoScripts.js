@@ -1600,6 +1600,30 @@ export function demoCrossMultiply(eqRaw) {
   }
 }
 
+// ── eq-fraction-op ────────────────────────────────────────────────────────────
+// An operation on fractions, worked the way it is on paper. The solve already
+// knows every move — the ×k that brings two fractions to one denominator, the ×
+// that splits onto both lines, the flip of a ÷, the ÷g that reduces — so this
+// puts the operation up, written the way a student writes it, and runs it. Left
+// blank, it works out whatever is already on the equation panel.
+export function demoFractionOp(exprRaw) {
+  const raw = String(exprRaw ?? '').trim()
+  const solve = [
+    { type: 'showTitle', text: raw ? `fractionOp("${raw}")` : 'fractionOp()' },
+    { type: 'full-solve-current' },
+  ]
+  if (!raw) return { snapshot: null, script: solve }
+  const eq = raw
+    .replace(/−/g, '-')
+    // A colon between two numbers is a division, the way it is written in French.
+    .replace(/(\d)\s*:\s*(?=\d)/g, '$1 ÷ ')
+  const base = demoEquationCreate(eq)
+  return {
+    snapshot: base.snapshot,
+    script: [...base.script, { type: 'pause', seconds: 0.6 }, ...solve],
+  }
+}
+
 // ── eq-factorial-expand ───────────────────────────────────────────────────────
 export function demoFactorialExpand(sideRaw, indexRaw) {
   const side = String(sideRaw ?? 'left').trim() === 'right' ? 'right' : 'left'
@@ -1650,7 +1674,7 @@ export function demoEquationCreate(eqText) {
     /;/.test(eq) || /[A-Za-zα-ω]_[\w{]/.test(eq) ||
     // So does an exponent that is not a plain number: 2^n, r^(n-1).
     /\^\s*(?!-?\d+(?![.\d]))/.test(eq) ||
-    /\d\s*[x×·]\s*[\d(]/i.test(eq) ||
+    /\d\s*[x×·÷]\s*[\d(]/i.test(eq) ||
     // Radicals need the rich parser too: the classic grammar has no notion of
     // one, so "sqrt(16)" came back as a term whose variable was the literal
     // text "sqrt(16)" — printed as the word, never as a radical sign.

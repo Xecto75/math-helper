@@ -182,6 +182,16 @@ export const CATEGORIES = [
         ],
       },
       {
+        id:          'eq-fraction-op',
+        label:       'Fraction Operation',
+        description: 'Work out an operation on fractions the way it is done on paper. + and − first bring the fractions to the same denominator (×k beside each), then add or subtract the numerators; × multiplies numerator by numerator and denominator by denominator; ÷ turns the second fraction upside down and becomes a ×. The answer is reduced at the end (÷ the common factor beside each half). Type the operation here, with as many fractions as needed: 2/3 + 1/4, 5/6 − 1/4, 2/3 × 3/4, 3/4 ÷ 2/5 (x, * and : work too). Blank = work out the one already on the equation panel.',
+        status:      'ready',
+        inputs: [
+          { id: 'expression', label: 'Operation (blank = the one on screen)', type: 'text',
+            default: '2/3 + 1/4', placeholder: '3/4 ÷ 2/5' },
+        ],
+      },
+      {
         id:          'eq-annotate',
         label:       'Annotate Part of the Equation',
         description: 'Underline part of the equation and write a note under it — for a formula being EXPLAINED rather than solved (y = ax + b: what a is, what b is). Cells are counted per side from 0, so in "y = ax + b" the right side is 0 = ax and 1 = b. "To" blank annotates that one cell; give it a bigger index to underline a run of them. "Part" narrows it to the coefficient or the variable inside a cell — the a or the x of ax. Overlapping annotations stack on their own lines automatically.',

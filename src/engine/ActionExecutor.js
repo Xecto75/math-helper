@@ -4456,7 +4456,13 @@ case 'ggb-2d-snap': {
           // Animating before the commit made the last frame a jump: the half
           // that had just slid down snapped back up to take its new place, so
           // the move ended exactly where it should have looked smoothest.
+          // A ÷ written inline leaves before the × arrives, rather than being
+          // swapped for it on the frame the flip is committed.
+          const divOp = [...(wrap()?.querySelectorAll('.term-op') ?? [])]
+            .find(o => o.textContent.trim() === '÷')
+          if (divOp) await gsap.to(divOp, { opacity: 0, duration: 0.25, ease: 'power2.in' }).then()
           node.op = '*'
+          delete node.divSign
           const t = node.b.a; node.b.a = node.b.b; node.b.b = t
           flushSync(() => setState(state.snapshot()))
 

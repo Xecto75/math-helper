@@ -136,7 +136,7 @@ export const MODULES = {
   // ── Equation ───────────────────────────────────────────────────────────────
   equation: {
     label: 'Equation Solving',
-    description: 'Algebra: solve, distribute, combine, substitute, inverse trig, exponents, arithmetic and geometric sequences',
+    description: 'Algebra: solve, distribute, combine, substitute, inverse trig, exponents, arithmetic and geometric sequences, operations on fractions',
     rules: `eq ONCE per page, never again mid-solve. ef for ANY degree-1 single-variable eq (fractions,
 multi-term, constants both sides). Quadratic ax^2+bx+c: eQ. Other non-linear (trig/log): ec/es/eo/ed/eD
 manually.
@@ -200,6 +200,12 @@ INTENT: algebra/solve-for-x → an equation layout with eq-*.`,
                                               Write the unknown in |pipes| when it is a NUMERATOR —
                                               "2/3 = |x|/12" — or x/12 parses as (1/12)x and there is no
                                               ratio left to cross. A denominator needs no pipes.
+  eFr:[expression]                          — FRACTION OPERATION worked the way it is on paper: + and − bring the
+                                              fractions to one denominator (×k beside each), then combine the numerators;
+                                              × pairs numerator with numerator and denominator with denominator; ÷ turns
+                                              the second fraction over and becomes ×; the answer is reduced last. Type the
+                                              operation into eFr itself — "2/3 + 1/4", "3/4 ÷ 2/5", as many fractions as
+                                              needed — with no eq before it.
   eFa:[side,index]                          — expand a FACTORIAL one factor at a time: 5! → 4!·5 → 3!·4·5
                                               → … → 1·2·3·4·5. Write it in eq with a plain "!" ("5!",
                                               "5! = x"). Follow with ef to multiply it out. This is the

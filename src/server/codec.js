@@ -39,6 +39,7 @@ const FUNCS = {
   eSc: 'eq-sci-expand',
   eFa: 'eq-factorial',
   eR3: 'eq-cross-multiply',
+  eFr: 'eq-fraction-op',
 
   // ── Canvas geometry (SVG) ───────────────────────────────────────────────────
   gp: 'geo-create-polygon',  gx: 'geo-erase-shape',     gm: 'geo-move-shape',

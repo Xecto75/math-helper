@@ -1804,72 +1804,6 @@ export async function removeRoots(calc, id) {
   await fadeOut(calc, e.calcIds, e.fadeProps ?? { pointOpacity: 1 })
 }
 
-export async function plotDerivative(calc, id, funcId, opts = {}) {
-  const fn = registry.get(`fn::${funcId}`)
-  if (!fn) return
-  // A region is a shaded half-plane, not a curve: it has no y for a given x,
-  // so there is nothing here to shade under, cross, root, differentiate or take
-  // a tangent to. Bailing keeps a mis-authored step inert instead of placing
-  // points at y = true, which is what an inequality evaluates to.
-  if (fn.isRegion) return
-  const color     = opts.color ? rgbToHex(opts.color) : darken(fn.color, 0.7)
-  const lineWidth = opts.thickness ?? 2
-  const latex     = `\\frac{d}{dx}\\left(${fn.latex ?? fn.expr}\\right)`
-  calc.setExpression({ id: `deriv_${id}`, latex, color, lineWidth, lineOpacity: 0 })
-  registry.set(`deriv::${id}`, { calcId: `deriv_${id}`, funcId, fadeProps: { lineOpacity: 1 } })
-  await fadeIn(calc, [`deriv_${id}`], { lineOpacity: 1 })
-  raiseSegments(calc)
-}
-
-export async function removeDerivative(calc, id) {
-  const e = registry.get(`deriv::${id}`)
-  if (!e) return
-  registry.delete(`deriv::${id}`)
-  await fadeOut(calc, [e.calcId], e.fadeProps ?? { lineOpacity: 1 })
-}
-
-export async function riemannSum(calc, id, funcId, a, b, n, method = 'midpoint', opts = {}) {
-  const fn = registry.get(`fn::${funcId}`)
-  if (!fn) return
-  const f = makeEval(fn.expr)
-  if (!f) return
-  const color   = opts.color ? rgbToHex(opts.color) : darken(fn.color, 0.7)
-  const fillOp  = opts.fillOpacity ?? 0.5
-  const nClamp  = Math.max(1, Math.min(n, 50))
-  const dx      = (b - a) / nClamp
-  const calcIds = []
-  for (let i = 0; i < nClamp; i++) {
-    const xi  = a + i * dx
-    const xi1 = xi + dx
-    const xS  = method === 'left' ? xi : method === 'right' ? xi1 : (xi + xi1) / 2
-    let height
-    try { height = f(xS) } catch { continue }
-    if (!isFinite(height)) continue
-    const cId   = `riemann_${id}_${i}`
-    const xL    = +xi.toFixed(8)
-    const xR    = +xi1.toFixed(8)
-    const h     = +height.toFixed(8)
-    const latex = h >= 0
-      ? `0\\le y\\le${h}\\left\\{${xL}\\le x\\le${xR}\\right\\}`
-      : `${h}\\le y\\le0\\left\\{${xL}\\le x\\le${xR}\\right\\}`
-    calc.setExpression({ id: cId, latex, color, fillOpacity: 0, lineOpacity: 0, lineWidth: 1 })
-    calcIds.push(cId)
-  }
-  registry.set(`riemann::${id}`, { calcIds, funcId, fadeProps: { fillOpacity: fillOp, lineOpacity: 1 } })
-  // Re-add the function curve on top
-  calc.removeExpression({ id: fn.calcId })
-  calc.setExpression({ id: fn.calcId, latex: fn.latex ?? fn.expr, color: fn.color, lineWidth: fn.lineWidth, lineOpacity: 1 })
-  await fadeIn(calc, calcIds, { fillOpacity: fillOp, lineOpacity: 1 })
-  raiseSegments(calc)
-}
-
-export async function removeRiemannSum(calc, id) {
-  const e = registry.get(`riemann::${id}`)
-  if (!e) return
-  registry.delete(`riemann::${id}`)
-  await fadeOut(calc, e.calcIds, e.fadeProps ?? { fillOpacity: 0.5, lineOpacity: 1 })
-}
-
 // Kept as its own name because lessons and the compact codec already call it,
 // but there is only one implementation now: an arrow IS a segment with a head,
 // and having drawn them separately is how the vector ended up without the id,
@@ -2550,68 +2484,7 @@ export function removeNameFunc(calc, id) {
   if (e) { calc.removeExpression({ id: e.calcId }); registry.delete(`lbl::${id}`) }
 }
 
-export async function tangent(calc, id, funcId, x, y, opts = {}) {
-  const fn = registry.get(`fn::${funcId}`)
-  if (!fn) return
-  // A region is a shaded half-plane, not a curve: it has no y for a given x,
-  // so there is nothing here to shade under, cross, root, differentiate or take
-  // a tangent to. Bailing keeps a mis-authored step inert instead of placing
-  // points at y = true, which is what an inequality evaluates to.
-  if (fn.isRegion) return
-  const f = makeEval(fn.expr)
-  if (!f) return
-
-  const xT = findNearestX(f, x)
-  if (xT === null) return
-
-  let yT = y
-  if (yT === undefined || yT === null || !isFinite(yT)) {
-    try { yT = f(xT) } catch { return }
-    if (!isFinite(yT)) return
-  }
-
-  const H = 1e-5
-  let slope
-  try { slope = (f(xT + H) - f(xT - H)) / (2 * H) } catch { return }
-  if (!isFinite(slope)) return
-
-  const b       = yT - slope * xT
-  const slopeStr = slope.toFixed(8)
-  const bStr     = b >= 0 ? `+${b.toFixed(8)}` : b.toFixed(8)
-  const lineLatex = `${slopeStr}x${bStr}`
-
-  const color  = opts.color ? rgbToHex(opts.color) : darken(fn.color, 0.7)
-  const lineId = `tan_line_${id}`
-  const ptId   = `tan_pt_${id}`
-
-  calc.setExpression({ id: lineId, latex: lineLatex, color, lineWidth: 2, lineOpacity: 0 })
-  calc.setExpression({
-    id: ptId, latex: `(${xT},${+yT.toFixed(6)})`,
-    color, showLabel: true, label: `(${xT.toFixed(2)}, ${yT.toFixed(2)})`, pointSize: 8, pointOpacity: 0,
-  })
-  registry.set(`tan::${id}`, { calcIds: [lineId, ptId], funcId, fadeProps: { lineOpacity: 1, pointOpacity: 1 } })
-  await fadeIn(calc, [lineId, ptId], { lineOpacity: 1, pointOpacity: 1 })
-}
-
-export async function removeTangent(calc, id) {
-  const e = registry.get(`tan::${id}`)
-  if (!e) return
-  registry.delete(`tan::${id}`)
-  await fadeOut(calc, e.calcIds, e.fadeProps ?? { lineOpacity: 1, pointOpacity: 1 })
-}
-
 // ── Math helpers ──────────────────────────────────────────────────────────────
-
-function findNearestX(f, x0) {
-  try { const v = f(x0); if (isFinite(v)) return x0 } catch {}
-  for (let i = 1; i <= 200; i++) {
-    const dx = i * 0.05
-    for (const candidate of [x0 + dx, x0 - dx]) {
-      try { const v = f(candidate); if (isFinite(v)) return candidate } catch {}
-    }
-  }
-  return null
-}
 
 function makeSegment(x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1

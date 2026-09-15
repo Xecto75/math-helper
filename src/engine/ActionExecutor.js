@@ -1257,12 +1257,6 @@ case 'ggb-2d-snap': {
       break
     }
 
-    case 'ggb-tangent': {
-      const calc = graphApi(); if (!calc) break
-      await graphEngine.tangent(calc, action.id, action.funcId, action.x ?? 0, action.y, action.opts ?? {})
-      break
-    }
-
     case 'ggb-horizontal-line': {
       const calc = graphApi(); if (!calc) break
       await graphEngine.addHorizontalLine(calc, action.id, action.y, action.opts ?? {})
@@ -1290,18 +1284,6 @@ case 'ggb-2d-snap': {
     case 'ggb-show-projection': {
       const calc = graphApi(); if (!calc) break
       await graphEngine.showAxisProjection(calc, action.id, action.pointId, action.opts ?? {})
-      break
-    }
-
-    case 'ggb-plot-derivative': {
-      const calc = graphApi(); if (!calc) break
-      await graphEngine.plotDerivative(calc, action.id, action.funcId, action.opts ?? {})
-      break
-    }
-
-    case 'ggb-riemann-sum': {
-      const calc = graphApi(); if (!calc) break
-      await graphEngine.riemannSum(calc, action.id, action.funcId, action.a, action.b, action.n ?? 5, action.method ?? 'midpoint', action.opts ?? {})
       break
     }
 

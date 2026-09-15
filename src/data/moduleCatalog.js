@@ -138,7 +138,8 @@ export const MODULES = {
     label: 'Equation Solving',
     description: 'Algebra: solve, distribute, combine, substitute, inverse trig, exponents, arithmetic and geometric sequences',
     rules: `eq ONCE per page, never again mid-solve. ef for ANY degree-1 single-variable eq (fractions,
-multi-term, constants both sides). Non-linear (quadratic/trig/log): ec/es/eo/ed/eD manually.
+multi-term, constants both sides). Quadratic ax^2+bx+c: eQ. Other non-linear (trig/log): ec/es/eo/ed/eD
+manually.
 
 STRING SYNTAX: plain math, no LaTeX — fractions x/2 (NOT \\frac), exponents x^2 (a letter or an
 expression works too: 2^n, a_1 * r^(n-1)), subscripts a_1, coloured vars |label|{color}.
@@ -168,6 +169,9 @@ INTENT: algebra/solve-for-x → an equation layout with eq-*.`,
   ed:[divisor]                              — divide both sides by number
   em:[multiplier]                           — multiply both sides by number (clears x/2=4 style fractions)
   ef:[]                                     — animated full solve (combine→send→divide) — use for any degree-1 eq
+  eQ:[]                                     — QUADRATIC (degree 2, one variable): solves the equation eq put up, terms on
+                                              either side — brought to = 0, a, b and c highlighted, the quadratic formula written with
+                                              them substituted, the discriminant, then the roots. ef stays for degree 1.
   ev:[replacements]                         — substitute KNOWN values only, never the one being solved for
                                         (see FIND-THE-MISSING-VALUE). Prefer a live [id]token over a
                                         literal when the value came from a shape/graph/table:
@@ -192,21 +196,24 @@ INTENT: algebra/solve-for-x → an equation layout with eq-*.`,
                                               line lands, then a last line dividing by what multiplied
                                               the unknown. Nothing moves; the equation is not replaced.
                                               It then STOPS on the working, and › writes the answer.
-                                              The proportion is typed into eR3 itself — no eC before it.
+                                              The proportion is typed into eR3 itself — no eq before it.
                                               Write the unknown in |pipes| when it is a NUMERATOR —
                                               "2/3 = |x|/12" — or x/12 parses as (1/12)x and there is no
                                               ratio left to cross. A denominator needs no pipes.
   eFa:[side,index]                          — expand a FACTORIAL one factor at a time: 5! → 4!·5 → 3!·4·5
-                                              → … → 1·2·3·4·5. Write it in eC with a plain "!" ("5!",
-                                              "5! = x"). Follow with eF to multiply it out. This is the
+                                              → … → 1·2·3·4·5. Write it in eq with a plain "!" ("5!",
+                                              "5! = x"). Follow with ef to multiply it out. This is the
                                               step that makes n! mean something; the answer alone does
                                               not.
-  eSc:[side,index]                          — write out SCIENTIFIC NOTATION. The term must have been
-                                              created as m × 10^n ("24,56 * 10^2", or "24,56 x 10^2").
+  eSc:[side,index,target]                   — write out SCIENTIFIC NOTATION. The term must have been
+                                              created as m x 10^n and written with an x: "24,56 x 10^2". Written "24,56 * 10^2", eq
+                                              multiplies it out on the spot and there is no notation left for eSc to write out.
                                               The comma walks one place per beat while the exponent
                                               counts down, and a 0 is laid down when it runs off the
                                               end: 24,56×10² → 245,6×10¹ → 2456. A negative exponent
                                               walks it the other way (24,56×10⁻² → 0,2456).
+                                              target = the exponent to stop at (blank = 0, all the way out): 4,45×10⁴ with target 2
+                                              becomes 445×10², putting two terms on the same power of ten before they are added.
   eA:[annotId,side,from,to,part,text,color] — underline part of the equation and write a note under it.
                                               SEVEN arguments and the note is the SIXTH — part comes before it and is easy to
                                               skip. part is "" for the whole term; "coeff"/"var" narrow to the a or the x of
@@ -458,7 +465,7 @@ REFERENCING A SOLID: [id]a/r/h/l/d/R — the same letters S3m labels: cube→a �
   // ── Graphing (Desmos) ──────────────────────────────────────────────────────
   graph: {
     label: 'Function Graphing',
-    description: 'Desmos graphing: plot, shade, intersections, derivatives, Riemann, unit circle, vectors, transforms, conics (vertices, foci, directrix, asymptotes)',
+    description: 'Desmos graphing: plot, shade, intersections, unit circle, vectors, transforms, conics (vertices, foci, directrix, asymptotes)',
     layouts: ['sg', 'tg', 'ge'],
     rules: `REFERENCING WHAT IS PLOTTED — pull the value live, never retype it:
   Point (fa)    : [id]x  [id]y
@@ -472,7 +479,7 @@ REFERENCING A SOLID: [id]a/r/h/l/d/R — the same letters S3m labels: cube→a �
 fp with |name| sliders auto-shows a live equation badge — nothing to call.
 CONICS: plot the conic with fp in any form ("x^2/9 + y^2/4 = 1", "y = (x-1)^2/8"), then fK shows its vertices, foci,
   directrix, asymptotes — never work those out and place them with fa/fh/fsg yourself.
-ORDERING: fp before fV/fr/fn/fP/ft/fs/fK on the same function. fp needs an id arg. fP needs a non-root x.`,
+ORDERING: fp before fV/fr/fn/fP/fs/fK on the same function. fp needs an id arg. fP needs a non-root x.`,
     funcs: `FUNCTIONS [positional args]:
   fp:[expr,id,hideLabel]                               — plot f(x); id required ("f","g"). Auto-labels "f(x) = expr" near the curve unless hideLabel=1 — no fn for the same curve unless you need another x or custom text.
                                     fp also takes an INEQUALITY and shades the region it describes: "x > -2", "x >= -2",
@@ -482,7 +489,9 @@ ORDERING: fp before fV/fr/fn/fP/ft/fs/fK on the same function. fp needs an id ar
   fs:[funcId,a,b]                                      — shade area under curve from a to b
   fi:[f1,f2,color,hideLabel]                           — intersection points of two functions (also general forms like
                                     "-6x+3y=12"); shows (x,y) unless hideLabel=1
-  fa:[x,y,id,funcId,label,showCoords]                  — add point (funcId/label/showCoords optional)
+  fa:[x,y,id,funcId,color,label,showCoords,style,hideLabel] — add point; all but x,y optional.
+                                    funcId = take that curve's colour. style "open" = hollow dot (endpoint NOT included);
+                                    hideLabel=1 = a bare dot.
   fap:[id]                                             — remove point
   fbf:[pointIds,id,color]                              — least-squares trend line through placed points (comma-separated fa ids), dashed
   fsc:[slope,intercept,coeff,count,xMin,xMax,color,id] — scatter around y=slope·x+intercept; coeff=spread (0=on the line). Correlation/regression.
@@ -501,13 +510,10 @@ ORDERING: fp before fV/fr/fn/fP/ft/fs/fK on the same function. fp needs an id ar
   fV:[xMin,xMax,yMin,yMax]                             — exact bounds, padded the same way (~a quarter of the span spare on
                                     each side). Widened automatically to keep units square.
   fn:[funcId,label,x0]                                 — floating label on a curve at x position
-  ft:[funcId,x0,y0]                                    — draw tangent line at (x, y)
   fh:[y]                                               — horizontal line y=c
   fr:[funcId]                                          — mark roots f(x)=0
   fP:[pointId,showValues]                              — dashed projection lines from point to axes; given a VECTOR (segment id) instead,
                                                        its components: dashed Δx and Δy legs labelled "Δx = …", "Δy = …"
-  fd:[funcId]                                          — plot derivative f'(x)
-  fR:[funcId,a,b,n,method]                             — Riemann rectangles (method: left|right|midpoint)
   fD:[x1,y1,x2,y2]                                     — draw vector/arrow
   fgb:[a,b,color,id,side,label]                        — mark the ANGLE BETWEEN two segments/vectors, by their ids. The arc
                                     sits on the endpoint they share — two vectors from the origin meet there — or where
@@ -583,13 +589,18 @@ Any layout with a text panel needs ≥1 tc, or that half renders blank — other
   // ── Step-by-step Calculation ───────────────────────────────────────────────
   calc: {
     label: 'Step-by-step Calculation',
-    description: 'Vertical LaTeX calculation lines, one at a time (PEMDAS, integrals, derivations)',
+    description: 'Vertical LaTeX calculation lines, one at a time (PEMDAS, derivations), and the animated order-of-operations walkthrough',
     layouts: ['sc'],
     rules: `One step per Cs, LaTeX with doubled backslashes. PEMDAS, arithmetic and long derivations
   belong here rather than in an equation panel.`,
     funcs: `FUNCTIONS [positional args]:
   Cs:[latex] — append one calculation line (LaTeX string)
   Cc:[]      — clear all lines
+  Mx:[expr]  — ORDER OF OPERATIONS, one operation at a time: × and ÷ left to right, then + and −, each
+               pair highlighted and collapsed into its result, with the rules box beside it. expr = whole
+               numbers and + − × ÷ only ("4 + 8 ÷ 2 - 1 × 3"): no parentheses, exponents or decimals, and
+               every division comes out whole. It fills its own page: that page's panel field is "sM"
+               instead of digits, and Mx is its only step.
 `,
   },
 
@@ -618,6 +629,7 @@ Only the comment functions for panels this lesson actually has are listed below.
         ['shape', '  cG:[cmtId,text,shapeId,vertexIndex,color]  — comment on a shape vertex'],
         ['shape', '  cE:[cmtId,text,shapeId,edgeIndex,color]  — comment on a shape edge midpoint'],
         ['equation', '  ce:[cmtId,text,side,indices,color]  — comment on equation (side=both|left|right; indices=blank or "0,1,2")'],
+        [null, '  cF:[cmtId,title,text,side,color]  — free comment: no connector line and no target, it floats on side (right|left); title optional'],
         [null, '  cd:[cmtId]                        — fade out a comment by id, leaving the others; "a|b|c" drops several together'],
         [null, '  cx:[]                             — clear all comments'],
         [null, '  cu:[cmtId,text,color]             — update existing comment text/color'],
@@ -785,9 +797,13 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', exampleCompact = nu
   // code is missing here is a trap — the example says "copy this" while the
   // function list says that code does not exist, and the validator would
   // reject it. Drop those steps instead of teaching them.
-  const documented = new Set(
-    funcs.flatMap(([, f]) => [...String(f).matchAll(/^ {2}([A-Za-z0-9]+):/gm)].map(m => m[1]))
-  )
+  // BASE_RULES is in every prompt, so the codes it documents count too. sL lives
+  // there, and leaving it out stripped every mid-page panel change from the
+  // references — the steps after it then aimed at a panel the page never showed.
+  const documented = new Set([
+    ...[...BASE_RULES.matchAll(/^([A-Za-z0-9]+):\[/gm)].map(m => m[1]),
+    ...funcs.flatMap(([, f]) => [...String(f).matchAll(/^ {2}([A-Za-z0-9]+):/gm)].map(m => m[1])),
+  ])
 
   // Scoped to learner-visible prose only: compact codes, layout codes, ids and
   // colour names are format, not content — translating those breaks parsing.

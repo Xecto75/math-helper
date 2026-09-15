@@ -329,37 +329,6 @@ export const LESSON_GRADES = [
           },
         ],
       },
-      {
-        id: 'derivatives-intro', difficulty: 'advanced',
-        emoji: '📉', title: 'Introduction to Derivatives',
-        color: '#34d399', bg: BG.green,
-        desc: 'Slope at a point, tangent line, and the derivative function',
-        pages: [
-          {
-            id: u(), title: 'Tangent line to f(x) = x²', layout: 'single-graph',
-            steps: [
-              { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x^2', id: 'fx' } },
-              { id: u(), funcId: 'graph-tangent',       inputs: { funcId: 'fx', x0: '2', y0: '4' } },
-            ],
-          },
-          {
-            id: u(), title: 'Derivative of sin(x) is cos(x)', layout: 'single-graph',
-            steps: [
-              { id: u(), funcId: 'graph-set-viewport',   inputs: { xMin: '-7', xMax: '7', yMin: '-2', yMax: '2' } },
-              { id: u(), funcId: 'graph-plot-function',  inputs: { expr: 'sin(x)', id: 'sinf' } },
-              { id: u(), funcId: 'graph-plot-derivative', inputs: { funcId: 'sinf' } },
-            ],
-          },
-          {
-            id: u(), title: 'Area under a curve — Riemann sum', layout: 'single-graph',
-            steps: [
-              { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x^2', id: 'fx' } },
-              { id: u(), funcId: 'graph-shade-area',    inputs: { funcId: 'fx', a: '0', b: '3' } },
-              { id: u(), funcId: 'graph-riemann-sum',   inputs: { funcId: 'fx', a: '0', b: '3', n: '6', method: 'midpoint' } },
-            ],
-          },
-        ],
-      },
       soon('function-basics', '🎯', 'What a Function Is',
         'Notation, domain, range, and reading a graph', 'beginner', '#34d399', BG.green),        // sec 3
       soon('exponential-functions', '🚀', 'Exponential Functions',

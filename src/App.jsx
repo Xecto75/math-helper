@@ -62,10 +62,10 @@ import {
   demoGraphScatterPlot, demoGraphRemoveScatterPlot,
   demoGraphAddSegment, demoGraphRemoveSegment, demoGraphSegmentTick, demoGraphRemoveSegmentTick,
   demoGraphDivideSegment, demoGraphRemoveDivideSegment,
-  demoGraphSetViewport, demoGraphNameFunc, demoGraphTangent,
-  demoGraphAddHorizontalLine, demoGraphMarkRoots, demoGraphShowProjection, demoGraphPlotDerivative,
+  demoGraphSetViewport, demoGraphNameFunc,
+  demoGraphAddHorizontalLine, demoGraphMarkRoots, demoGraphShowProjection,
   demoGraphConicElements, demoGraphRemoveConicElements,
-  demoGraphRiemannSum, demoGraphDrawVector, demoGraphAngleBetween, demoGraphRemoveAngle, demoGraphDrawAngle, demoGraphTransformFunction,
+  demoGraphDrawVector, demoGraphAngleBetween, demoGraphRemoveAngle, demoGraphDrawAngle, demoGraphTransformFunction,
   demoGraphBatchAddPoints, demoGraphBatchShowProjections, demoGraphTrigCircle,
   demoGeo3dCreate, demoGeo3dRemove, demoGeo3dClear,
   demoGeo3dMove, demoGeo3dHighlight, demoGeo3dLabelSides,
@@ -771,7 +771,6 @@ export default function App() {
       case 'graph-adjust-view':            return demoGraphAdjustView(inputs.cx, inputs.cy, inputs.range)
       case 'graph-set-viewport':           return demoGraphSetViewport(inputs.xMin, inputs.xMax, inputs.yMin, inputs.yMax)
       case 'graph-name-func':              return demoGraphNameFunc(inputs.funcId, inputs.label, inputs.x0, inputs.y0)
-      case 'graph-tangent':                return demoGraphTangent(inputs.funcId, inputs.x0, inputs.y0)
       case 'graph-horizontal-line':        return demoGraphAddHorizontalLine(inputs.y)
       case 'graph-mark-roots':             return demoGraphMarkRoots(inputs.funcId)
       case 'graph-conic-elements':         return demoGraphConicElements(inputs.funcId, inputs.show, inputs.id, inputs.labels, inputs.color, langRef.current)
@@ -780,8 +779,6 @@ export default function App() {
       case 'graph-trig-circle':            return demoGraphTrigCircle()
       case 'graph-batch-add-points':       return demoGraphBatchAddPoints(inputs.points, inputs.showCoords, inputs.color)
       case 'graph-batch-show-projections': return demoGraphBatchShowProjections(inputs.pointIds)
-      case 'graph-plot-derivative':   return demoGraphPlotDerivative(inputs.funcId)
-      case 'graph-riemann-sum':       return demoGraphRiemannSum(inputs.funcId, inputs.a, inputs.b, inputs.n, inputs.method)
       case 'graph-angle-between':     return demoGraphAngleBetween(inputs.a, inputs.b, inputs.color, inputs.id, inputs.side, inputs.label)
       case 'graph-remove-angle':      return demoGraphRemoveAngle(inputs.id)
       case 'graph-draw-vector':       return demoGraphDrawVector(inputs.x1, inputs.y1, inputs.x2, inputs.y2)

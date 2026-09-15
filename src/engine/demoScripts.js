@@ -1153,30 +1153,6 @@ export function demoGraphShowProjection(pointIdRaw, showValuesRaw) {
   return { snapshot: null, script }
 }
 
-// ── graph-plot-derivative ─────────────────────────────────────────────────────
-export function demoGraphPlotDerivative(funcIdRaw) {
-  const funcId = (funcIdRaw || 'f').trim()
-  const script = [
-    { type: 'showTitle',     text: `plotDerivative("${funcId}")` },
-    { type: 'ggb-plot-derivative', id: `d_${funcId}`, funcId, opts: { thickness: 2 } },
-  ]
-  return { snapshot: null, script }
-}
-
-// ── graph-riemann-sum ─────────────────────────────────────────────────────────
-export function demoGraphRiemannSum(funcIdRaw, aRaw, bRaw, nRaw, methodRaw) {
-  const funcId = (funcIdRaw || 'f').trim()
-  const a      = Number(aRaw) || -2
-  const b      = Number(bRaw) ||  2
-  const n      = Math.max(1, Math.min(Number(nRaw) || 5, 50))
-  const method = ['left','right','midpoint'].includes(methodRaw) ? methodRaw : 'midpoint'
-  const script = [
-    { type: 'showTitle',     text: `riemannSum("${funcId}", ${a}, ${b}, n=${n}, ${method})` },
-    { type: 'ggb-riemann-sum', id: `rs_${funcId}`, funcId, a, b, n, method, opts: { fillOpacity: 0.5 } },
-  ]
-  return { snapshot: null, script }
-}
-
 // ── graph-angle-between ───────────────────────────────────────────────────────
 export function demoGraphAngleBetween(aRaw, bRaw, colorRaw, idRaw, sideRaw, labelRaw) {
   const a = (aRaw || 'seg1').trim()
@@ -1258,24 +1234,6 @@ export function demoGraphTransformFunction(funcIdRaw, typeRaw, valueRaw) {
   const script = [
     { type: 'showTitle',     text: `transformFunction("${funcId}", "${type}", ${value})` },
     { type: 'ggb-transform-function', id: `tf_${funcId}_${type}`, funcId, transformType: type, value, opts: {} },
-  ]
-  return { snapshot: null, script }
-}
-
-// ── graph-tangent ─────────────────────────────────────────────────────────────
-export function demoGraphTangent(funcIdRaw, x0Raw, y0Raw) {
-  const funcId = (funcIdRaw || 'f').trim()
-  const x0     = num(x0Raw, 1)
-  const y0Num  = parseFloat(y0Raw)
-  const hasY0  = y0Raw !== '' && y0Raw !== undefined && y0Raw !== null && isFinite(y0Num)
-
-  const action = { type: 'ggb-tangent', id: 'tan1', funcId, x: x0 }
-  if (hasY0) action.y = y0Num
-
-  const coordStr = hasY0 ? `(${x0}, ${y0Num})` : `x₀ = ${x0} (y calculé depuis la courbe)`
-  const script = [
-    { type: 'showTitle',     text: `tangent("${funcId}", x₀=${x0})` },
-    action,
   ]
   return { snapshot: null, script }
 }

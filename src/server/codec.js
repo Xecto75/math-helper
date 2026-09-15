@@ -38,7 +38,7 @@ const FUNCS = {
   eSq: 'eq-sequence',
   eSc: 'eq-sci-expand',
   eFa: 'eq-factorial',
-  eR3: 'eq-rule-of-three',
+  eR3: 'eq-cross-multiply',
 
   // ── Canvas geometry (SVG) ───────────────────────────────────────────────────
   gp: 'geo-create-polygon',  gx: 'geo-erase-shape',     gm: 'geo-move-shape',
@@ -93,10 +93,9 @@ const FUNCS = {
   fst: 'graph-segment-tick',      fstx: 'graph-remove-segment-tick',
   fsd: 'graph-divide-segment',    fsdx: 'graph-remove-divide-segment',
   fv:  'graph-adjust-view',        fV:  'graph-set-viewport',
-  fn:  'graph-name-func',          ft:  'graph-tangent',
-  fh:  'graph-horizontal-line',    fr:  'graph-mark-roots',
-  fP:  'graph-show-projection',    fd:  'graph-plot-derivative',
-  fR:  'graph-riemann-sum',        fD:  'graph-draw-vector',
+  fn:  'graph-name-func',          fh:  'graph-horizontal-line',
+  fr:  'graph-mark-roots',         fP:  'graph-show-projection',
+  fD:  'graph-draw-vector',
   fT:  'graph-transform-function', fg:  'graph-draw-angle',
   fgb: 'graph-angle-between',      fgx: 'graph-remove-angle',
   fB:  'graph-batch-add-points',   fBP: 'graph-batch-show-projections',
@@ -301,6 +300,7 @@ function parseCompact(rawText) {
 // Case matters: tc/ti/tf are text boxes, Tc/Ta/TR are the grid.
 function moduleForCode(code) {
   if (code === 'sL') return null                        // set-layout: always available
+  if (code === 'Mx' || code.startsWith('C')) return 'calc'   // calc lines, order of operations
   if (code.startsWith('S3')) return 'geo3d'
   if (code.startsWith('S2')) return 'geo2d'
   if (code.startsWith('T'))  return 'table'

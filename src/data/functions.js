@@ -604,7 +604,7 @@ export const CATEGORIES = [
       {
         id: 'graph-remove-function',
         label: 'removeFunction',
-        description: 'Remove an existing function (+ its labels and tangents)',
+        description: 'Remove an existing function (+ its labels)',
         status: 'ready', useGraph: true,
         inputs: [
           { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
@@ -805,17 +805,6 @@ export const CATEGORIES = [
         ],
       },
       {
-        id: 'graph-tangent',
-        label: 'tangent',
-        description: 'Draw the tangent of an already-plotted curve at (x₀, y₀)',
-        status: 'ready', useGraph: true,
-        inputs: [
-          { id: 'funcId', label: 'Function',    type: 'func-id', default: '' },
-          { id: 'x0',     label: 'x₀',          type: 'number',  default: 1 },
-          { id: 'y0',     label: 'y₀ (optional)', type: 'number', default: '', placeholder: 'auto' },
-        ],
-      },
-      {
         id: 'graph-horizontal-line',
         label: 'addHorizontalLine',
         description: 'Draw a horizontal line y = c',
@@ -868,35 +857,6 @@ export const CATEGORIES = [
         inputs: [
           { id: 'pointId',    label: 'Point or vector ID', type: 'text', default: '', placeholder: 'ID used in addPoint or addSegment' },
           { id: 'showValues', label: 'Show values (x and y on the axes, or Δx and Δy on a vector)', type: 'text', default: 'false', placeholder: 'true / false' },
-        ],
-      },
-      {
-        id: 'graph-plot-derivative',
-        label: 'plotDerivative',
-        description: 'Draw the derivative f\'(x) of an existing curve',
-        status: 'ready', useGraph: true,
-        inputs: [
-          { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
-        ],
-      },
-      {
-        id: 'graph-riemann-sum',
-        label: 'riemannSum',
-        description: 'Draw the Riemann rectangles under a curve',
-        status: 'ready', useGraph: true,
-        inputs: [
-          { id: 'funcId', label: 'Function', type: 'func-id', default: '' },
-          { id: 'a',      label: 'a',        type: 'number',  default: -2 },
-          { id: 'b',      label: 'b',        type: 'number',  default:  2 },
-          { id: 'n',      label: 'n (rectangles)', type: 'number', default: 5, min: 1, max: 50 },
-          {
-            id: 'method', label: 'Method', type: 'select', default: 'midpoint',
-            options: [
-              { value: 'left',     label: 'Left' },
-              { value: 'right',    label: 'Right' },
-              { value: 'midpoint', label: 'Midpoint' },
-            ],
-          },
         ],
       },
       {

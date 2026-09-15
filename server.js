@@ -4,7 +4,7 @@ import path       from 'path'
 import express    from 'express'
 import cors       from 'cors'
 import { CATEGORIES } from './src/data/functions.js'
-import { ROUTER_SYSTEM_PROMPT, buildGeneratorPrompt, docForCode } from './src/data/moduleCatalog.js'
+import { routerSystemPrompt, buildGeneratorPrompt, docForCode } from './src/data/moduleCatalog.js'
 import { EXAMPLE_LESSONS } from './src/data/exampleLessons.js'
 import {
   authConfigured, getUser, getProfile, consumeCredit, refundCredit, FREE_LESSON_LIMIT,
@@ -111,6 +111,7 @@ async function callModel(trace, label, params) {
 
 async function routeModules(prompt, trace) {
   const t0 = Date.now()
+  const examples = availableExamples()
   const res = await callModel(trace, `Router (${MODELS.router})`, {
     model:     MODELS.router,
     // 256 was sized for the answer alone — a two-line JSON object. This model
@@ -122,7 +123,7 @@ async function routeModules(prompt, trace) {
     // think costs nothing when it is not used: only tokens actually produced
     // are billed.
     maxTokens: 2048,
-    system:    ROUTER_SYSTEM_PROMPT,
+    system:    routerSystemPrompt(examples),
     user:      prompt,
   })
   const raw  = res.text.trim() || '{}'
@@ -139,14 +140,18 @@ async function routeModules(prompt, trace) {
       status:  parsed.status ?? 'ok',
       modules: parsed.modules ?? [],
       message: parsed.message,
-      // An id that names no real lesson is the same as none at all — the
-      // caller's fallback then picks one that exists.
-      exampleId: EXAMPLE_LESSONS.some(e => e.id === parsed.exampleId) ? parsed.exampleId : null,
+      // 1 to 3 reference lessons, closest first. A lone "exampleId" is read too,
+      // since that is the form the prompt's own examples still show. An id that
+      // names no lesson with content is the same as none at all — the caller's
+      // fallback then picks one that exists.
+      exampleIds: [...new Set([].concat(parsed.exampleIds ?? [], parsed.exampleId ?? []))]
+        .filter(id => examples.some(e => e.id === id))
+        .slice(0, 3),
       // too-advanced only: reference lessons to offer instead. Filtered to ids
       // that actually exist, so a hallucinated one can never reach the UI as a
       // button that loads nothing.
       alternatives: (Array.isArray(parsed.alternatives) ? parsed.alternatives : [])
-        .filter(id => EXAMPLE_LESSONS.some(e => e.id === id)),
+        .filter(id => examples.some(e => e.id === id)),
     }
   } catch {
     if (res.stopReason === 'MAX_TOKENS' || res.stopReason === 'length') {
@@ -154,9 +159,9 @@ async function routeModules(prompt, trace) {
     } else {
       console.warn('  Router parse failed — falling back to equation+text')
     }
-    result = { status: 'ok', modules: ['equation', 'text'], exampleId: null }
+    result = { status: 'ok', modules: ['equation', 'text'], exampleIds: [] }
   }
-  console.log('  status:', result.status, result.status === 'ok' ? `modules:${result.modules} example:${result.exampleId ?? '—'}` : result.message ?? '')
+  console.log('  status:', result.status, result.status === 'ok' ? `modules:${result.modules} examples:${result.exampleIds.join(',') || '—'}` : result.message ?? '')
   result.cost = cost
   return result
 }
@@ -186,6 +191,15 @@ function fallbackExample(moduleIds = []) {
 
 // Resolve the router's pick to compact form. Overrides win over the bundled
 // source, so the reference is whatever the author last saved.
+// The lessons that can be a model right now: those with at least one step,
+// saved or bundled. An example added empty, to be built in the Builder, stays
+// out of the router's list until something is in it.
+function availableExamples() {
+  const overrides = readOverridesFile()
+  return EXAMPLE_LESSONS.filter(e =>
+    (overrides[e.id] ?? e.pages ?? []).some(p => (p.steps ?? []).length > 0))
+}
+
 function referenceLesson(exampleId) {
   if (!exampleId) return null
   const pages = readOverridesFile()[exampleId]
@@ -194,22 +208,25 @@ function referenceLesson(exampleId) {
   try { return compactLesson(pages) } catch { return null }
 }
 
-async function generateCompact(prompt, moduleIds, lang = 'en', exampleId = null, trace = null) {
-  // Last line of defence: if that id resolves to nothing (its pages were
-  // deleted, its steps no longer compact cleanly), fall back rather than send
-  // the generator out with no model at all.
-  const reference = referenceLesson(exampleId) ?? referenceLesson(fallbackExample(moduleIds))
-  if (!reference) console.warn('  WARNING: no reference lesson resolved — output quality will suffer')
+async function generateCompact(prompt, moduleIds, lang = 'en', exampleIds = [], trace = null) {
+  // Last line of defence: an id that resolves to nothing (its pages were
+  // deleted, its steps no longer compact cleanly) is dropped, and when none is
+  // left the fallback stands in rather than send the generator out with no
+  // model at all.
+  const hasSteps = r => Array.isArray(r) && r.some(p => (p?.[2] ?? []).length > 0)
+  let references = exampleIds.map(referenceLesson).filter(hasSteps)
+  if (!references.length) references = [referenceLesson(fallbackExample(moduleIds))].filter(hasSteps)
+  if (!references.length) console.warn('  WARNING: no reference lesson resolved — output quality will suffer')
 
-  // Whatever the reference lesson uses, its docs must be in the prompt too —
+  // Whatever the reference lessons use, their docs must be in the prompt too —
   // otherwise we hand the model codes it has no definition for and it copies
   // them blindly. Union, not replace: the router's picks reflect what the USER
-  // asked for, the reference's are what the EXAMPLE needs to be readable.
-  const needed = reference ? modulesForCompact(reference) : []
+  // asked for, the references' are what the EXAMPLES need to be readable.
+  const needed = [...new Set(references.flatMap(r => modulesForCompact(r)))]
   const merged = [...new Set([...moduleIds, ...needed])]
   const added  = needed.filter(m => !moduleIds.includes(m))
 
-  const systemPrompt = buildGeneratorPrompt(merged, lang, reference)
+  const systemPrompt = buildGeneratorPrompt(merged, lang, references)
   const t0 = Date.now()
 
   console.log(`\n─── Generator (${MODELS.generator}) modules=[${moduleIds.join(',')}]`)
@@ -371,16 +388,16 @@ app.post('/api/generate-lesson', async (req, res) => {
     // The generator is never sent to work without a worked model: it copies
     // one, and with nothing to copy it invents pages with nothing good on them.
     // The reference does NOT have to share the topic — it is a model of how a
-    // lesson is BUILT — so when the router leaves exampleId null the closest
+    // lesson is BUILT — so when the router sends no example the closest
     // structural match for the modules it picked stands in.
-    const exampleId = route.exampleId ?? fallbackExample(moduleIds)
-    if (!route.exampleId) {
-      console.log(`  router sent no exampleId — falling back to "${exampleId}"`)
-      trace.note(`(no exampleId from the router — fell back to "${exampleId}")`)
+    const exampleIds = route.exampleIds?.length ? route.exampleIds : [fallbackExample(moduleIds)]
+    if (!route.exampleIds?.length) {
+      console.log(`  router sent no example — falling back to "${exampleIds[0]}"`)
+      trace.note(`(no example from the router — fell back to "${exampleIds[0]}")`)
     }
 
     // ── Step 2: Generate ─────────────────────────────────────────────────────
-    const gen = await generateCompact(prompt, moduleIds, lang, exampleId, trace)
+    const gen = await generateCompact(prompt, moduleIds, lang, exampleIds, trace)
     rawApiText = gen.rawText
 
     // ── Validate → repair → (one) AI retry → drop ────────────────────────

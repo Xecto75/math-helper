@@ -650,13 +650,17 @@ Only the comment functions for panels this lesson actually has are listed below.
 // Imported rather than duplicated so a new example shows up here automatically.
 export const EXAMPLE_INDEX = EXAMPLE_LESSONS.map(e => ({ id: e.id, title: e.title, desc: e.desc }))
 
-export const ROUTER_SYSTEM_PROMPT = `Math lesson router. Classify the request; if "ok", pick the display modules.
+// The router's prompt, listing only the lessons it may pick from. server.js
+// passes the ones that have steps: an example added empty, so it can be built
+// in the Builder, is a model with nothing in it.
+export function routerSystemPrompt(examples = EXAMPLE_INDEX) {
+  return `Math lesson router. Classify the request; if "ok", pick the display modules.
 
 MODULES:
 ${Object.entries(MODULES).map(([id, m]) => `${id} — ${m.description}`).join('\n')}
 
-REFERENCE LESSONS — pick the ONE closest in STRUCTURE (how it is built, not keyword overlap); the generator sees it as the worked model it copies. This list IS what can be taught:
-${EXAMPLE_INDEX.map(e => `${e.id} — ${e.desc}`).join('\n')}
+REFERENCE LESSONS — pick 1 to 3 related to the subject, the closest in STRUCTURE first (how it is built, not keyword overlap); the generator sees them as the worked models it copies. This list IS what can be taught:
+${examples.map(e => `${e.id} — ${e.desc}`).join('\n')}
 
 Prompts come in any language, informal, unpunctuated, misspelled ("pytagore", "equation du 2eme degre", "trigo"). Language/spelling/phrasing NEVER make something off-topic — classify on SUBJECT only.
 
@@ -671,11 +675,13 @@ a question. "quadratics" → the concept lesson, not "which equation?". Ignore s
 typos. Two topics at once → cover the main one. Even "help me with my maths" is "ok": pick a
 fundamental and teach it. There is no status for asking. (Vague ≠ in scope: judge coverage first.)
 
-exampleId IS REQUIRED AND NEVER null. The generator copies it as a worked model, and without one it
-invents a lesson with nothing good in it. It does NOT have to be the same topic — it has to be built
-the way this lesson should be built. "types of angles in shapes" has no lesson of its own → areas or
-pythagoras (a shape, labelled and annotated). "reading a data table" → correlation. Always
-something. If two fit, take the one whose STRUCTURE matches, not the one sharing a keyword.
+exampleIds IS REQUIRED: 1 to 3 ids, never empty, the closest first. The generator copies them as worked
+models, and without one it invents a lesson with nothing good in it. They do NOT have to be the same
+topic — the first has to be built the way this lesson should be built. "types of angles in shapes" has
+no lesson of its own → areas or pythagoras (a shape, labelled and annotated). "reading a data table" →
+correlation. Always something. A second or third is added only when it is related to the subject and
+shows part of what this lesson needs that the first does not; one that fits beats three that half-fit.
+If two fit, the one whose STRUCTURE matches goes first, not the one sharing a keyword.
 
 COVERAGE — judged on the TOPIC, separately from which example fits:
   IN  — arithmetic and fractions, order of operations, algebra (linear, quadratic, systems), plane
@@ -691,7 +697,7 @@ COVERAGE — judged on the TOPIC, separately from which example fits:
 MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another display needs a formula panel; "comments" for point/edge annotations. geo2d XOR geo3d. Prefer geo2d; geo_canvas only for SVG constructions or vertex arrows.
 
 OUTPUT: the JSON object ALONE — no fences, no prose, nothing after the closing brace. Prose is discarded unread; it only costs tokens.
-{"status":"ok","modules":[...],"exampleId":"<a reference lesson id — required, never null>"}
+{"status":"ok","modules":[...],"exampleIds":["<closest reference lesson id — required>","<optional 2nd>","<optional 3rd>"]}
 {"status":"too-advanced","message":"2-3 sentences","alternatives":["<reference lesson id>","..."]}
 {"status":"off-topic"}  {"status":"trivial","message":"..."}
 
@@ -715,6 +721,7 @@ EXAMPLES (the non-English/misspelled ones are real past failures — treat as th
 "help me with my math homework" · "j'ai besoin d'aide en maths" → {"status":"ok","modules":["equation","text"],"exampleId":"linear-eq"}
 "2+2" → {"status":"trivial","message":"2 + 2 = 4. Want a topic worth a full lesson?"}
 `
+}
 
 // ── GENERATOR PROMPT BUILDER ──────────────────────────────────────────────────
 
@@ -756,7 +763,7 @@ function pruneToDocumented(compact, documented) {
     .filter(page => !Array.isArray(page) || (page[2] ?? []).length > 0)
 }
 
-export function buildGeneratorPrompt(moduleIds, lang = 'en', exampleCompact = null) {
+export function buildGeneratorPrompt(moduleIds, lang = 'en', references = null) {
   const ids  = moduleIds.filter(id => MODULES[id])
   const have = new Set(ids)
   const parts = [BASE_RULES.trim()]
@@ -816,16 +823,27 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', exampleCompact = nu
     `Never translate structure: func/layout codes, ids, colour names, math notation.`
   )
 
-  // The router picked the closest hand-built lesson; show it in the exact
-  // output format we want back. A real, verified lesson is a far stronger
-  // model than the generic per-module snippets this replaced — and it is one
-  // the author has already approved.
-  if (exampleCompact) {
+  // The router picked 1 to 3 hand-built lessons, closest first; show them in
+  // the exact output format we want back. A real, verified lesson is a far
+  // stronger model than the generic per-module snippets this replaced — and it
+  // is one the author has already approved. One lesson is a list of pages, so a
+  // list whose first page is itself a list of lessons' pages is several.
+  const refs = !references?.length ? []
+    : Array.isArray(references[0]?.[0]) ? references.filter(r => r?.length) : [references]
+  if (refs.length === 1) {
+    // Word for word what a single reference always was.
     parts.push(
       `\n# REFERENCE LESSON\n` +
       `Verified, in the exact output format. Copy its structure/pacing/step use; ` +
       `NOT its topic or numbers.\n` +
-      JSON.stringify(pruneToDocumented(exampleCompact, documented))
+      JSON.stringify(pruneToDocumented(refs[0], documented))
+    )
+  } else if (refs.length > 1) {
+    parts.push(
+      `\n# REFERENCE LESSONS\n` +
+      `${refs.length} verified lessons related to this subject, the closest first, in the exact output ` +
+      `format. Copy their structure/pacing/step use; NOT their topics or numbers.\n` +
+      refs.map((r, i) => `## ${i + 1}\n` + JSON.stringify(pruneToDocumented(r, documented))).join('\n')
     )
   }
 

@@ -833,4 +833,148 @@ export const EXAMPLE_LESSONS = [
       },
     ],
   },
+  /* ─── To build ────────────────────────────────────────────────────────────────
+     Added empty, so they can be built in the Builder and saved over. One blank
+     page each, the same one "+ page" makes. Until a lesson here has a step, the
+     router never offers it as a model (server.js, availableExamples). */
+  {
+    id: 'sequences',
+    emoji: '🔢',
+    title: 'Arithmetic and Geometric Sequences',
+    desc: 'Terms linked by +d or ×r arrows, the general term worked out step by step, then the terms placed as points on the graph',
+    color: '#f59e0b',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'vectors',
+    emoji: '➡️',
+    title: 'Vectors',
+    desc: 'Named vectors on the graph, their Δx and Δy components, a tip-to-tail sum, a scalar multiple and the angle between two vectors',
+    color: '#06b6d4',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'conics',
+    emoji: '⭕',
+    title: 'Conics',
+    desc: 'Parabola, ellipse, circle and hyperbola drawn from their equation, with their vertices, foci, directrix and asymptotes',
+    color: '#a78bfa',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'probability',
+    emoji: '🎲',
+    title: 'Probability — Trees and Venn Diagrams',
+    desc: 'A possibility tree followed branch by branch, Venn regions (∩, ∪, complement) shaded one at a time, and n! for permutations',
+    color: '#f472b6',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'fractions',
+    emoji: '🍕',
+    title: 'Fractions, Decimals and Percentages',
+    desc: 'A fraction circle filling from 3/8 to 5/8, the same amount written as a percentage and a decimal, and the nested number sets ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ',
+    color: '#fb923c',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'inequalities',
+    emoji: '🌗',
+    title: 'Inequalities and Half-Planes',
+    desc: 'Solve the inequality, shade its half-plane (dashed boundary when strict), then cross two regions to find a vertex',
+    color: '#4ade80',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'angles-lines',
+    emoji: '🛤️',
+    title: 'Angles and Special Lines',
+    desc: 'Two parallels cut by a transversal with alternate-interior and corresponding angles, then the altitude and median of a triangle attached to the figure',
+    color: '#60a5fa',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'transformations',
+    emoji: '🔁',
+    title: 'Geometric Transformations',
+    desc: 'Translation, rotation and reflection of the same named figure, the image drawn beside the original',
+    color: '#10b981',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'order-of-operations',
+    emoji: '🧮',
+    title: 'Order of Operations',
+    desc: 'Multiplication and division before addition and subtraction, one operation at a time, left to right',
+    color: '#fbbf24',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'reference-functions',
+    emoji: '〰️',
+    title: 'Reference Functions',
+    desc: 'Step, absolute value, square root and sinusoidal functions with sliders a, b, h, k, a piecewise function, then transformations',
+    color: '#34d399',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'expand-factor',
+    emoji: '🧩',
+    title: 'Expand, Factor, Divide',
+    desc: 'Distributivity, collecting like terms, and dividing a polynomial by a binomial in the long-division layout',
+    color: '#84cc16',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'metric-relations',
+    emoji: '🔺',
+    title: 'Metric Relations and the Law of Cosines',
+    desc: 'The altitude from the right angle attached to the triangle, the angles marked and h² = m·n worked out, then the law of cosines',
+    color: '#f87171',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'solids-views',
+    emoji: '🧊',
+    title: 'Solids — Views and Missing Measure',
+    desc: 'Front, top and side views of a solid, its measures written as letters, then the missing measure found from the volume',
+    color: '#6ee7b7',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
+  {
+    id: 'exponents-scientific',
+    emoji: '🔬',
+    title: 'Exponents and Scientific Notation',
+    desc: 'The laws of exponents applied step by step, then a number rewritten in scientific notation and back',
+    color: '#eab308',
+    pages: [
+      { id: u(), title: '', layout: null, steps: [] },
+    ],
+  },
 ]

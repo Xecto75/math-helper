@@ -844,7 +844,44 @@ export const EXAMPLE_LESSONS = [
     desc: 'Terms linked by +d or ×r arrows, the general term worked out step by step, then the terms placed as points on the graph',
     color: '#f59e0b',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'Suite arithmétique : on ajoute d', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Suite arithmétique', content: 'Chaque terme s\'obtient en **ajoutant** la même valeur au précédent.|Cette valeur $d$ s\'appelle la **raison**.', isList: 'false' } },
+          { id: u(), funcId: 'eq-sequence', inputs: { kind: 'arithmetic', first: '3', step: '4', count: '5', dots: 'yes', arrows: 'above' } },
+        ],
+      },
+      {
+        id: u(), title: 'Suite géométrique : on multiplie par r', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Suite géométrique', content: 'Chaque terme s\'obtient en **multipliant** le précédent par la même valeur.|Cette valeur $r$ s\'appelle la **raison**.', isList: 'false' } },
+          { id: u(), funcId: 'eq-sequence', inputs: { kind: 'geometric', first: '2', step: '3', count: '5', dots: 'yes', arrows: 'above' } },
+        ],
+      },
+      {
+        id: u(), title: 'Le terme général d\'une suite arithmétique', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'form', title: 'Terme général', content: '$a_n = a_1 + (n - 1)\\,d$|Avec $a_1 = 3$ et $d = 4$, que vaut $a_{10}$ ?', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '|a₁₀| = |a₁| + (|n| - 1) * |d|' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { replacements: 'a₁=3,n=10,d=4' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Le terme général d\'une suite géométrique', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'form', title: 'Terme général', content: '$a_n = a_1 \\cdot r^{\\,n - 1}$|Avec $a_1 = 2$ et $r = 3$, que vaut $a_5$ ?', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '|a₅| = |a₁| * |r|^(|n| - 1)' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { replacements: 'a₁=2,r=3,n=5' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Les termes sur un graphique', layout: 'graph-equation',
+        steps: [
+          { id: u(), funcId: 'eq-sequence', inputs: { kind: 'arithmetic', first: '1', step: '2', count: '5', dots: 'no', arrows: 'above', points: 'yes', rank: '1' } },
+        ],
+      },
     ],
   },
   {
@@ -854,7 +891,57 @@ export const EXAMPLE_LESSONS = [
     desc: 'Named vectors on the graph, their Δx and Δy components, a tip-to-tail sum, a scalar multiple and the angle between two vectors',
     color: '#06b6d4',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'Un vecteur : une flèche', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Vecteur', content: 'Un vecteur a une **longueur** (sa norme), une **direction** et un **sens**.|On le dessine comme une flèche.', isList: 'false' } },
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-1', xMax: '6', yMin: '-1', yMax: '5' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '0', y1: '0', x2: '4', y2: '3', id: 'u', arrow: 'end', name: 'u' } },
+          { id: u(), funcId: 'graph-show-projection', inputs: { pointId: 'u', showValues: 'true' } },
+        ],
+      },
+      {
+        id: u(), title: 'La norme d\'un vecteur', layout: 'graph-equation',
+        steps: [
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-1', xMax: '6', yMin: '-1', yMax: '5' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '0', y1: '0', x2: '4', y2: '3', id: 'u', arrow: 'end', name: 'u' } },
+          { id: u(), funcId: 'graph-show-projection', inputs: { pointId: 'u', showValues: 'true' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '|norme| = sqrt(|Δx|^2 + |Δy|^2)' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { replacements: 'Δx=4,Δy=3' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Additionner deux vecteurs', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'somme', title: 'Somme bout à bout', content: 'On place le début de $\\vec v$ au bout de $\\vec u$.|La somme va du début de $\\vec u$ au bout de $\\vec v$.', isList: 'false' } },
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-1', xMax: '7', yMin: '-1', yMax: '6' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '0', y1: '0', x2: '3', y2: '1', color: 'red', id: 'u', arrow: 'end', name: 'u' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '3', y1: '1', x2: '5', y2: '5', color: 'purple', id: 'v', arrow: 'end', name: 'v' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '0', y1: '0', x2: '5', y2: '5', color: 'green', id: 'w', arrow: 'end', name: 'u + v' } },
+          { id: u(), funcId: 'cmt-graph', inputs: { text: 'u + v = ([w]x2, [w]y2)', x: '[w]x2', y: '[w]y2', color: 'green' } },
+        ],
+      },
+      {
+        id: u(), title: 'Multiplier un vecteur par un scalaire', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'scal', title: 'Multiple scalaire', content: '$3\\vec u$ a la même direction que $\\vec u$, mais il est 3 fois plus long.', isList: 'false' } },
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-1', xMax: '8', yMin: '-1', yMax: '6' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '0', y1: '0', x2: '2', y2: '1', color: 'red', id: 'u', arrow: 'end', name: 'u' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '0', y1: '2', x2: '6', y2: '5', color: 'orange', id: 't', arrow: 'end', name: '3u' } },
+          { id: u(), funcId: 'cmt-graph-func', inputs: { text: 'longueur = [t]len', funcId: 't', color: 'orange' } },
+        ],
+      },
+      {
+        id: u(), title: 'L\'angle entre deux vecteurs', layout: 'single-graph',
+        steps: [
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-1', xMax: '6', yMin: '-1', yMax: '5' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '0', y1: '0', x2: '5', y2: '0', color: 'red', id: 'a', arrow: 'end', name: 'a' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '0', y1: '0', x2: '3', y2: '4', color: 'purple', id: 'b', arrow: 'end', name: 'b' } },
+          { id: u(), funcId: 'graph-angle-between', inputs: { a: 'a', b: 'b', color: 'orange', id: 'ang' } },
+          { id: u(), funcId: 'cmt-free', inputs: { title: 'Angle entre deux vecteurs', text: '$\\cos\\theta = \\dfrac{\\vec a \\cdot \\vec b}{\\|\\vec a\\|\\,\\|\\vec b\\|}$', side: 'right' } },
+        ],
+      },
     ],
   },
   {
@@ -864,7 +951,48 @@ export const EXAMPLE_LESSONS = [
     desc: 'Parabola, ellipse, circle and hyperbola drawn from their equation, with their vertices, foci, directrix and asymptotes',
     color: '#a78bfa',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'La parabole', layout: 'single-graph',
+        steps: [
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'y = (x - 1)^2 / 4', id: 'P' } },
+          { id: u(), funcId: 'graph-conic-elements', inputs: { funcId: 'P', id: 'P', labels: 'both' } },
+          { id: u(), funcId: 'cmt-graph', inputs: { text: 'Foyer', x: '[PF]x', y: '[PF]y' } },
+        ],
+      },
+      {
+        id: u(), title: 'L\'ellipse', layout: 'single-graph',
+        steps: [
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x^2/9 + y^2/4 = 1', id: 'E' } },
+          { id: u(), funcId: 'graph-conic-elements', inputs: { funcId: 'E', id: 'E', labels: 'names' } },
+          { id: u(), funcId: 'cmt-graph', inputs: { text: 'La somme des distances aux deux foyers est constante', x: '[EF1]x', y: '[EF1]y' } },
+        ],
+      },
+      {
+        id: u(), title: 'Le cercle', layout: 'single-graph',
+        steps: [
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: '(x - 1)^2 + (y + 2)^2 = 9', id: 'C' } },
+          { id: u(), funcId: 'graph-conic-elements', inputs: { funcId: 'C', id: 'C', labels: 'both' } },
+          { id: u(), funcId: 'cmt-graph', inputs: { text: 'Centre', x: '[CC]x', y: '[CC]y' } },
+        ],
+      },
+      {
+        id: u(), title: 'L\'hyperbole', layout: 'single-graph',
+        steps: [
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x^2/4 - y^2/9 = 1', id: 'H' } },
+          { id: u(), funcId: 'graph-conic-elements', inputs: { funcId: 'H', id: 'H', labels: 'names' } },
+          { id: u(), funcId: 'cmt-free', inputs: { title: 'Asymptotes', text: 'Deux droites dont l\'hyperbole s\'approche sans jamais les toucher.', side: 'right' } },
+        ],
+      },
+      {
+        id: u(), title: 'Trouver c dans une ellipse', layout: 'graph-equation',
+        steps: [
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x^2/25 + y^2/9 = 1', id: 'E' } },
+          { id: u(), funcId: 'graph-conic-elements', inputs: { funcId: 'E', show: 'foci', id: 'E', labels: 'names' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '|c| = sqrt(|a|^2 - |b|^2)' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { replacements: 'a=[E]a,b=[E]b' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
     ],
   },
   {
@@ -874,7 +1002,41 @@ export const EXAMPLE_LESSONS = [
     desc: 'A possibility tree followed branch by branch, Venn regions (∩, ∪, complement) shaded one at a time, and n! for permutations',
     color: '#f472b6',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'Arbre des possibles : deux lancers', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'intro', title: 'Deux lancers de pièce', content: 'Chaque lancer donne **P** (pile) ou **F** (face).|L\'arbre montre toutes les issues : $2 \\times 2 = 4$.', isList: 'false' } },
+          { id: u(), funcId: 'chart-tree', inputs: { stages: 'P,F', count: '2', headers: '1er lancer,2e lancer', results: '1', chartId: 'arbre' } },
+          { id: u(), funcId: 'chart-tree-path', inputs: { path: 'PF', chartId: 'arbre' } },
+        ],
+      },
+      {
+        id: u(), title: 'Une pièce puis un dé', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'intro', title: 'Pièce puis dé', content: 'Pour chaque côté de la pièce, le dé a 6 faces.|$2 \\times 6 = 12$ issues possibles.', isList: 'false' } },
+          { id: u(), funcId: 'chart-tree', inputs: { stages: 'P,F | 1,2,3,4,5,6', headers: 'Pièce,Dé', results: '1', chartId: 'pd' } },
+          { id: u(), funcId: 'chart-tree-path', inputs: { path: 'P3', chartId: 'pd' } },
+        ],
+      },
+      {
+        id: u(), title: 'Diagramme de Venn : ET et OU', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'sets', title: 'Deux ensembles', content: '$A$ : les élèves qui font du sport|$B$ : les élèves qui font de la musique', isList: 'true' } },
+          { id: u(), funcId: 'chart-venn', inputs: { sets: 'A,B', chartId: 'venn' } },
+          { id: u(), funcId: 'chart-venn-highlight', inputs: { expr: 'A∩B', color: 'green', chartId: 'venn' } },
+          { id: u(), funcId: 'chart-venn-highlight', inputs: { expr: 'A∪B', color: 'orange', chartId: 'venn' } },
+          { id: u(), funcId: 'chart-venn-highlight', inputs: { expr: 'A\'', color: 'red', chartId: 'venn' } },
+        ],
+      },
+      {
+        id: u(), title: 'Combien de façons d\'ordonner ?', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'q', title: 'Placer 5 livres', content: 'Pour la 1re place, 5 choix ; pour la 2e, 4 ; puis 3…|Le nombre total s\'écrit $5!$ (factorielle).', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '5! = x' } },
+          { id: u(), funcId: 'eq-factorial', inputs: { side: 'left', index: '0' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
     ],
   },
   {
@@ -884,7 +1046,60 @@ export const EXAMPLE_LESSONS = [
     desc: 'A fraction circle filling from 3/8 to 5/8, the same amount written as a percentage and a decimal, and the nested number sets ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ',
     color: '#fb923c',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'Une fraction : des parts égales', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Lire une fraction', content: 'Le **dénominateur** dit en combien de parts égales on coupe.|Le **numérateur** dit combien de parts on prend.', isList: 'false' } },
+          { id: u(), funcId: 'chart-pie', inputs: { chartId: 'pie', num: '3', den: '8', color: 'orange' } },
+          { id: u(), funcId: 'chart-pie-set', inputs: { chartId: 'pie', num: '5' } },
+        ],
+      },
+      {
+        id: u(), title: 'Fraction, pourcentage, décimal', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Trois écritures', content: 'Le même cercle, la même quantité, trois façons de l\'écrire.', isList: 'false' } },
+          { id: u(), funcId: 'chart-pie', inputs: { chartId: 'pie', num: '3', den: '4', color: 'green' } },
+          { id: u(), funcId: 'chart-pie-mode', inputs: { chartId: 'pie', mode: 'percent' } },
+          { id: u(), funcId: 'chart-pie-mode', inputs: { chartId: 'pie', mode: 'decimal' } },
+        ],
+      },
+      {
+        id: u(), title: 'Fractions équivalentes', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Même quantité', content: '$\\dfrac{1}{2}$ et $\\dfrac{2}{4}$ remplissent la même surface.', isList: 'false' } },
+          { id: u(), funcId: 'chart-pie', inputs: { chartId: 'a', num: '1', den: '2', color: 'orange' } },
+          { id: u(), funcId: 'chart-pie', inputs: { chartId: 'b', num: '2', den: '4', color: 'teal' } },
+          { id: u(), funcId: 'chart-pie-set', inputs: { chartId: 'b', num: '4', den: '8' } },
+        ],
+      },
+      {
+        id: u(), title: 'Additionner des fractions', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'Même dénominateur d\'abord', content: 'On amplifie chaque fraction pour avoir le même dénominateur, puis on additionne les numérateurs.', isList: 'false' } },
+          { id: u(), funcId: 'eq-fraction-op', inputs: { expression: '2/3 + 1/4' } },
+        ],
+      },
+      {
+        id: u(), title: 'Multiplier des fractions', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'Numérateur × numérateur', content: 'On multiplie les numérateurs ensemble et les dénominateurs ensemble, puis on simplifie.', isList: 'false' } },
+          { id: u(), funcId: 'eq-fraction-op', inputs: { expression: '2/3 × 3/4' } },
+        ],
+      },
+      {
+        id: u(), title: 'Diviser des fractions', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'Multiplier par l\'inverse', content: 'Diviser par une fraction, c\'est multiplier par son inverse.', isList: 'false' } },
+          { id: u(), funcId: 'eq-fraction-op', inputs: { expression: '3/4 ÷ 2/5' } },
+        ],
+      },
+      {
+        id: u(), title: 'Les ensembles de nombres', layout: 'text-grid',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Des ensembles emboîtés', content: 'Chaque ensemble est contenu dans le suivant : un entier naturel est aussi un entier, un décimal, un rationnel et un réel.', isList: 'false' } },
+          { id: u(), funcId: 'chart-number-sets', inputs: { chartId: 'ens' } },
+        ],
+      },
     ],
   },
   {
@@ -894,7 +1109,51 @@ export const EXAMPLE_LESSONS = [
     desc: 'Solve the inequality, shade its half-plane (dashed boundary when strict), then cross two regions to find a vertex',
     color: '#4ade80',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'Une inéquation à une variable', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Inéquation', content: '$x > -2$ : tous les nombres plus grands que $-2$.|Frontière **pointillée** : $-2$ n\'est pas inclus.', isList: 'false' } },
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-6', xMax: '6', yMin: '-4', yMax: '4' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x > -2', id: 'r' } },
+        ],
+      },
+      {
+        id: u(), title: 'Le demi-plan y < 2x + 1', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Demi-plan', content: 'Tous les points **sous** la droite vérifient $y < 2x + 1$.|Frontière pointillée : les points de la droite ne sont pas inclus.', isList: 'false' } },
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-5', xMax: '5', yMin: '-5', yMax: '5' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'y < 2x + 1', id: 'r' } },
+          { id: u(), funcId: 'graph-add-point', inputs: { x: '2', y: '1', id: 'pt', label: '(2, 1)', showCoords: 'false' } },
+          { id: u(), funcId: 'cmt-graph', inputs: { text: '1 < 2(2) + 1 : vrai', x: '2', y: '1' } },
+        ],
+      },
+      {
+        id: u(), title: 'Frontière pleine : ≥', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Inégalité large', content: 'Avec $\\ge$, la droite fait partie de la solution : **trait plein**.', isList: 'false' } },
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-5', xMax: '5', yMin: '-5', yMax: '5' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'y >= -x + 2', id: 'r' } },
+        ],
+      },
+      {
+        id: u(), title: 'Deux contraintes, un sommet', layout: 'single-graph',
+        steps: [
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-1', xMax: '8', yMin: '-1', yMax: '7' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'y <= -x + 6', id: 'c1' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'y >= x / 2', id: 'c2' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: '-x + 6', id: 'l1', hideLabel: '1' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x / 2', id: 'l2', hideLabel: '1' } },
+          { id: u(), funcId: 'graph-find-intersections', inputs: { f1: 'l1', f2: 'l2', color: 'green' } },
+        ],
+      },
+      {
+        id: u(), title: 'Trouver la frontière', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Où est la frontière ?', content: 'Pour $2x + 3 < 11$, on résout d\'abord $2x + 3 = 11$.|La solution est tout ce qui est d\'un seul côté de cette valeur.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '2x + 3 = 11' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
     ],
   },
   {
@@ -904,7 +1163,62 @@ export const EXAMPLE_LESSONS = [
     desc: 'Two parallels cut by a transversal with alternate-interior and corresponding angles, then the altitude and median of a triangle attached to the figure',
     color: '#60a5fa',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'Angles opposés par le sommet', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Opposés par le sommet', content: 'Deux droites qui se croisent forment deux paires d\'angles **égaux**.', isList: 'false' } },
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-5', xMax: '5', yMin: '-4', yMax: '4' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '-4', y1: '-2', x2: '4', y2: '2', id: 'd1', name: 'd₁' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '-4', y1: '2', x2: '4', y2: '-2', id: 'd2', name: 'd₂' } },
+          { id: u(), funcId: 'graph-angle-between', inputs: { a: 'd1', b: 'd2', color: 'orange', id: 'a1', side: 'right' } },
+          { id: u(), funcId: 'graph-angle-between', inputs: { a: 'd1', b: 'd2', color: 'orange', id: 'a2', side: 'left' } },
+        ],
+      },
+      {
+        id: u(), title: 'Parallèles et sécante : angles correspondants', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Angles correspondants', content: 'Même position à chaque intersection : ils sont **égaux** quand les droites sont parallèles.', isList: 'false' } },
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-5', xMax: '6', yMin: '-4', yMax: '5' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '-4', y1: '2', x2: '5', y2: '2', id: 'p1', name: 'd₁' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '-4', y1: '-1', x2: '5', y2: '-1', id: 'p2', name: 'd₂' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '-2', y1: '-3', x2: '3', y2: '4', id: 's', name: 'sécante' } },
+          { id: u(), funcId: 'graph-angle-between', inputs: { a: 'p1', b: 's', color: 'green', id: 'g1', side: 'above-right' } },
+          { id: u(), funcId: 'graph-angle-between', inputs: { a: 'p2', b: 's', color: 'green', id: 'g2', side: 'above-right' } },
+        ],
+      },
+      {
+        id: u(), title: 'Angles alternes-internes', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Alternes-internes', content: 'Entre les parallèles, de part et d\'autre de la sécante : ils sont **égaux**.', isList: 'false' } },
+          { id: u(), funcId: 'graph-set-viewport', inputs: { xMin: '-5', xMax: '6', yMin: '-4', yMax: '5' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '-4', y1: '2', x2: '5', y2: '2', id: 'p1', name: 'd₁' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '-4', y1: '-1', x2: '5', y2: '-1', id: 'p2', name: 'd₂' } },
+          { id: u(), funcId: 'graph-add-segment', inputs: { x1: '-2', y1: '-3', x2: '3', y2: '4', id: 's', name: 'sécante' } },
+          { id: u(), funcId: 'graph-angle-between', inputs: { a: 'p1', b: 's', color: 'pink', id: 'g1', side: 'below-left' } },
+          { id: u(), funcId: 'graph-angle-between', inputs: { a: 'p2', b: 's', color: 'pink', id: 'g2', side: 'above-right' } },
+        ],
+      },
+      {
+        id: u(), title: 'La hauteur d\'un triangle', layout: 'text-3d',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Hauteur', content: 'Segment qui part d\'un sommet et tombe **perpendiculairement** sur le côté opposé.', isList: 'false' } },
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 't', type: 'triangle', a: '6', b: '5', c: '7' } },
+          { id: u(), funcId: 'geo3d-name-vertices', inputs: { shapeId: 't', names: 'A,B,C' } },
+          { id: u(), funcId: 'geo3d-snap-shape', inputs: { shapeId: 'h', parentId: 't', anchors: 'v2,e0:5', color: 'purple' } },
+          { id: u(), funcId: 'geo3d-mark-angle', inputs: { id: 't', markId: 'droit', from: 'v1', vertex: 'e0:5', to: 'v2', color: 'purple', label: '-' } },
+          { id: u(), funcId: 'cmt-geo-edge', inputs: { text: 'hauteur', shapeId: 'h', edgeIndex: '0', color: 'purple' } },
+        ],
+      },
+      {
+        id: u(), title: 'La médiane d\'un triangle', layout: 'text-3d',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Médiane', content: 'Segment qui relie un sommet au **milieu** du côté opposé.', isList: 'false' } },
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 't', type: 'triangle', a: '6', b: '5', c: '7' } },
+          { id: u(), funcId: 'geo3d-name-vertices', inputs: { shapeId: 't', names: 'A,B,C' } },
+          { id: u(), funcId: 'geo3d-snap-shape', inputs: { shapeId: 'm', parentId: 't', anchors: 'v2,e0@0.5', color: 'orange' } },
+          { id: u(), funcId: 'cmt-geo-edge', inputs: { text: 'médiane', shapeId: 'm', edgeIndex: '0', color: 'orange' } },
+        ],
+      },
     ],
   },
   {
@@ -914,7 +1228,44 @@ export const EXAMPLE_LESSONS = [
     desc: 'Translation, rotation and reflection of the same named figure, the image drawn beside the original',
     color: '#10b981',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'Translation', layout: 'text-3d',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Translation', content: 'La figure **glisse** : même forme, même taille, même orientation.', isList: 'false' } },
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 'f', type: 'right-triangle', a: '3', b: '2' } },
+          { id: u(), funcId: 'geo3d-move', inputs: { id: 'f', dx: '-3', dy: '0' } },
+          { id: u(), funcId: 'geo3d-name-vertices', inputs: { shapeId: 'f', names: 'A,B,C' } },
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 'g', type: 'right-triangle', a: '3', b: '2', color: 'orange' } },
+          { id: u(), funcId: 'geo3d-move', inputs: { id: 'g', dx: '3', dy: '1' } },
+          { id: u(), funcId: 'geo3d-name-vertices', inputs: { shapeId: 'g', names: 'A\',B\',C\'', color: 'orange' } },
+        ],
+      },
+      {
+        id: u(), title: 'Rotation', layout: 'text-3d',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Rotation', content: 'La figure **tourne** autour d\'un point : ici d\'un quart de tour.', isList: 'false' } },
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 'f', type: 'right-triangle', a: '3', b: '2' } },
+          { id: u(), funcId: 'geo3d-move', inputs: { id: 'f', dx: '-3', dy: '0' } },
+          { id: u(), funcId: 'geo3d-name-vertices', inputs: { shapeId: 'f', names: 'A,B,C' } },
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 'g', type: 'right-triangle', a: '3', b: '2', color: 'green' } },
+          { id: u(), funcId: 'geo2d-rotate', inputs: { id: 'g' } },
+          { id: u(), funcId: 'geo3d-move', inputs: { id: 'g', dx: '3', dy: '0' } },
+          { id: u(), funcId: 'geo3d-name-vertices', inputs: { shapeId: 'g', names: 'A\',B\',C\'', color: 'green' } },
+        ],
+      },
+      {
+        id: u(), title: 'Réflexion', layout: 'text-3d',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Réflexion', content: 'La figure est **retournée** comme dans un miroir.', isList: 'false' } },
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 'f', type: 'right-triangle', a: '3', b: '2' } },
+          { id: u(), funcId: 'geo3d-move', inputs: { id: 'f', dx: '-3', dy: '0' } },
+          { id: u(), funcId: 'geo3d-name-vertices', inputs: { shapeId: 'f', names: 'A,B,C' } },
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 'g', type: 'right-triangle', a: '3', b: '2', color: 'purple' } },
+          { id: u(), funcId: 'geo2d-flip', inputs: { id: 'g' } },
+          { id: u(), funcId: 'geo3d-move', inputs: { id: 'g', dx: '3', dy: '0' } },
+          { id: u(), funcId: 'geo3d-name-vertices', inputs: { shapeId: 'g', names: 'A\',B\',C\'', color: 'purple' } },
+        ],
+      },
     ],
   },
   {
@@ -924,7 +1275,34 @@ export const EXAMPLE_LESSONS = [
     desc: 'Multiplication and division before addition and subtraction, one operation at a time, left to right',
     color: '#fbbf24',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: '× et ÷ avant + et −', layout: 'text-mdas',
+        steps: [
+          { id: u(), funcId: 'mdas-example', inputs: { expr: '4 + 8 ÷ 2 - 1 × 3' } },
+        ],
+      },
+      {
+        id: u(), title: 'Un deuxième exemple', layout: 'text-mdas',
+        steps: [
+          { id: u(), funcId: 'mdas-example', inputs: { expr: '10 - 2 × 3 + 12 ÷ 4' } },
+        ],
+      },
+      {
+        id: u(), title: 'Les parenthèses d\'abord', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'Parenthèses', content: 'Ce qui est entre **parenthèses** se calcule avant tout le reste.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '2 × (3 + 5) - 4' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Et les exposants ?', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'L\'ordre complet', content: 'Parenthèses|Exposants|× et ÷, de gauche à droite|+ et −, de gauche à droite', isList: 'steps' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '2 + 3^2 × 2' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
     ],
   },
   {
@@ -934,7 +1312,48 @@ export const EXAMPLE_LESSONS = [
     desc: 'Step, absolute value, square root and sinusoidal functions with sliders a, b, h, k, a piecewise function, then transformations',
     color: '#34d399',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'La racine carrée', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Racine carrée', content: '$f(x) = a\\sqrt{b(x - h)} + k$|Déplace les curseurs pour voir l\'effet de chaque paramètre.', isList: 'false' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: '|a| * sqrt(|b| * (x - |h|)) + |k|', id: 'rac' } },
+          { id: u(), funcId: 'graph-adjust-view', inputs: { cx: '2', cy: '1', range: '10' } },
+        ],
+      },
+      {
+        id: u(), title: 'La sinusoïde', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Sinusoïde', content: '$f(x) = a\\sin(b(x - h)) + k$|$a$ : amplitude|$b$ : fréquence|$h$ : déphasage, $k$ : décalage vertical', isList: 'false' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: '|a| * sin(|b| * (x - |h|)) + |k|', id: 'sin' } },
+          { id: u(), funcId: 'graph-adjust-view', inputs: { cx: '0', cy: '0', range: '6' } },
+        ],
+      },
+      {
+        id: u(), title: 'La fonction en escalier', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Partie entière', content: '$f(x) = \\lfloor x \\rfloor$ : le plus grand entier plus petit ou égal à $x$.|Chaque marche a un point **plein** à gauche et **vide** à droite.', isList: 'false' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'floor(x)', id: 'esc' } },
+          { id: u(), funcId: 'graph-adjust-view', inputs: { cx: '0', cy: '0', range: '10' } },
+        ],
+      },
+      {
+        id: u(), title: 'La valeur absolue', layout: 'text-graph',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Valeur absolue', content: '$f(x) = \\lvert x - h \\rvert + k$|Un V dont le sommet est en $(h, k)$.', isList: 'false' } },
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'sqrt((x - 2)^2) + 1', id: 'va', hideLabel: '1' } },
+          { id: u(), funcId: 'graph-name-func', inputs: { funcId: 'va', label: 'f(x) = |x − 2| + 1', x0: '5' } },
+          { id: u(), funcId: 'graph-adjust-view', inputs: { cx: '2', cy: '2', range: '8' } },
+        ],
+      },
+      {
+        id: u(), title: 'Transformer une fonction', layout: 'single-graph',
+        steps: [
+          { id: u(), funcId: 'graph-plot-function', inputs: { expr: 'x^2', id: 'f' } },
+          { id: u(), funcId: 'graph-transform-function', inputs: { funcId: 'f', transformType: 'translateX', value: '2' } },
+          { id: u(), funcId: 'graph-transform-function', inputs: { funcId: 'f', transformType: 'translateY', value: '-1' } },
+          { id: u(), funcId: 'graph-transform-function', inputs: { funcId: 'f', transformType: 'scaleY', value: '2' } },
+        ],
+      },
     ],
   },
   {
@@ -944,7 +1363,38 @@ export const EXAMPLE_LESSONS = [
     desc: 'Distributivity, collecting like terms, and dividing a polynomial by a binomial in the long-division layout',
     color: '#84cc16',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'Distribuer un facteur', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'Distributivité', content: '$a(b + c) = ab + ac$|Le facteur devant multiplie **chaque** terme de la parenthèse.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '3(x + 4) = 2x + 5' } },
+          { id: u(), funcId: 'eq-distribute', inputs: { eq: '3(x + 4) = 2x + 5' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Double distributivité', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'Deux parenthèses', content: 'Chaque terme de la première parenthèse multiplie chaque terme de la seconde.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '(x+2)(x+3)' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Réduire des termes semblables', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'Termes semblables', content: 'On additionne les termes qui ont la **même** partie littérale.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '3x + 5 - x + 2' } },
+          { id: u(), funcId: 'eq-combine', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Diviser un polynôme par un binôme', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'Division de polynômes', content: 'Comme la division longue : diviser, multiplier, soustraire, abaisser.', isList: 'false' } },
+          { id: u(), funcId: 'eq-polynomial-divide', inputs: { poly: 'x^3 - 2x^2 - 5x + 6', divisor: 'x - 1' } },
+        ],
+      },
     ],
   },
   {
@@ -954,7 +1404,48 @@ export const EXAMPLE_LESSONS = [
     desc: 'The altitude from the right angle attached to the triangle, the angles marked and h² = m·n worked out, then the law of cosines',
     color: '#f87171',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'La hauteur issue de l\'angle droit', layout: 'text-3d',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Relations métriques', content: 'La hauteur $h$ coupe l\'hypoténuse en deux segments $m$ et $n$.|$h^2 = m \\cdot n$', isList: 'false' } },
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 't', type: 'right-triangle', a: '6', b: '8' } },
+          { id: u(), funcId: 'geo3d-name-vertices', inputs: { shapeId: 't', names: 'A,B,C' } },
+          { id: u(), funcId: 'geo3d-snap-shape', inputs: { shapeId: 'h', parentId: 't', anchors: 'v1,e2:6.4', color: 'purple' } },
+          { id: u(), funcId: 'cmt-geo-edge', inputs: { text: 'h', shapeId: 'h', edgeIndex: '0', color: 'purple' } },
+        ],
+      },
+      {
+        id: u(), title: 'Calculer la hauteur', layout: 'equation-3d',
+        steps: [
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 't', type: 'right-triangle', a: '6', b: '8' } },
+          { id: u(), funcId: 'geo3d-snap-shape', inputs: { shapeId: 'h', parentId: 't', anchors: 'v1,e2:6.4', color: 'purple' } },
+          { id: u(), funcId: 'cmt-geo-edge', inputs: { text: 'h = ?', shapeId: 'h', edgeIndex: '0', color: 'purple' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '|h| = sqrt(|m| * |n|)' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { replacements: 'm=6.4,n=3.6' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'La loi des cosinus : trouver un côté', layout: 'equation-3d',
+        steps: [
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 't', type: 'triangle', a: '5', b: '8', c: '7' } },
+          { id: u(), funcId: 'geo3d-label-sides', inputs: { id: 't', labels: 'a=,b=,c = ?' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '|c| = sqrt(|a|^2 + |b|^2 - 2 * |a| * |b| * cos(|C|))' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { replacements: 'a=5,b=8,C=60' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'La loi des cosinus : trouver un angle', layout: 'equation-3d',
+        steps: [
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 't', type: 'triangle', a: '5', b: '8', c: '7' } },
+          { id: u(), funcId: 'geo3d-show-angles', inputs: { id: 't', showValues: 'true' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: 'cos(|C|) = (|a|^2 + |b|^2 - |c|^2) / (2 * |a| * |b|)' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { replacements: 'a=5,b=8,c=7' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+          { id: u(), funcId: 'cmt-free', inputs: { title: 'Conclusion', text: '$\\cos C = \\dfrac{1}{2}$, donc $C = 60^\\circ$', side: 'right' } },
+        ],
+      },
     ],
   },
   {
@@ -964,7 +1455,44 @@ export const EXAMPLE_LESSONS = [
     desc: 'Front, top and side views of a solid, its measures written as letters, then the missing measure found from the volume',
     color: '#6ee7b7',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'Un prisme vu de face, de dessus, de côté', layout: 'single-3d',
+        steps: [
+          { id: u(), funcId: 'geo3d-create', inputs: { id: 'p', type: 'rectangular-prism', a: '4', b: '2', c: '3' } },
+          { id: u(), funcId: 'geo3d-set-view', inputs: { preset: 'front' } },
+          { id: u(), funcId: 'geo3d-set-view', inputs: { preset: 'top' } },
+          { id: u(), funcId: 'geo3d-set-view', inputs: { preset: 'side' } },
+          { id: u(), funcId: 'geo3d-set-view', inputs: { preset: 'corner' } },
+        ],
+      },
+      {
+        id: u(), title: 'Les mesures du volume', layout: 'text-3d',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Volume du cylindre', content: '$V = \\pi r^2 h$|Il faut le rayon $r$ de la base et la hauteur $h$.', isList: 'false' } },
+          { id: u(), funcId: 'geo3d-create', inputs: { id: 'c', type: 'cylinder', a: '2', b: '5' } },
+          { id: u(), funcId: 'geo3d-show-volume-measures', inputs: { id: 'c', values: 'letters' } },
+        ],
+      },
+      {
+        id: u(), title: 'Trouver la hauteur manquante', layout: 'equation-3d',
+        steps: [
+          { id: u(), funcId: 'geo3d-create', inputs: { id: 'c', type: 'cylinder', a: '2', b: '5' } },
+          { id: u(), funcId: 'geo3d-show-volume-measures', inputs: { id: 'c', values: 'letters' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '|h| = |V| / (pi * |r|^2)' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { replacements: 'V=62.83,r=2' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Volume d\'une pyramide', layout: 'equation-3d',
+        steps: [
+          { id: u(), funcId: 'geo3d-create', inputs: { id: 'py', type: 'pyramid', a: '4', b: '6' } },
+          { id: u(), funcId: 'geo3d-show-volume-measures', inputs: { id: 'py' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '|V| = |a|^2 * |h| / 3' } },
+          { id: u(), funcId: 'eq-replace-variable', inputs: { replacements: 'a=[py]a,h=[py]h' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
     ],
   },
   {
@@ -974,7 +1502,46 @@ export const EXAMPLE_LESSONS = [
     desc: 'The laws of exponents applied step by step, then a number rewritten in scientific notation and back',
     color: '#eab308',
     pages: [
-      { id: u(), title: '', layout: null, steps: [] },
+      {
+        id: u(), title: 'Multiplier des puissances de même base', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'loi', title: 'Même base', content: '$a^m \\times a^n = a^{m+n}$|On garde la base et on **additionne** les exposants.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '2^3 × 2^4' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Puissance d\'une puissance', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'loi', title: 'Puissance de puissance', content: '$(a^m)^n = a^{m \\times n}$|On **multiplie** les exposants.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '(2^3)^2' } },
+          { id: u(), funcId: 'eq-full-solve', inputs: {} },
+        ],
+      },
+      {
+        id: u(), title: 'Écrire un nombre en entier', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Notation scientifique', content: '$m \\times 10^n$ avec $1 \\le m < 10$.|L\'exposant dit de combien de places déplacer la virgule.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '3,45 x 10^4' } },
+          { id: u(), funcId: 'eq-sci-expand', inputs: { side: 'left', index: '0' } },
+        ],
+      },
+      {
+        id: u(), title: 'Un très grand nombre', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Grand exposant', content: 'Plus l\'exposant est grand, plus la virgule avance vers la **droite**.|Chaque place vide reçoit un 0.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '7,2 x 10^5' } },
+          { id: u(), funcId: 'eq-sci-expand', inputs: { side: 'left', index: '0' } },
+        ],
+      },
+      {
+        id: u(), title: 'Mettre sur la même puissance de 10', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'def', title: 'Avant d\'additionner', content: 'Pour additionner $2,34 \\times 10^2$ et $4,45 \\times 10^4$, on les met d\'abord sur la même puissance de 10.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '4,45 x 10^4' } },
+          { id: u(), funcId: 'eq-sci-expand', inputs: { side: 'left', index: '0', target: '2' } },
+        ],
+      },
     ],
   },
 ]

@@ -1552,9 +1552,7 @@ export default function App() {
 
       {/* ── TOP BAR ──────────────────────────────────────────────────────────── */}
       <header className="top-bar">
-        <div className="top-bar-left">
-          <span className="top-bar-brand">Vectora</span>
-        </div>
+        <div className="top-bar-left" />
         {ui.title && <div className="top-bar-title">{ui.title}</div>}
         <div className="top-bar-right" />
       </header>

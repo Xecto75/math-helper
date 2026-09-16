@@ -49,7 +49,7 @@
    the cursor, so the rail says it opens without carrying a second button. */
 .sidebar-brand {
   position: relative;
-  width: 56px;
+  min-width: 56px;
   height: 48px;
   flex-shrink: 0;
   align-self: flex-start;
@@ -58,9 +58,9 @@
   margin-left: calc((var(--rail-w-min) - 1px - 56px) / 2);
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   margin-bottom: 12px;
-  padding: 0;
+  padding: 0 10px;
   border: none;
   border-radius: 12px;
   background: transparent;
@@ -81,6 +81,21 @@
   height: 36px;
   object-fit: contain;
   display: block;
+}
+/* The name beside the logo, in the app's blue. Hidden the same way the labels
+   are — zero width, fading with the rail — so it slides out as the rail opens
+   instead of appearing at the end of it. */
+.sidebar-brand-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #60a5fa;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  transition: opacity 0.16s ease, max-width 0.22s ease, margin-left 0.22s ease;
 }
 .sidebar-nav {
   display: flex;
@@ -153,6 +168,11 @@
 .app--rail-open .sidebar-label {
   max-width: 170px;
   margin-left: 12px;
+  opacity: 1;
+}
+.app--rail-open .sidebar-brand-name {
+  max-width: 140px;
+  margin-left: 10px;
   opacity: 1;
 }
 
@@ -242,7 +262,7 @@
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  height: 44px;
+  height: 56px;
   padding: 0 12px;
   background: var(--bg-raised);
   border-bottom: 1px solid var(--border);
@@ -252,19 +272,17 @@
 }
 .top-bar-left  { display: flex; align-items: center; gap: 10px; }
 .top-bar-right { display: flex; align-items: center; gap: 6px; }
-.top-bar-brand { font-size: 0.9rem; font-weight: 700; color: var(--accent-1); letter-spacing: 0.01em; white-space: nowrap; }
 .top-bar-title {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.82rem;
+  font-size: 1.3rem;
   font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  color: var(--text-h);
+  letter-spacing: 0.01em;
   pointer-events: none;
   white-space: nowrap;
-  max-width: 40vw;
+  max-width: 60vw;
   overflow: hidden;
   text-overflow: ellipsis;
 }

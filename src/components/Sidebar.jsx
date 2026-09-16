@@ -107,6 +107,7 @@ export default function Sidebar({ active, onToggle, expanded, onSetExpanded, lan
         aria-expanded={expanded}
       >
         <span className="sidebar-brand-mark">{LOGO}</span>
+        <span className="sidebar-brand-name">Vectora</span>
       </button>
 
       <nav className="sidebar-nav sidebar-nav--top">

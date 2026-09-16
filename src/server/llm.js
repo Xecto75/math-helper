@@ -17,6 +17,9 @@ const PROVIDER = (process.env.LLM_PROVIDER ?? 'gemini').toLowerCase()
 const DEFAULTS = {
   gemini:    { router: 'gemini-3.7-flash',            generator: 'gemini-3.7-flash' },
   anthropic: { router: 'claude-haiku-4-5-20251001',   generator: 'claude-sonnet-4-6' },
+  // V4.1 Flash. DeepSeek retired V4 Flash on 2026-09-10; the old name
+  // 'deepseek-v4-flash' still answers, but only as a temporary alias of this.
+  deepseek:  { router: 'deepseek-flash',              generator: 'deepseek-flash' },
 }
 
 const base = DEFAULTS[PROVIDER] ?? DEFAULTS.gemini
@@ -31,7 +34,15 @@ export const MODELS = {
   generator: process.env.LLM_GENERATOR_MODEL ?? base.generator,
 }
 
-export const providerOf = (model) => (String(model).startsWith('gemini') ? 'gemini' : 'anthropic')
+export const providerOf = (model) => {
+  const m = String(model)
+  return m.startsWith('gemini') ? 'gemini' : m.startsWith('deepseek') ? 'deepseek' : 'anthropic'
+}
+
+// The same for every provider, so two of them compared side by side differ by
+// the model and not by a setting. Low, because the lesson format is a fixed
+// grammar, not a place for invention.
+const TEMPERATURE = 0.2
 
 // ── Anthropic ───────────────────────────────────────────────────────────────
 
@@ -49,6 +60,9 @@ async function callAnthropic({ model, system, user, maxTokens, cacheSystem }) {
   const params = {
     model,
     max_tokens: maxTokens,
+    // Opus 4.7 and the Claude 5 generation refuse sampling settings with a 400.
+    // Haiku 4.5 and Sonnet 4.6, the defaults above, still take them.
+    ...(/^claude-(opus-4-[7-9]|[a-z]+-[5-9])/.test(model) ? {} : { temperature: TEMPERATURE }),
     // The system prompt is the expensive half and it is identical between
     // requests, so it is worth caching when the provider can.
     system: cacheSystem
@@ -79,9 +93,7 @@ async function callGemini({ model, system, user, maxTokens }) {
     contents: [{ role: 'user', parts: [{ text: user }] }],
     generationConfig: {
       maxOutputTokens: maxTokens,
-      // The lesson format is a fixed grammar, not a place for invention. Every
-      // degree of freedom here comes back as a code the validator has to reject.
-      temperature: 0,
+      temperature: TEMPERATURE,
     },
   }
 
@@ -138,6 +150,70 @@ async function callGemini({ model, system, user, maxTokens }) {
   }
 }
 
+// ── DeepSeek ────────────────────────────────────────────────────────────────
+
+const DEEPSEEK_HOST = 'https://api.deepseek.com'
+
+async function callDeepSeek({ model, system, user, maxTokens }) {
+  const key = process.env.DEEPSEEK_API_KEY
+  if (!key) throw new Error('DEEPSEEK_API_KEY is not set — put it in .env and restart the server.')
+
+  const body = {
+    model,
+    max_tokens: maxTokens,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user',   content: user },
+    ],
+    // Thinking is on by default, and while it is on the temperature is
+    // accepted and then ignored without a word. Off, so the value above is the
+    // one that actually applies.
+    thinking:    { type: 'disabled' },
+    temperature: TEMPERATURE,
+  }
+
+  const res = await fetch(`${DEEPSEEK_HOST}/chat/completions`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body:    JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`DeepSeek ${res.status}: ${detail.slice(0, 400)}`)
+  }
+
+  const json   = await res.json()
+  const choice = json.choices?.[0]
+  const text   = choice?.message?.content ?? ''
+  const u      = json.usage ?? {}
+  const hit    = u.prompt_cache_hit_tokens ?? 0
+
+  const usage = {
+    // prompt_tokens includes the part served from cache; Anthropic's
+    // input_tokens does not, and the cost is computed on Anthropic's reading.
+    input_tokens:                (u.prompt_tokens ?? 0) - hit,
+    output_tokens:               u.completion_tokens ?? 0,
+    cache_read_input_tokens:     hit,
+    // The cache fills itself at no extra charge, so there is no write to report.
+    cache_creation_input_tokens: 0,
+  }
+
+  return {
+    text,
+    usage,
+    stopReason: choice?.finish_reason ?? null,
+    // Same one transcript shape as Gemini — see there for why.
+    request: { model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }] },
+    raw: {
+      usage,
+      stop_reason: choice?.finish_reason ?? null,
+      content: [{ type: 'text', text }],
+      provider: json,
+    },
+  }
+}
+
 /**
  * Ask a model. `system` and `user` are plain strings; `cacheSystem` is a hint
  * that the provider may ignore.
@@ -147,5 +223,6 @@ async function callGemini({ model, system, user, maxTokens }) {
  */
 export async function generate({ model, system, user, maxTokens = 4096, cacheSystem = false }) {
   const args = { model, system, user, maxTokens, cacheSystem }
-  return providerOf(model) === 'gemini' ? callGemini(args) : callAnthropic(args)
+  const call = { gemini: callGemini, deepseek: callDeepSeek }[providerOf(model)] ?? callAnthropic
+  return call(args)
 }

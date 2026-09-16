@@ -841,7 +841,7 @@ export const EXAMPLE_LESSONS = [
     id: 'sequences',
     emoji: '🔢',
     title: 'Arithmetic and Geometric Sequences',
-    desc: 'Léa saves 50 $ plus 20 $ a week: an arithmetic sequence with its +20 arrows, its general term worked out for week 10, then a doubling bacteria colony as a geometric sequence plotted on the graph',
+    desc: 'Léa saves 50 $ plus 20 $ a week: an arithmetic sequence with its +20 arrows, what each letter of tₙ = t₁ + (n − 1)d stands for with a coloured comment per letter, the general term worked out for week 10, then a doubling bacteria colony as a geometric sequence plotted on the graph',
     color: '#f59e0b',
     pages: [
       {
@@ -853,13 +853,24 @@ export const EXAMPLE_LESSONS = [
         ],
       },
       {
-        id: u(), title: 'La règle pour n\'importe quelle semaine', layout: 'text-equation',
+        id: u(), title: 'Que veut dire chaque lettre ?', layout: 'text-equation',
         steps: [
-          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'Terme général', content: '$t_n = \\clr{green}{t_1} + (\\clr{purple}{n} - 1) \\times \\clr{orange}{d}$', isList: 'false' } },
-          { id: u(), funcId: 'eq-create', inputs: { eq: '|t₁₀| = |t₁|{green} + (|n|{purple} - 1) * |d|{orange}' } },
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'regle', title: 'Terme général', content: '$\\clr{cyan}{t_n} = \\clr{green}{t_1} + (\\clr{purple}{n} - 1) \\times \\clr{orange}{d}$|Chaque lettre a un rôle précis.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '|tₙ|{cyan} ; |t₁|{green} ; |n|{purple} ; |d|{orange}' } },
+          { id: u(), funcId: 'cmt-equation', inputs: { cmtId: 'ctn', text: 'Le terme cherché', side: 'left', indices: '0', color: 'cyan' } },
+          { id: u(), funcId: 'cmt-equation', inputs: { cmtId: 'ct1', text: 'Le 1er terme : 50 $', side: 'left', indices: '1', color: 'green' } },
+          { id: u(), funcId: 'cmt-equation', inputs: { cmtId: 'cn', text: 'Le rang : n° de la semaine', side: 'left', indices: '2', color: 'purple' } },
+          { id: u(), funcId: 'cmt-equation', inputs: { cmtId: 'cd', text: 'La raison : +20 $ par semaine', side: 'left', indices: '3', color: 'orange' } },
+        ],
+      },
+      {
+        id: u(), title: 'Combien à la semaine 10 ?', layout: 'text-equation',
+        steps: [
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'q', title: 'Semaine 10', content: 'On remplace chaque lettre par sa valeur : $\\clr{green}{t_1} = 50$, $\\clr{purple}{n} = 10$ et $\\clr{orange}{d} = 20$.', isList: 'false' } },
+          { id: u(), funcId: 'eq-create', inputs: { eq: '|t₁₀|{cyan} = |t₁|{green} + (|n|{purple} - 1) * |d|{orange}' } },
           { id: u(), funcId: 'eq-replace-variable', inputs: { replacements: 't₁=50,n=10,d=20' } },
           { id: u(), funcId: 'eq-full-solve', inputs: {} },
-          { id: u(), funcId: 'text-fade-content', inputs: { boxId: 'regle', content: '$t_n = \\clr{green}{t_1} + (\\clr{purple}{n} - 1) \\times \\clr{orange}{d}$|À la semaine 10, Léa aura **[eq-result] $**.' } },
+          { id: u(), funcId: 'text-fade-content', inputs: { boxId: 'q', content: 'On remplace chaque lettre par sa valeur : $\\clr{green}{t_1} = 50$, $\\clr{purple}{n} = 10$ et $\\clr{orange}{d} = 20$.|À la semaine 10, Léa aura **[eq-result] $**.' } },
         ],
       },
       {

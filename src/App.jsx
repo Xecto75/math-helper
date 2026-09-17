@@ -42,7 +42,7 @@ import * as threeEngine     from './engine/threeEngine.js'
 import { clearSavedValues } from './engine/valueRefs.js'
 import { MDAS_PRESETS }     from './engine/demoScripts.js'
 import { LESSON_GRADES }   from './data/builtinLessons.js'
-import { u }               from './i18n/uiText.js'
+import { u, SUPPORTED_LANGS } from './i18n/uiText.js'
 import {
   demoPizzaShow, demoPizzaShade, demoPizzaCompare,
   demoCounterShow, demoCounterAdd, demoCounterGroup, demoCounterRemove,
@@ -275,6 +275,14 @@ const TOOL_LAYOUTS = {
   numbers: 'single-numbers', clock: 'single-clock', mult: 'single-mult', mdas: 'text-mdas',
 }
 
+// The interface language: the first of the browser's languages it is
+// translated into, English when there is none. There is no setting for it.
+function browserLang() {
+  const tags = navigator.languages?.length ? navigator.languages : [navigator.language]
+  return tags.map(t => String(t ?? '').slice(0, 2).toLowerCase())
+             .find(code => SUPPORTED_LANGS.includes(code)) ?? 'en'
+}
+
 export default function App() {
   // ── Core state ─────────────────────────────────────────────────────────────
   const [equationSnap, setEquationSnap] = useState(null)
@@ -462,7 +470,7 @@ export default function App() {
   }, [])
 
   // ── Lesson UI state ────────────────────────────────────────────────────────
-  const [lang,            setLang]            = useState(() => localStorage.getItem('math-lang') ?? 'en')
+  const [lang]                                = useState(browserLang)
   // The document language is what hyphens: auto reads to pick its dictionary,
   // and it was pinned to "en" in index.html. A French note was therefore broken
   // by English rules — which is how "séparateur" came out as "séparateu" and a
@@ -523,6 +531,16 @@ export default function App() {
   const contentRef      = useRef(null)
   const langRef         = useRef(lang)
   langRef.current       = lang
+  // The language a lesson's own words are in. A generated lesson brings the one
+  // its prompt was written in; every other lesson, page and tool speaks the
+  // interface's. Read by the steps that write words themselves (conic element
+  // names, the order-of-operations rules) and by hyphenation, which splits
+  // words by the rules of the document's language.
+  const lessonLangRef   = useRef(null)
+  const setLessonLang   = (l) => {
+    lessonLangRef.current = l
+    document.documentElement.lang = l ?? langRef.current
+  }
   const animSpeedRef      = useRef(1)
   const cancelRef         = useRef(null)
   const pausedRef         = useRef(false)
@@ -584,9 +602,6 @@ export default function App() {
   const refreshFuncIds  = () => setGraphFuncIds(graphEngine.getFunctionIds())
   const refreshGridIds  = () => setTableGridIds(tableEngine.getGridIds())
   const refreshShapeIds = () => setGeoShapeIds(geometryEngine.getShapeIds())
-
-  // ── Lang persist ──────────────────────────────────────────────────────────
-  const setLangPersist = (l) => { setLang(l); localStorage.setItem('math-lang', l) }
 
   // ── Clear all displays ────────────────────────────────────────────────────
   const clearAll = useCallback(() => {
@@ -659,6 +674,7 @@ export default function App() {
   // ── Open a tool ───────────────────────────────────────────────────────────
   const handleOpenTool = useCallback(async (toolId) => {
     clearAll()
+    setLessonLang(null)
     setActiveTool(toolId)
     setLayoutMode(TOOL_LAYOUTS[toolId])
     await new Promise(r => setTimeout(r, 120))
@@ -773,7 +789,7 @@ export default function App() {
       case 'graph-name-func':              return demoGraphNameFunc(inputs.funcId, inputs.label, inputs.x0, inputs.y0)
       case 'graph-horizontal-line':        return demoGraphAddHorizontalLine(inputs.y)
       case 'graph-mark-roots':             return demoGraphMarkRoots(inputs.funcId)
-      case 'graph-conic-elements':         return demoGraphConicElements(inputs.funcId, inputs.show, inputs.id, inputs.labels, inputs.color, langRef.current)
+      case 'graph-conic-elements':         return demoGraphConicElements(inputs.funcId, inputs.show, inputs.id, inputs.labels, inputs.color, lessonLangRef.current ?? langRef.current)
       case 'graph-remove-conic-elements':  return demoGraphRemoveConicElements(inputs.id)
       case 'graph-show-projection':        return demoGraphShowProjection(inputs.pointId, inputs.showValues)
       case 'graph-trig-circle':            return demoGraphTrigCircle()
@@ -835,7 +851,7 @@ export default function App() {
       case 'clock-show':              return demoClockShow(inputs.hour, inputs.minute)
       case 'clock-set-time':          return demoClockSetTime(inputs.hour, inputs.minute)
       case 'clock-highlight-hand':    return demoClockHighlightHand(inputs.hand)
-      case 'mdas-example':            return demoMdasExample(inputs.expr, langRef.current)
+      case 'mdas-example':            return demoMdasExample(inputs.expr, lessonLangRef.current ?? langRef.current)
       // New kid displays
       case 'pizza-show':    return demoPizzaShow(inputs.slices, inputs.shaded, inputs.label)
       case 'pizza-shade':   return demoPizzaShade(inputs.shaded)
@@ -1152,11 +1168,15 @@ export default function App() {
     setLessonPages(null)
     setLessonPageIdx(0)
     setActiveTool(null)
+    setLessonLang(null)
     buildPage(pg, speed)
   }, [buildPage])
 
-  const handleBuilderBuildAll = useCallback((pages, speed = 1) => {
+  // lessonLang: the language a generated lesson is written in — every other
+  // caller leaves it out, and the lesson speaks the interface's.
+  const handleBuilderBuildAll = useCallback((pages, speed = 1, lessonLang = null) => {
     if (!pages?.length) return
+    setLessonLang(lessonLang)
     setBuilderOpen(false)
     animSpeedRef.current = speed
     const segments = expandLessonPages(pages)
@@ -1189,7 +1209,7 @@ export default function App() {
     setAiSuggestions([])
     setAiRawOutput(null)
     try {
-      const raw    = await generateLesson(trimmed, langRef.current)
+      const { lesson: raw, lang: lessonLang } = await generateLesson(trimmed, langRef.current)
       const loaded = pagesFromJson(raw)
       const draft  = loaded.map(p => ({
         title: p.title, layout: p.layout,
@@ -1200,7 +1220,7 @@ export default function App() {
       // on Enter rather than after another pointless round trip.
       if (ANON_WALL && authConfigured && meLoadedRef.current && !me) localStorage.setItem(ANON_USED_KEY, '1')
       setPromptVal('')
-      handleBuilderBuildAll(loaded, 1)
+      handleBuilderBuildAll(loaded, 1, lessonLang)
     } catch (err) {
       const msg = err.message ?? 'Generation failed'
       // Not signed in, or out of credits: both are things the user can DO
@@ -1535,7 +1555,7 @@ export default function App() {
               <SettingsView
                 theme={theme} onTheme={handleTheme}
                 textSize={textSize} onTextSize={handleTextSize}
-                lang={lang} onLang={setLangPersist}
+                lang={lang}
                 plan={plan} onPlan={setPlan}
                 adminMode={adminMode} onAdminMode={v => { setAdminMode(v); localStorage.setItem('math-admin', v ? '1' : '0') }}
               />

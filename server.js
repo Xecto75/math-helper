@@ -4,7 +4,7 @@ import path       from 'path'
 import express    from 'express'
 import cors       from 'cors'
 import { CATEGORIES } from './src/data/functions.js'
-import { routerSystemPrompt, buildGeneratorPrompt, docForCode } from './src/data/moduleCatalog.js'
+import { routerSystemPrompt, buildGeneratorPrompt, docForCode, lessonLang } from './src/data/moduleCatalog.js'
 import { EXAMPLE_LESSONS } from './src/data/exampleLessons.js'
 import {
   authConfigured, getUser, getProfile, consumeCredit, refundCredit, FREE_LESSON_LIMIT,
@@ -138,6 +138,7 @@ async function routeModules(prompt, trace) {
     const parsed = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1))
     result = {
       status:  parsed.status ?? 'ok',
+      lang:    lessonLang(parsed.lang),
       modules: parsed.modules ?? [],
       message: parsed.message,
       // 1 to 3 reference lessons, closest first. A lone "exampleId" is read too,
@@ -159,9 +160,9 @@ async function routeModules(prompt, trace) {
     } else {
       console.warn('  Router parse failed — falling back to equation+text')
     }
-    result = { status: 'ok', modules: ['equation', 'text'], exampleIds: [] }
+    result = { status: 'ok', lang: null, modules: ['equation', 'text'], exampleIds: [] }
   }
-  console.log('  status:', result.status, result.status === 'ok' ? `modules:${result.modules} examples:${result.exampleIds.join(',') || '—'}` : result.message ?? '')
+  console.log('  status:', result.status, `lang:${result.lang ?? '—'}`, result.status === 'ok' ? `modules:${result.modules} examples:${result.exampleIds.join(',') || '—'}` : result.message ?? '')
   result.cost = cost
   return result
 }
@@ -208,7 +209,7 @@ function referenceLesson(exampleId) {
   try { return compactLesson(pages) } catch { return null }
 }
 
-async function generateCompact(prompt, moduleIds, lang = 'en', exampleIds = [], trace = null) {
+async function generateCompact(prompt, moduleIds, lang = null, exampleIds = [], trace = null) {
   // Last line of defence: an id that resolves to nothing (its pages were
   // deleted, its steps no longer compact cleanly) is dropped, and when none is
   // left the fallback stands in rather than send the generator out with no
@@ -316,7 +317,7 @@ app.get('/api/me', async (req, res) => {
 // ── API endpoint ──────────────────────────────────────────────────────────────
 
 app.post('/api/generate-lesson', async (req, res) => {
-  const { prompt, lang = 'en' } = req.body
+  const { prompt } = req.body
   if (!prompt?.trim()) return res.status(400).json({ error: 'prompt is required' })
 
   // Gate BEFORE any paid API call. Identity and quota are checked here,
@@ -367,10 +368,15 @@ app.post('/api/generate-lesson', async (req, res) => {
   }
 
   let rawApiText = null
-  const trace = startTrace(prompt, lang)
+  const trace = startTrace(prompt)
   try {
     // ── Step 1: Route ────────────────────────────────────────────────────────
     const route = await routeModules(prompt, trace)
+    // The language the prompt is written in, read by the router — there is no
+    // setting for it. The lesson, a refusal's message and the labels the
+    // client writes itself (conic element names…) all follow it.
+    const lang = route.lang
+    trace.note(`lang: ${lang ?? '— none from the router, the generator reads it off the request'}`)
 
     if (route.status !== 'ok') {
       // No lesson was produced, so the credit should not be spent.
@@ -382,6 +388,7 @@ app.post('/api/generate-lesson', async (req, res) => {
         status: route.status,
         message: route.message,
         alternatives: route.alternatives ?? [],
+        lang,
       })
     }
     const moduleIds = route.modules
@@ -458,7 +465,7 @@ app.post('/api/generate-lesson', async (req, res) => {
       JSON.stringify(expanded, null, 2))
     trace.finish()
 
-    res.json({ lesson, modules: moduleIds })
+    res.json({ lesson, modules: moduleIds, lang })
 
   } catch (err) {
     // The user asked for a lesson and did not get one — that is on us, not on

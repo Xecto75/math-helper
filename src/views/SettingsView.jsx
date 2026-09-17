@@ -1,22 +1,12 @@
-import { u, SUPPORTED_LANGS } from '../i18n/uiText.js'
+import { u } from '../i18n/uiText.js'
 import { PLANS as PLAN_NAMES, PLAN_FEATURES, tr } from '../i18n/catalog.js'
 import {
-  GlobeIcon, SunIcon, MoonIcon, TypeIcon,
+  SunIcon, MoonIcon, TypeIcon,
   CreditCardIcon, TerminalIcon, CheckIcon,
 } from '../components/Icon.jsx'
 
-// comingSoon is derived, not hand-maintained: a language is selectable exactly
-// when UI strings exist for it (SUPPORTED_LANGS), so the list can never offer a
-// language whose labels would silently fall back to English.
-const LANGUAGES = [
-  { code: 'en', label: 'English'  },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch'  },
-  { code: 'es', label: 'Español'  },
-  { code: 'it', label: 'Italiano' },
-  { code: 'pt', label: 'Português' },
-  { code: 'zh', label: '中文'     },
-].map(l => ({ ...l, comingSoon: !SUPPORTED_LANGS.includes(l.code) }))
+// No language setting: the interface follows the browser, and a generated
+// lesson follows the language its prompt was written in (App.jsx, server.js).
 
 const TEXT_SIZES = ['small', 'normal', 'large']
 
@@ -27,27 +17,9 @@ const PLANS = [
   { id: 'pro',  amount: '$4.99', perMonth: true, features: ['allLessons', 'allTools', 'customUnlim', 'progress', 'adFree'], highlight: true },
 ]
 
-export default function SettingsView({ lang, onLang, theme, onTheme, textSize, onTextSize, plan, onPlan, adminMode, onAdminMode }) {
+export default function SettingsView({ lang, theme, onTheme, textSize, onTextSize, plan, onPlan, adminMode, onAdminMode }) {
   return (
     <div className="section-view settings-view">
-      {/* Language */}
-      <div className="settings-block">
-        <h3 className="settings-block-title"><GlobeIcon width={16} height={16} />{u(lang, 'langTitle')}</h3>
-        <div className="settings-lang-grid">
-          {LANGUAGES.map(l => (
-            <button
-              key={l.code}
-              className={`lang-option${lang === l.code ? ' lang-option--active' : ''}${l.comingSoon ? ' lang-option--soon' : ''}`}
-              onClick={() => !l.comingSoon && onLang(l.code)}
-              disabled={l.comingSoon}
-            >
-              <span className="lang-name">{l.label}</span>
-              {l.comingSoon && <span className="soon-badge">Soon</span>}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Theme */}
       <div className="settings-block">
         <h3 className="settings-block-title"><SunIcon width={16} height={16} />{u(lang, 'themeTitle')}</h3>

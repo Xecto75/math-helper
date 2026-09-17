@@ -56,7 +56,7 @@ function openFile(file) {
   exec(cmd, err => { if (err) console.warn('  trace: could not auto-open —', err.message) })
 }
 
-export function startTrace(prompt, lang) {
+export function startTrace(prompt) {
   const started = new Date()
   const parts   = []
   let   nCalls  = 0
@@ -130,6 +130,6 @@ export function startTrace(prompt, lang) {
     },
   }
 
-  trace.section('USER PROMPT', `lang: ${lang}\n\n${prompt}`)
+  trace.section('USER PROMPT', prompt)
   return trace
 }

@@ -656,6 +656,21 @@ Only the comment functions for panels this lesson actually has are listed below.
 // Imported rather than duplicated so a new example shows up here automatically.
 export const EXAMPLE_INDEX = EXAMPLE_LESSONS.map(e => ({ id: e.id, title: e.title, desc: e.desc }))
 
+// Language names the model is asked to write in. Only the Latin-alphabet
+// languages the interface itself is translated into — the lesson renderer
+// handles accents and diacritics fine (French has shipped for a long time),
+// but a non-Latin script would need font and layout work first.
+const LANG_NAMES = { en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian', pt: 'Portuguese' }
+const LANG_CODES = Object.keys(LANG_NAMES)
+
+// The router's reading of the request's language, as the rest of the pipeline
+// uses it: one of the codes above, English for any other language, and null
+// when the router named none — the generator then reads it off the request.
+export function lessonLang(code) {
+  const c = typeof code === 'string' ? code.trim().slice(0, 2).toLowerCase() : ''
+  return !c ? null : LANG_CODES.includes(c) ? c : 'en'
+}
+
 // The router's prompt, listing only the lessons it may pick from. server.js
 // passes the ones that have steps: an example added empty, so it can be built
 // in the Builder, is a model with nothing in it.
@@ -670,11 +685,13 @@ ${examples.map(e => `${e.id} — ${e.desc}`).join('\n')}
 
 Prompts come in any language, informal, unpunctuated, misspelled ("pytagore", "equation du 2eme degre", "trigo"). Language/spelling/phrasing NEVER make something off-topic — classify on SUBJECT only.
 
+lang IS REQUIRED, on every status: the language the request is written in, as ${LANG_CODES.slice(0, -1).map(c => `"${c}"`).join(', ')} or "${LANG_CODES.at(-1)}". Any other language, or no words at all → "en". A single word still has a language: judge it by its spelling. Every message is written in lang.
+
 STATUS:
 ok           — math, inside the coverage below, with a related reference lesson. Any phrasing: question, how-to, comparison, exercise request, bare topic.
-too-advanced — real math, but outside that coverage — from one step past it (derivatives, limits, matrices) to research level (fractals, IUT theory, measure theory). message = 2-3 short English sentences: what the topic is, and that it is past what these lessons cover. alternatives = 2-3 ids from REFERENCE LESSONS that are the nearest teachable stepping stones.
+too-advanced — real math, but outside that coverage — from one step past it (derivatives, limits, matrices) to research level (fractals, IUT theory, measure theory). message = 2-3 short sentences in lang: what the topic is, and that it is past what these lessons cover. alternatives = 2-3 ids from REFERENCE LESSONS that are the nearest teachable stepping stones.
 off-topic    — the SUBJECT IS NOT MATHEMATICS (languages, history, coding, non-math science, advice). Nothing else is off-topic: a mathematical topic these modules cannot teach is too-advanced, never off-topic. Never off-topic for odd phrasing or a foreign language. No message.
-trivial      — fully-specified arithmetic, one-line answer ("2+2", "15% of 80"). msg = that answer.
+trivial      — fully-specified arithmetic, one-line answer ("2+2", "15% of 80"). msg = that answer, in lang.
 
 NEVER ASK A QUESTION BACK. Vague, broad, garbled or half-typed prompts get the general concept, never
 a question. "quadratics" → the concept lesson, not "which equation?". Ignore stray characters and
@@ -703,9 +720,9 @@ COVERAGE — judged on the TOPIC, separately from which example fits:
 MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another display needs a formula panel; "comments" for point/edge annotations. geo2d XOR geo3d. Prefer geo2d; geo_canvas only for SVG constructions or vertex arrows.
 
 OUTPUT: the JSON object ALONE — no fences, no prose, nothing after the closing brace. Prose is discarded unread; it only costs tokens.
-{"status":"ok","modules":[...],"exampleIds":["<closest reference lesson id — required>","<optional 2nd>","<optional 3rd>"]}
-{"status":"too-advanced","message":"2-3 sentences","alternatives":["<reference lesson id>","..."]}
-{"status":"off-topic"}  {"status":"trivial","message":"..."}
+{"status":"ok","lang":"<code>","modules":[...],"exampleIds":["<closest reference lesson id — required>","<optional 2nd>","<optional 3rd>"]}
+{"status":"too-advanced","lang":"<code>","message":"2-3 sentences","alternatives":["<reference lesson id>","..."]}
+{"status":"off-topic","lang":"<code>"}  {"status":"trivial","lang":"<code>","message":"..."}
 
 EXAMPLES (the non-English/misspelled ones are real past failures — treat as the bar):
 "solve 2x+5=11" · "2x-6+3x=8 ca fait quoi" · "donne moi des exercices sur les equation du 2eme degre" · "¿cómo se resuelve una ecuación de segundo grado?" · "9/11" → {"status":"ok","modules":["equation","text"]}
@@ -735,12 +752,6 @@ EXAMPLES (the non-English/misspelled ones are real past failures — treat as th
  * Build the full generator system prompt for a given set of module ids.
  * BASE_RULES + one section per selected module.
  */
-// Language names the model is asked to write in. Only the Latin-alphabet
-// languages the interface itself is translated into — the lesson renderer
-// handles accents and diacritics fine (French has shipped for a long time),
-// but a non-Latin script would need font and layout work first.
-const LANG_NAMES = { en: 'English', fr: 'French', de: 'German', es: 'Spanish' }
-
 /**
  * Assembled in the order the generator needs to read it:
  *
@@ -821,8 +832,12 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', references = null) 
   // Scoped to learner-visible prose only: compact codes, layout codes, ids and
   // colour names are format, not content — translating those breaks parsing.
   // Always state the language, English included: with no instruction at all the
-  // model drifts (a plain English prompt came back entirely in Dutch).
-  const langName = LANG_NAMES[lang] ?? 'English'
+  // model drifts (a plain English prompt came back entirely in Dutch). null is
+  // a router that named no language: the generator gets the router's own rule.
+  const names    = Object.values(LANG_NAMES)
+  const langName = lang === null
+    ? `the language the request is written in if it is ${names.slice(0, -1).join(', ')} or ${names.at(-1)}, and English for any other`
+    : LANG_NAMES[lang] ?? 'English'
   parts.push(
     `\n# LANGUAGE\n` +
     `Learner-visible strings (page titles, panel titles and content, comment text) in ${langName}. ` +

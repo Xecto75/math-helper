@@ -27,7 +27,6 @@ export const UI = {
     row:        'Row',
     col:        '× col',
     // settings
-    langTitle:   'Language',
     themeTitle:  'Theme',
     dark:        'Dark',
     light:       'Light',
@@ -53,6 +52,11 @@ export const UI = {
     authRequired:  'Sign in to generate a lesson — it takes a few seconds.',
     authAfterFree: 'That was your free lesson. Create an account to keep going — it takes a few seconds.',
     authBusy:      'The free lessons for today are all used up. Sign in to keep going.',
+    // a prompt that got no lesson, when the router sent no message of its own —
+    // shown in the language the prompt was written in
+    refuseOffTopic:    "I'm focused on math only — try a question about algebra, geometry, trigonometry, functions…",
+    refuseTooAdvanced: 'That one is past what these lessons cover — they stop at high-school math.',
+    refuseTrivial:     "That's already a one-line answer — try a topic worth a full lesson.",
     // library
     primaryLabel:   'Primary',
     secondaryLabel: 'Secondary',
@@ -83,7 +87,6 @@ export const UI = {
     tableOf:    'Table de',
     row:        'Ligne',
     col:        '× col',
-    langTitle:   'Langue',
     themeTitle:  'Thème',
     dark:        'Sombre',
     light:       'Clair',
@@ -107,6 +110,9 @@ export const UI = {
     authRequired:  'Connecte-toi pour générer une leçon — ça prend quelques secondes.',
     authAfterFree: 'C’était ta leçon gratuite. Crée un compte pour continuer — ça prend quelques secondes.',
     authBusy:      'Les leçons gratuites du jour sont épuisées. Connecte-toi pour continuer.',
+    refuseOffTopic:    'Je ne fais que des maths — essaie une question d’algèbre, de géométrie, de trigonométrie, sur les fonctions…',
+    refuseTooAdvanced: 'Ça dépasse ce que ces leçons couvrent — elles s’arrêtent aux maths du secondaire.',
+    refuseTrivial:     'Ça se répond en une ligne — essaie un sujet qui vaut une vraie leçon.',
     primaryLabel:   'Primaire',
     secondaryLabel: 'Secondaire',
     saveToLib:   'Sauvegarder dans la bibliothèque',
@@ -135,7 +141,6 @@ export const UI = {
     tableOf:    'Einmaleins von',
     row:        'Zeile',
     col:        '× Spalte',
-    langTitle:   'Sprache',
     themeTitle:  'Design',
     dark:        'Dunkel',
     light:       'Hell',
@@ -159,6 +164,9 @@ export const UI = {
     authRequired:  'Melde dich an, um eine Lektion zu erstellen — es dauert nur ein paar Sekunden.',
     authAfterFree: 'Das war deine kostenlose Lektion. Erstelle ein Konto, um weiterzumachen — es dauert nur ein paar Sekunden.',
     authBusy:      'Die kostenlosen Lektionen für heute sind aufgebraucht. Melde dich an, um weiterzumachen.',
+    refuseOffTopic:    'Ich helfe nur bei Mathe — versuch es mit einer Frage zu Algebra, Geometrie, Trigonometrie oder Funktionen…',
+    refuseTooAdvanced: 'Das geht über diese Lektionen hinaus — sie enden bei der Schulmathematik.',
+    refuseTrivial:     'Das ist schon eine Antwort in einer Zeile — versuch ein Thema, das eine ganze Lektion wert ist.',
     primaryLabel:   'Grundschule',
     secondaryLabel: 'Sekundarstufe',
     saveToLib:   'In der Bibliothek speichern',
@@ -187,7 +195,6 @@ export const UI = {
     tableOf:    'Tabla del',
     row:        'Fila',
     col:        '× col',
-    langTitle:   'Idioma',
     themeTitle:  'Tema',
     dark:        'Oscuro',
     light:       'Claro',
@@ -211,6 +218,9 @@ export const UI = {
     authRequired:  'Inicia sesión para generar una lección — tarda unos segundos.',
     authAfterFree: 'Esa era tu lección gratuita. Crea una cuenta para seguir — tarda unos segundos.',
     authBusy:      'Las lecciones gratuitas de hoy se han agotado. Inicia sesión para seguir.',
+    refuseOffTopic:    'Solo me ocupo de matemáticas — prueba con una pregunta de álgebra, geometría, trigonometría o funciones…',
+    refuseTooAdvanced: 'Eso va más allá de estas lecciones — llegan hasta las matemáticas de secundaria.',
+    refuseTrivial:     'Eso ya se responde en una línea — prueba con un tema que merezca una lección completa.',
     primaryLabel:   'Primaria',
     secondaryLabel: 'Secundaria',
     saveToLib:   'Guardar en la biblioteca',
@@ -239,7 +249,6 @@ export const UI = {
     tableOf:    'Tabellina del',
     row:        'Riga',
     col:        '× col',
-    langTitle:   'Lingua',
     themeTitle:  'Tema',
     dark:        'Scuro',
     light:       'Chiaro',
@@ -263,6 +272,9 @@ export const UI = {
     authRequired:  'Accedi per generare una lezione — bastano pochi secondi.',
     authAfterFree: 'Quella era la tua lezione gratuita. Crea un account per continuare — bastano pochi secondi.',
     authBusy:      'Le lezioni gratuite di oggi sono esaurite. Accedi per continuare.',
+    refuseOffTopic:    'Mi occupo solo di matematica — prova con una domanda di algebra, geometria, trigonometria o sulle funzioni…',
+    refuseTooAdvanced: 'Questo va oltre queste lezioni — si fermano alla matematica delle superiori.',
+    refuseTrivial:     'Si risponde già in una riga — prova un argomento che valga una lezione intera.',
     primaryLabel:   'Primaria',
     secondaryLabel: 'Secondaria',
     saveToLib:   'Salva nella libreria',
@@ -291,7 +303,6 @@ export const UI = {
     tableOf:    'Tabuada do',
     row:        'Linha',
     col:        '× col',
-    langTitle:   'Idioma',
     themeTitle:  'Tema',
     dark:        'Escuro',
     light:       'Claro',
@@ -315,15 +326,18 @@ export const UI = {
     authRequired:  'Inicia sessão para gerar uma lição — demora uns segundos.',
     authAfterFree: 'Essa foi a tua lição gratuita. Cria uma conta para continuares — demora uns segundos.',
     authBusy:      'As lições gratuitas de hoje esgotaram. Inicia sessão para continuares.',
+    refuseOffTopic:    'Só trato de matemática — tenta uma pergunta de álgebra, geometria, trigonometria ou funções…',
+    refuseTooAdvanced: 'Isso vai além destas lições — ficam pela matemática do secundário.',
+    refuseTrivial:     'Isso já se responde numa linha — tenta um tema que mereça uma lição inteira.',
     primaryLabel:   'Primário',
     secondaryLabel: 'Secundário',
     saveToLib:   'Guardar na biblioteca',
   },
 }
 
-// Languages the interface is actually translated into. The selector reads this
-// so a language can never be offered before its strings exist (an untranslated
-// pick would silently fall back to English on every label).
+// Languages the interface is actually translated into. The app picks the
+// browser's language from these and falls back to English, so a language can
+// never be used before its strings exist (every label would silently be English).
 export const SUPPORTED_LANGS = Object.keys(UI)
 
 export const u = (lang = 'en', key) => UI[lang]?.[key] ?? UI.en[key] ?? key

@@ -316,7 +316,7 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     setAiLoading(true)
     setAiError('')
     try {
-      const raw = await generateLesson(aiPrompt)
+      const { lesson: raw } = await generateLesson(aiPrompt)
       const loaded = pagesFromJson(raw)
       setPages(loaded)
       setActivePage(0)

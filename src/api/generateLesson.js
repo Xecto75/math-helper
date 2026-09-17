@@ -1,17 +1,22 @@
 import { authedFetch } from '../lib/supabase.js'
+import { u } from '../i18n/uiText.js'
 
+// What a verdict says when the router sent no message of its own (uiText.js).
 const STATUS_FALLBACK = {
-  'off-topic':    "I'm focused on math only — try a question about algebra, geometry, trigonometry, calculus…",
-  'too-advanced': 'That one is past high-school level — the lessons here stop around intro calculus and statistics.',
+  'off-topic':    'refuseOffTopic',
+  'too-advanced': 'refuseTooAdvanced',
   // No "clarify" entry on purpose — the router no longer has that verdict.
   // A vague prompt gets a lesson on the general concept, never a question back.
-  trivial:        "That's already a one-line answer — try a topic worth a full lesson.",
+  trivial:        'refuseTrivial',
 }
 
-export async function generateLesson(prompt, lang = 'en') {
+// No language goes with the prompt: the server reads it off the prompt itself
+// and sends it back. `uiLang` is only for a reply that came without one.
+// Resolves to { lesson, lang } — lang is what the lesson is written in.
+export async function generateLesson(prompt, uiLang = 'en') {
   const res  = await authedFetch('/api/generate-lesson', {
     method: 'POST',
-    body:   JSON.stringify({ prompt, lang }),
+    body:   JSON.stringify({ prompt }),
   })
   const data = await res.json()
 
@@ -48,14 +53,15 @@ export async function generateLesson(prompt, lang = 'en') {
   }
 
   if (data.status && data.status !== 'ok') {
-    const err = new Error(data.message ?? STATUS_FALLBACK[data.status] ?? 'Could not generate a lesson for that.')
+    const fallback = STATUS_FALLBACK[data.status]
+    const err = new Error(data.message ?? (fallback ? u(data.lang ?? uiLang, fallback) : 'Could not generate a lesson for that.'))
     err.status = data.status
     // too-advanced comes with reference lessons to offer instead; the caller
     // turns them into buttons that load the lesson.
     err.alternatives = data.alternatives ?? []
     throw err
   }
-  return data.lesson
+  return { lesson: data.lesson, lang: data.lang ?? null }
 }
 
 // Current plan and remaining credits. Returns null when auth isn't configured,

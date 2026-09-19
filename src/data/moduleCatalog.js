@@ -634,7 +634,7 @@ Only the comment functions for panels this lesson actually has are listed below.
         ['table', '  cq:[cmtId,text,gridId,col,row,color]  — comment on a grid cell'],
         ['shape', '  cG:[cmtId,text,shapeId,vertexIndex,color]  — comment on a shape vertex'],
         ['shape', '  cE:[cmtId,text,shapeId,edgeIndex,color]  — comment on a shape edge midpoint'],
-        ['equation', '  ce:[cmtId,text,side,indices,color]  — comment on equation (side=both|left|right; indices=blank or "0,1,2")'],
+        ['equation', '  ce:[cmtId,text,side,indices,color]  — comment on equation (side=both|left|right; indices=blank for the whole side, or "0,2": each letter, number and exponent of that side counts, left to right — operators and brackets do not)'],
         [null, '  cF:[cmtId,title,text,side,color]  — free comment: no connector line and no target, it floats on side (right|left); title optional'],
         [null, '  cd:[cmtId]                        — fade out a comment by id, leaving the others; "a|b|c" drops several together'],
         [null, '  cx:[]                             — clear all comments'],

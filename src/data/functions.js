@@ -1166,7 +1166,7 @@ export const CATEGORIES = [
               { value: 'right', label: 'Right side' },
             ],
             default: 'both' },
-          { id: 'indices', label: 'Indices (blank = whole)', type: 'text', default: '', placeholder: 'blank, or 0,1,2 for specific terms' },
+          { id: 'indices', label: 'Indices (blank = whole)', type: 'text', default: '', placeholder: 'blank, or 0,1,2 — letters, numbers, exponents' },
           { id: 'color',   label: 'Color',   type: 'color-name',   default: 'red' },
         ],
       },

@@ -55,6 +55,53 @@ const MIN_SCALE = 0.45
 // Ignore differences this small — re-scaling for a few pixels reads as jitter.
 const DEADBAND = 0.04
 
+// What a comment's indices count on one side: every letter, number and
+// exponent, left to right. The + − × ÷ and the brackets between them do not
+// count — "t₁ + (n − 1) × d" is t₁ 0, n 1, 1 2, d 3. A chip holding a
+// coefficient AND a letter ("3x") is two of them; any other chip is one,
+// framed as the chip it is.
+const ATOM_SELECTOR = '.term-cell, .term-exp, .radical-index, .term-zero'
+const isBracket = el => /^[()−-]+$/.test(el.textContent.trim())
+
+// The ² of a power is a superscript glyph set in a large font, so its box runs
+// the whole height of the line with the digit up in one corner: a frame drawn
+// from it was a tall empty slot. Top and bottom come from the ink instead,
+// measured on a canvas in the element's own font. null when there is no ink.
+let inkCtx = null
+function exponentInk(el, r) {
+  inkCtx ??= document.createElement('canvas').getContext('2d')
+  const cs = getComputedStyle(el)
+  inkCtx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+  const m = inkCtx.measureText(el.textContent)
+  // Canvas metrics are layout pixels; the rect is what is on screen, scaled
+  // by the equation's fit and anything above it.
+  const s      = r.height / (el.offsetHeight || r.height)
+  const lead   = (r.height / s - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2
+  const base   = lead + m.fontBoundingBoxAscent
+  const top    = r.top + (base - m.actualBoundingBoxAscent) * s
+  const bottom = r.top + (base + m.actualBoundingBoxDescent) * s
+  return bottom > top ? { top, bottom } : null
+}
+
+function atomsOf(sideEl) {
+  if (!sideEl) return []
+  const atoms = []
+  for (const el of sideEl.querySelectorAll(ATOM_SELECTOR)) {
+    if (!el.getClientRects().length) continue   // display: none — out of the layout
+    if (el.classList.contains('term-cell--fraction')) {
+      const parts = el.querySelectorAll('.frac-sub-coeff:not([data-subfactors])')
+      atoms.push(...(parts.length ? parts : [el]))
+    } else if (el.classList.contains('term-cell')) {
+      const coeff = [...el.querySelectorAll(':scope > .term-coeff')].filter(s => !isBracket(s))
+      const vars  = el.querySelector(':scope > .term-var')
+      atoms.push(...(coeff.length && vars ? [...coeff, vars] : [el]))
+    } else {
+      atoms.push(el)
+    }
+  }
+  return atoms
+}
+
 /**
  * Renders  left[] = right[]  as cells.
  * Exposes { cellRefs: { left: HTMLElement[], right: HTMLElement[] } } via ref.
@@ -623,14 +670,16 @@ const EquationDisplay = forwardRef(function EquationDisplay({ snapshot }, ref) {
     },
 
     // Collect the target cells. side 'both' = whole equation; otherwise one side.
-    // Explicit indices select specific cells; empty indices select every cell.
+    // Empty indices select every cell of the side; explicit indices select
+    // letters, numbers and exponents, counted the way atomsOf counts them.
     getTargetEls(target) {
       if (target.side === 'both') {
         return [...leftRefs.current, ...rightRefs.current].filter(Boolean)
       }
-      const refs = target.side === 'left' ? leftRefs.current : rightRefs.current
       const hasIndices = Array.isArray(target.indices) && target.indices.length > 0
-      return (hasIndices ? target.indices.map(i => refs[i]) : refs).filter(Boolean)
+      if (!hasIndices) return (target.side === 'left' ? leftRefs.current : rightRefs.current).filter(Boolean)
+      const atoms = atomsOf(target.side === 'left' ? leftSideRef.current : rightSideRef.current)
+      return target.indices.map(i => atoms[i]).filter(Boolean)
     },
 
     // A "whole" selection (whole equation, or a whole side with no indices) draws
@@ -646,8 +695,16 @@ const EquationDisplay = forwardRef(function EquationDisplay({ snapshot }, ref) {
     // whenever the equation had been shrunk to fit, so every box drawn from
     // these rects sat slightly wrong — the ring around a result cut through the
     // term on its edge.
+    // A letter, number or exponent (atomsOf) has no such trailing gap: its
+    // padding is the inside of its own chip, and belongs in the frame.
     _visualRect(el) {
       const r    = el.getBoundingClientRect()
+      if (!el.classList.contains('term-wrap')) {
+        const ink    = el.matches('.term-exp:not(.term-exp--expr)') ? exponentInk(el, r) : null
+        const top    = ink?.top ?? r.top
+        const bottom = ink?.bottom ?? r.bottom
+        return { left: r.left, top, right: r.right, bottom, width: r.width, height: bottom - top }
+      }
       const s    = scaleRef.current || 1
       const padR = (parseFloat(getComputedStyle(el).paddingRight) || 0) * s
       return { left: r.left, top: r.top, right: r.right - padR, bottom: r.bottom, width: r.width - padR, height: r.height }

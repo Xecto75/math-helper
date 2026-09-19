@@ -554,7 +554,11 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
           ) : (
             <div className="term-cell pg-coeff">{(coeffStr || pgVar) ? <>{coeffStr}{pgVar}{pgDeg}</> : '​'}</div>
           )}
-          <span className="pg-open">(</span>
+          {/* Worked out down to one number, the bracket is drawn without its
+              brackets — and a multiplier then needs its × back, or 2(8) reads 28. */}
+          {term.parensDropped
+            ? ((coeffStr || pgVar) && !term.outerTerms && <span className="term-op term-op--mul pg-times">×</span>)
+            : <span className="pg-open">(</span>}
           {(term.innerTerms ?? []).map((inner, i) => {
             const isNeg = inner.sign === '-'
             const absC  = Math.abs(inner.coefficient)
@@ -569,7 +573,7 @@ const TermCell = forwardRef(function TermCell({ term, prevTerm = null }, ref) {
               </span>
             )
           })}
-          <span className="pg-close">)</span>
+          {!term.parensDropped && <span className="pg-close">)</span>}
         </span>
       </div>
     )

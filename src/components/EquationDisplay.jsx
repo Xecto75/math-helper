@@ -257,6 +257,7 @@ function termBodyTex(t) {
     const pgDeg = (t.parenCoeffDegree ?? 1) >= 2 ? `^{${t.parenCoeffDegree}}` : ''
     const coeff = t.parenCoeff === 1 ? '' : texNum(t.parenCoeff)
     const mult  = t.outerTerms ? `\\left(${monoListTex(t.outerTerms)}\\right)` : `${coeff}${pgVar}${pgDeg}`
+    if (t.parensDropped) return `${mult}${mult ? ' \\times ' : ''}${monoListTex(t.innerTerms ?? [])}`
     return `${mult}\\left(${monoListTex(t.innerTerms ?? [])}\\right)`
   }
   if (t.factors) {

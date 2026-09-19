@@ -17,6 +17,7 @@ export class MathObject {
                 color = null, varParts = null, decimalComma = false, mixedJoin = false, listJoin = false,
                 isOperator = false, text = null,
                 isParenGroup = false, parenCoeff = 1, parenCoeffVariable = null, parenCoeffDegree = 1, innerTerms = null, outerTerms = null,
+                parensDropped = false,
                 factors = null, negBase = false, expr = null } = {}) {
     this.id = id ?? crypto.randomUUID()
     this.sign = sign
@@ -54,6 +55,9 @@ export class MathObject {
     // A bracket multiplying a bracket, (3x+2)(2x-2): the multiplier is these
     // terms rather than parenCoeff. Distribution crosses the two lists.
     this.outerTerms       = deepCopy(outerTerms)
+    // The bracket has been worked out down to one number: it is drawn without
+    // its brackets, "2 × 8" rather than "2(8)", until the multiplication runs.
+    this.parensDropped    = parensDropped
     // Product fields — a term that is a product of factors, e.g. |m||x| = m·x.
     // Each factor is replaceable on its own. value = coefficient × ∏ factor values.
     this.factors          = deepCopy(factors)          // [{symbolicLabel?, coefficient, variable?, degree}] or null

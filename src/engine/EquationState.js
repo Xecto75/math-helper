@@ -113,6 +113,7 @@ function termToPlain(t) {
     parenCoeffDegree:   t.parenCoeffDegree   ?? 1,
     innerTerms:       t.innerTerms       ?? null,
     outerTerms:       t.outerTerms       ?? null,
+    parensDropped:    t.parensDropped    ?? false,
     factors:          t.factors          ?? null,
     negBase:          t.negBase          ?? false,
     expr:             t.expr ? cloneExpr(t.expr) : null,

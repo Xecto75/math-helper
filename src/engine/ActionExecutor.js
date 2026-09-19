@@ -648,10 +648,17 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
     await wait(0.4)
   }
 
+  // The two numbers a merge works on. A group in brackets hands back its ( and )
+  // too — they are what the sum is written in, not what is being added — and
+  // taking the "(" as the landing spot flew the 3 of (3 + 5) into the bracket
+  // and wrote the 8 on it. The brackets stay put and settleAfterMerge takes them
+  // away once the answer is in, the same as any other leftover.
+  const operandChips = (els) => [].concat(els ?? []).filter(el => el?.matches?.('.term-cell, .exp-leaf'))
+
   // +, −, ÷ — a plain two-chip merge.
   const combineReveal = async (getBeforeEls, readyNode, getAfterEl) => {
-    const els = getBeforeEls()
-    if (!els || els.length < 2) return revealStep(getBeforeEls, () => applyReady(readyNode), getAfterEl)
+    const els = operandChips(getBeforeEls())
+    if (els.length < 2) return revealStep(getBeforeEls, () => applyReady(readyNode), getAfterEl)
     const [anchor, secondary] = els
 
     // 1. "4" travels toward "6" while fading.
@@ -672,8 +679,8 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
   // the answer. Falls back to a single pop when there's no small integer
   // step count to show (e.g. 2.5×4, or a huge multiplier).
   const countUpReveal = async (getBeforeEls, readyNode, getAfterEl) => {
-    const els = getBeforeEls()
-    if (!els || els.length < 2) return revealStep(getBeforeEls, () => applyReady(readyNode), getAfterEl)
+    const els = operandChips(getBeforeEls())
+    if (els.length < 2) return revealStep(getBeforeEls, () => applyReady(readyNode), getAfterEl)
     const [anchor, secondary] = els
 
     // 1. "4" travels toward "6" while fading.
@@ -3866,36 +3873,69 @@ case 'ggb-2d-snap': {
       // The outer bracket of a bracket-times-bracket uses .pg-outer-val, so
       // these are the inner ones and only the inner ones.
       const innerParts = parts.filter(p => p.querySelector('.pg-inner-val'))
+      const valueOf    = t => (t.sign === '-' ? -t.coefficient : t.coefficient)
 
-      if (innerParts.length >= 2) {
-        const anchor = innerParts[innerParts.length - 1]
-        // The sign in front of the anchor belongs to the operation being
-        // carried out, so it leaves with the term that is being folded in.
-        const anchorOp = anchor.querySelector('.term-op')
-        const ar = anchor.getBoundingClientRect()
-        await Promise.all(innerParts.slice(0, -1).map(p => {
-          const pr = p.getBoundingClientRect()
-          p.style.overflow = 'hidden'
-          return gsap.to(p, {
-            x: ar.left + ar.width / 2 - (pr.left + pr.width / 2),
-            opacity: 0, width: 0, marginLeft: 0, marginRight: 0,
-            duration: 0.5, ease: 'power2.inOut',
+      if (innerParts.length >= 2 && innerParts.length === inner.length) {
+        // A sum in brackets is worked out exactly like a sum anywhere else on
+        // this panel — outlineDegree, combineTerms, clearOutlines: every number
+        // taking part is ringed, the others fly into one of them all at once,
+        // and it takes each as it lands with the same pop. Same anchor as
+        // combineTerms too: the last one left of =, the first one right of it.
+        const vals      = innerParts.map(p => p.querySelector('.pg-inner-val'))
+        const anchorIdx = group.side === 'left' ? innerParts.length - 1 : 0
+        const anchorEl  = vals[anchorIdx]
+        const anchorOp  = innerParts[anchorIdx].querySelector('.term-op')
+        vals.forEach(el => { el.style.animation = 'none' })
+        vals.forEach(el => gsap.to(el, { boxShadow: '0 0 0 3px #60a5fa, 0 0 22px #60a5fa88', duration: 0.4, ease: 'power2.out' }))
+        await wait(0.7)
+
+        // What flies is a copy. The bracket has to stay whole in the DOM for
+        // React to rebuild: a chip carried out of it gets the answer written
+        // into it, off screen, when the state is committed.
+        const order  = innerParts.map((_, i) => i).filter(i => i !== anchorIdx)
+        if (anchorIdx > 0) order.reverse()   // closest first
+        const target = anchorEl.getBoundingClientRect()
+        const ghostCss = _ghostStyles()
+        let running = valueOf(inner[anchorIdx])
+        await Promise.all(order.map((i, k) => {
+          const rect  = vals[i].getBoundingClientRect()
+          const ghost = vals[i].cloneNode(true)
+          Object.assign(ghost.style, {
+            position: 'fixed', left: `${rect.left}px`, top: `${rect.top}px`,
+            width: `${rect.width}px`, height: `${rect.height}px`, margin: '0',
+            boxSizing: 'border-box', pointerEvents: 'none', zIndex: '9999', animation: 'none',
+          }, ghostCss?.cell ?? {})
+          // The minus lives in the slot's own sign, which stays behind — what
+          // travels has to be "−3", the thing actually being added.
+          if (inner[i].sign === '-' && !/^[−-]/.test(ghost.textContent)) ghost.textContent = `−${ghost.textContent}`
+          document.body.appendChild(ghost)
+          // The emptied slot keeps its width until everything has landed.
+          gsap.set(innerParts[i], { opacity: 0 })
+          return gsap.to(ghost, {
+            x: target.left - rect.left, y: target.top - rect.top, opacity: 0,
+            duration: 0.62, delay: k * 0.22, ease: 'power3.in',
+            onComplete: () => {
+              ghost.remove()
+              running += valueOf(inner[i])
+              anchorEl.textContent = cellLabel(Math.abs(running), inner[0].variable ?? null, inner[0].degree)
+              if (anchorOp) anchorOp.textContent = running < 0 ? '−' : '+'
+              gsap.to(anchorEl, { scale: 1.16, duration: 0.11, ease: 'back.out(2.5)', yoyo: true, repeat: 1 })
+            },
           }).then()
-        }).concat(anchorOp
-          ? [gsap.to(anchorOp, { opacity: 0, width: 0, marginLeft: 0, marginRight: 0, duration: 0.5, ease: 'power2.inOut' }).then()]
-          : []))
+        }))
+        await wait(0.12)
 
-        // The answer is written into the surviving chip before React commits,
-        // so the swap itself is never seen — the same trick the ordinary
-        // combine uses.
-        const cell = anchor.querySelector('.pg-inner-val')
-        const v    = inner[0].variable ?? ''
-        const deg  = inner[0].degree >= 2 ? String(inner[0].degree) : ''
-        const abs  = Math.abs(action.value)
-        if (cell) {
-          cell.textContent = (abs === 1 && v ? '' : String(Number(abs.toFixed(6)))) + v + deg
-          await gsap.to(cell, { scale: 1.18, duration: 0.15, ease: 'back.out(2.5)', yoyo: true, repeat: 1 }).then()
-        }
+        // The emptied slots close up. A sign left in front of the answer goes
+        // with them when it is a plus: the answer is the first thing in the
+        // bracket now, and a first term shows a minus but never a plus.
+        const closing = order.map(i => innerParts[i])
+        if (anchorOp && anchorIdx > 0 && running >= 0) closing.push(anchorOp)
+        closing.forEach(el => { el.style.overflow = 'hidden' })
+        await gsap.to(closing, {
+          opacity: 0, width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0, marginRight: 0,
+          duration: 0.35, ease: 'power3.out',
+        }).then()
+        await gsap.to(anchorEl, { boxShadow: '0 0 0 0px transparent', duration: 0.35 }).then()
       }
 
       group.innerTerms = [{
@@ -3906,7 +3946,46 @@ case 'ggb-2d-snap': {
         degree: inner[0].degree,
       }]
       flushSync(() => setState(state.snapshot()))
+      // React keeps the bracket's FIRST slot and drops the rest, whichever one
+      // the answer was written in, so what the animation left on that slot
+      // (hidden, collapsed, ringed) is cleared: it now holds the answer, exactly
+      // where the answer stood a frame ago.
+      const kept = getWrap(refs(), group.side, group.cellIndex)
+      kept?.querySelectorAll('.pg-inner-term, .pg-inner-term *').forEach(el => {
+        gsap.set(el, { clearProps: 'all' })
+        el.style.animation = 'none'
+      })
       await wait(0.35)
+
+      // ── Then the brackets go ───────────────────────────────────────────────
+      // One number in brackets is just that number. Something multiplying the
+      // bracket gets a × in their place — 2(8) read without them is 28. A
+      // bracket times a bracket keeps its own: its multiplier is a bracket too.
+      if (!group.outerTerms) {
+        const parens = [kept?.querySelector('.pg-open'), kept?.querySelector('.pg-close')].filter(Boolean)
+        if (parens.length) {
+          await gsap.to(parens, { opacity: 0, duration: 0.3, ease: 'power2.in' }).then()
+          parens.forEach(el => { el.style.overflow = 'hidden' })
+          await gsap.to(parens, {
+            width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0, marginRight: 0,
+            duration: 0.35, ease: 'power2.inOut',
+          }).then()
+        }
+        group.parensDropped = true
+        flushSync(() => setState(state.snapshot()))
+        // The × takes over the element the "(" was, so it arrives carrying the
+        // bracket's faded, collapsed styles — cleared, then grown in from nothing.
+        const times = getWrap(refs(), group.side, group.cellIndex)?.querySelector('.pg-times')
+        if (times) {
+          gsap.set(times, { clearProps: 'all' })
+          const w = times.offsetWidth
+          times.style.overflow = 'hidden'
+          gsap.set(times, { width: 0, opacity: 0 })
+          await gsap.to(times, { width: w, opacity: 1, duration: 0.35, ease: 'power2.out' }).then()
+          gsap.set(times, { clearProps: 'all' })
+        }
+        await wait(0.35)
+      }
       break
     }
 
@@ -4152,10 +4231,13 @@ case 'ggb-2d-snap': {
 
           const pgOpen  = groupCell.querySelector('.pg-open')
           const pgClose = groupCell.querySelector('.pg-close')
+          // A bracket already worked out down to one number shows a × instead
+          // of its brackets (combineInParens) — consumed the same way they are.
+          const pgTimes = groupCell.querySelector('.pg-times')
           await Promise.all([
             gsap.to(innerEls, { scale: 1.2, duration: 0.15, ease: 'back.out(2.5)', yoyo: true, repeat: 1 }).then(),
             gsap.to(svg, { opacity: 0, duration: 0.28 }).then(),
-            gsap.to([coeffEl, pgOpen, pgClose].filter(Boolean), { opacity: 0, duration: 0.28, ease: 'power2.in' }).then(),
+            gsap.to([coeffEl, pgOpen, pgClose, pgTimes].filter(Boolean), { opacity: 0, duration: 0.28, ease: 'power2.in' }).then(),
           ])
           await wait(0.2)
           svg.remove()

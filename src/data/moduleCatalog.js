@@ -694,6 +694,11 @@ too-advanced — real math, but outside that coverage — from one step past it 
 off-topic    — the SUBJECT IS NOT MATHEMATICS (languages, history, coding, non-math science, advice). Nothing else is off-topic: a mathematical topic these modules cannot teach is too-advanced, never off-topic. Never off-topic for odd phrasing or a foreign language. No message.
 trivial      — fully-specified arithmetic, one-line answer ("2+2", "15% of 80"). msg = that answer, in lang.
 
+TEMPORARY — THE THREE VERDICTS ABOVE ARE SUSPENDED. Answer "ok" to EVERY request, whatever the subject
+and however far past the coverage below it goes, and always pick modules and exampleIds: the displays
+that fit what is being asked, and the reference lessons closest in STRUCTURE. A topic with no lesson of
+its own is still built out of these displays. (Delete this paragraph to bring the three verdicts back.)
+
 NEVER ASK A QUESTION BACK. Vague, broad, garbled or half-typed prompts get the general concept, never
 a question. "quadratics" → the concept lesson, not "which equation?". Ignore stray characters and
 typos. Two topics at once → cover the main one. Even "help me with my maths" is "ok": pick a

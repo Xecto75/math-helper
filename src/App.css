@@ -1058,7 +1058,7 @@
 }
 .lesson-layout--single-graph .var-slider,
 .lesson-layout--graph-equation .var-slider {
-  height: 80%;
+  height: 46%;
   flex: 1 1 0;
   min-width: 28px;
   max-width: 50px;
@@ -1066,7 +1066,7 @@
 }
 .lesson-layout--text-graph .var-slider,
 .lesson-layout--grid-graph .var-slider {
-  width: 80%;
+  width: 55%;
   gap: 4px;
 }
 
@@ -1120,14 +1120,61 @@
   pointer-events: none;
 }
 
+/* The rail, and how much of it is filled, are drawn here — not by the
+   browser's own track. A vertical range paints that track itself whatever
+   ::-webkit-slider-runnable-track asks for, so the rail stayed one flat colour
+   however far the handle had travelled. These are ordinary elements: they fill
+   from --pct, the same number the name chip is placed with. */
+.var-slider-rail {
+  position: absolute;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+  pointer-events: none;
+}
+.lesson-layout--single-graph .var-slider-rail,
+.lesson-layout--graph-equation .var-slider-rail {
+  width: 5px;
+  height: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.lesson-layout--text-graph .var-slider-rail,
+.lesson-layout--grid-graph .var-slider-rail {
+  height: 5px;
+  width: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.var-slider-fill {
+  position: absolute;
+  background: var(--sc, #60a5fa);
+  border-radius: inherit;
+}
+.lesson-layout--single-graph .var-slider-fill,
+.lesson-layout--graph-equation .var-slider-fill {
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: var(--pct, 0%);
+}
+.lesson-layout--text-graph .var-slider-fill,
+.lesson-layout--grid-graph .var-slider-fill {
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: var(--pct, 0%);
+}
+
 .var-slider-input {
   -webkit-appearance: none;
   appearance: none;
   border-radius: 2px;
-  background: var(--border);
+  background: transparent;
   outline: none;
   cursor: pointer;
-  accent-color: var(--sc, #60a5fa);
+  position: relative;
 }
 .lesson-layout--single-graph .var-slider-input,
 .lesson-layout--graph-equation .var-slider-input {
@@ -1169,38 +1216,13 @@
   box-shadow: none;
   cursor: pointer;
 }
-/* The filled part of the rail is drawn HERE rather than left to the browser's
-   accent-color. Chrome repaints the unfilled half of a FOCUSED range in white,
-   so the slider you just dragged lost its colour — and styling the track to
-   stop that also switches the automatic fill off. Painting both halves from
-   --pct settles both at once, and matches where the name chip already sits. */
-/* -webkit- and -moz- track selectors are written as SEPARATE rules on purpose.
-   Grouping them invalidates the whole rule in both engines — each one throws
-   out the selector list the moment it meets a prefix it does not know — which
-   is exactly how the gradient below silently did nothing at all. */
-.var-slider-input::-webkit-slider-runnable-track { border-radius: 2px; background: var(--border); }
-.var-slider-input::-moz-range-track              { border-radius: 2px; background: var(--border); }
-
-.lesson-layout--single-graph .var-slider-input::-webkit-slider-runnable-track,
-.lesson-layout--graph-equation .var-slider-input::-webkit-slider-runnable-track {
-  width: 6px;
-  height: 100%;
-  background: linear-gradient(to top, var(--sc) var(--pct), var(--border) var(--pct));
-}
-.lesson-layout--single-graph .var-slider-input::-moz-range-track,
-.lesson-layout--graph-equation .var-slider-input::-moz-range-track {
-  width: 6px;
-  height: 100%;
-  background: linear-gradient(to top, var(--sc) var(--pct), var(--border) var(--pct));
-}
-.lesson-layout--text-graph .var-slider-input::-webkit-slider-runnable-track,
-.lesson-layout--grid-graph .var-slider-input::-webkit-slider-runnable-track {
-  background: linear-gradient(to right, var(--sc) var(--pct), var(--border) var(--pct));
-}
-.lesson-layout--text-graph .var-slider-input::-moz-range-track,
-.lesson-layout--grid-graph .var-slider-input::-moz-range-track {
-  background: linear-gradient(to right, var(--sc) var(--pct), var(--border) var(--pct));
-}
+/* The browser's own track gives up its paint too: the rail behind it
+   (.var-slider-rail) is the one that shows, and it is the one that fills.
+   -webkit- and -moz- selectors stay SEPARATE rules on purpose — grouping them
+   invalidates the whole rule in both engines, each one throwing out the
+   selector list the moment it meets a prefix it does not know. */
+.var-slider-input::-webkit-slider-runnable-track { background: transparent; border: none; }
+.var-slider-input::-moz-range-track              { background: transparent; border: none; }
 
 /* ── Radical ── */
 /* One drawing laid over the whole radical — tick, hook, rising stroke and bar

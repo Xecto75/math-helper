@@ -24,6 +24,13 @@ export default function SliderPanel({ graphRef }) {
           <div className="var-slider" key={v.name}
                style={{ '--sc': v.color || '#60a5fa', '--pct': `${pct}%` }}>
             <div className="var-slider-track">
+              {/* The rail and the part of it that is filled are plain elements:
+                  the browser's own track (::-webkit-slider-runnable-track) is
+                  painted by the browser, and on a vertical range it kept the
+                  one flat colour whatever the value was. */}
+              <span className="var-slider-rail" aria-hidden="true">
+                <span className="var-slider-fill" />
+              </span>
               <span className="var-slider-name">{v.name}</span>
               <input
                 type="range"

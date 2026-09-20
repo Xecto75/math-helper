@@ -362,23 +362,22 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
   // mutable map (not state) since it's pure gesture timing, never rendered.
   const longPressRef                          = useRef({})
 
-  // On mount: load the server-persisted overrides, then migrate over anything
-  // still only sitting in this browser's own localStorage (leftover from
-  // before this was server-backed, or a save that landed while offline) —
-  // one-time, automatic, so existing edits never need to be manually
-  // re-entered just because the persistence layer moved.
+  // On mount the server copy is the truth — it is the file in the repo, and it
+  // is what a lesson plays. This browser's own copy is only a cache for the
+  // first paint, so it is refreshed from the server here.
+  //
+  // It used to do the opposite for any id the server did not have: upload the
+  // local copy, to carry over edits made before this was server-backed. That
+  // migration long outlived its purpose and quietly undid work — an example
+  // rewritten in the source came back to its old self the next time the drawer
+  // opened, because this browser still had the old pages under that id. An
+  // edit that only ever reached localStorage (saved while the server was down)
+  // is the price, and it is the smaller one.
   useEffect(() => {
     (async () => {
       const serverOverrides = await fetchServerOverrides()
-      const local = readExOverrides()
-      const merged = { ...serverOverrides }
-      for (const [id, pages] of Object.entries(local)) {
-        if (!(id in serverOverrides)) {
-          merged[id] = pages
-          saveOverrideToServer(id, pages)  // fire-and-forget migration
-        }
-      }
-      setExOverrides(merged)
+      writeExOverrides(serverOverrides)
+      setExOverrides(serverOverrides)
     })()
   }, [])
 

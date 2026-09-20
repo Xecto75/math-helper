@@ -482,7 +482,8 @@ REFERENCING A SOLID: [id]a/r/h/l/d/R — the same letters S3m labels: cube→a �
   Conic (fK)    : its points are graph points — [idF]x [idF]y, [idV1]x … · its numbers [id]a [id]b [id]c
                   [id]p [id]e [id]h [id]k [id]r
 
-fp with |name| sliders auto-shows a live equation badge — nothing to call.
+fp with |name| sliders auto-shows a live equation badge — nothing to call. A slider starts at 1; |name\\0| starts it
+  at another value ("|a|x^2 + |b\\0|x + |c\\0|" opens on y = x², with b and c to be brought in by the reader).
 CONICS: plot the conic with fp in any form ("x^2/9 + y^2/4 = 1", "y = (x-1)^2/8"), then fK shows its vertices, foci,
   directrix, asymptotes — never work those out and place them with fa/fh/fsg yourself.
 ORDERING: fp before fV/fr/fn/fP/fs/fK on the same function. fp needs an id arg. fP needs a non-root x.`,

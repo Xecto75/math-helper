@@ -170,13 +170,15 @@ export function getLiveEquationText(funcId) {
   // The badge writes its own "y = ", so an expression that already carries one
   // must not get a second: "y=|a|x" was coming out as "y = y=1x".
   let disp = fn.template.replace(/^\s*y\s*=\s*/i, '')
-  for (const name of names) {
-    const s   = sliders.get(name)
-    const val = s ? formatSliderNum(s.value) : name
+  // The whole token goes, starting value and all: |b\0| leaves the number, not
+  // a stray "\0" beside it.
+  disp = disp.replace(PIPE_VAR_RE, (_, rawName) => {
+    const s   = sliders.get(rawName.trim())
+    const val = s ? formatSliderNum(s.value) : rawName.trim()
     // Same colour as the rail that produced it — that pairing IS what makes
     // "which number am I dragging" answerable without reading the letters.
-    disp = disp.split(`|${name}|`).join(s?.color ? `\\textcolor{${s.color}}{${val}}` : val)
-  }
+    return s?.color ? `\\textcolor{${s.color}}{${val}}` : val
+  })
   const latex = fractionsToLatex(prettyBadgeLatex(disp))
     // A real multiplication dot, not a dropped "*": "1·2" says what it is,
     // "12" says something else entirely.
@@ -188,15 +190,21 @@ export function getLiveEquationText(funcId) {
   return { text: `$y = ${latex}$`, color: fn.color }
 }
 
-const PIPE_VAR_RE = /\|([^|]+)\|/g
-function extractSliderVars(expr) {
-  const names = []
+// |a| is a slider on a, starting at 1. |a\0| starts it at 0 instead — the
+// value the curve is drawn with before anyone touches the rail, which is how
+// a lesson opens on y = ax² with b and c still out of the way.
+const PIPE_VAR_RE = /\|([^|\\]+)(?:\\(-?\d*\.?\d+))?\|/g
+
+function sliderTokens(expr) {
+  const out = []
   for (const m of expr.matchAll(PIPE_VAR_RE)) {
-    const n = m[1].trim()
-    if (n && !names.includes(n)) names.push(n)
+    const name = m[1].trim()
+    if (!name || out.some(t => t.name === name)) continue
+    out.push({ name, start: m[2] === undefined ? null : parseFloat(m[2]) })
   }
-  return names
+  return out
 }
+function extractSliderVars(expr) { return sliderTokens(expr).map(t => t.name) }
 function stripSliderPipes(expr) { return expr.replace(PIPE_VAR_RE, '$1') }
 
 // One colour per slider, so the rail a reader is dragging and the number it
@@ -205,10 +213,12 @@ function stripSliderPipes(expr) { return expr.replace(PIPE_VAR_RE, '$1') }
 // its equation, and a slider wearing it would read as "this one IS the curve".
 const SLIDER_COLORS = ['#f97316', '#22c55e', '#a855f7', '#fbbf24', '#06b6d4', '#f472b6']
 
-function registerSlider(calc, name) {
+function registerSlider(calc, name, start = null) {
   if (sliders.has(name)) return
   const color = SLIDER_COLORS[sliders.size % SLIDER_COLORS.length]
-  const s = { value: 1, min: -10, max: 10, step: 0.1, color }
+  const value = Number.isFinite(start) ? start : 1
+  // The rail always reaches the value it starts on, however far out it is.
+  const s = { value, min: Math.min(-10, value), max: Math.max(10, value), step: 0.1, color }
   sliders.set(name, s)
   calc.setExpression({ id: `slider_${name}`, latex: `${name}=${s.value}` })
 }
@@ -577,9 +587,9 @@ function watchBoundsFor(calc) {
 }
 
 export async function plotFunction(calc, id, expr, opts = {}) {
-  const sliderVars = extractSliderVars(expr)
+  const sliderVars = sliderTokens(expr)
   const cleanExpr  = stripSliderPipes(expr)
-  sliderVars.forEach(name => registerSlider(calc, name))
+  sliderVars.forEach(({ name, start }) => registerSlider(calc, name, start))
   const color     = opts.color ? rgbToHex(opts.color) : FUNC_COLORS[getFunctionIds().length % FUNC_COLORS.length]
   const lineWidth = opts.thickness ?? 3
   // Desmos wants LaTeX (\sqrt{...}), makeEval wants the plain source

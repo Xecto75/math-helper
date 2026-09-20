@@ -282,8 +282,8 @@ stage that by hand with several cP calls — one call is the whole animation.
 
 CHANGING A VALUE: cS sweeps an EXISTING pie to a new value, animating through the in-between fill, so
 3/8 → 5/8 is watched filling rather than replaced. That IS the teaching moment — never draw a second
-pie to show a new value, and never cX+cP to fake a change. Blank keeps what it has: cS:["p",5] means
-five eighths, cS:[chartId,num,den] means the same amount cut into quarters.
+pie to show a new value, and never cX+cP to fake a change. Blank keeps what it has: on a pie showing 3/8,
+cS:["p",5,""] sweeps the fill to five eighths, and cS:["p",6,16] recuts the same amount into sixteenths.
 
 EQUIVALENT FRACTIONS: two pies side by side (same panel, two ids) is how 1/2 = 2/4 is shown — same
 filled area, different slice count. cS one of them to land on the other.
@@ -462,6 +462,7 @@ REFERENCING A SOLID: [id]a/r/h/l/d/R — the same letters S3m labels: cube→a �
   S2Ex:[id,edgeIndex]                           — remove one edge's highlight
   S2F:[id,faceIndex,color]                      — highlight one FACE (translucent panel) — cube/rectangular-prism only. faceIndex: 0=+X 1=-X 2=top 3=bottom 4=+Z 5=-Z
   S2Fx:[id,faceIndex]                           — remove one face's highlight
+  S2H:[id]                                      — clear every highlight on a shape at once (angles, edges, faces)
   S2v:[zoom,panX,panY,distance,duration,preset] — camera. preset (3D only): front|back|top|bottom|side|corner — look straight at a highlighted face.
 `,
   },
@@ -724,7 +725,7 @@ COVERAGE — judged on the TOPIC, separately from which example fits:
         complex numbers, formal proofs, and everything past them up to research level →
         too-advanced, however simply they are asked.
 
-MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another display needs a formula panel; "comments" for point/edge annotations. geo2d XOR geo3d. Prefer geo2d; geo_canvas only for SVG constructions or vertex arrows.
+MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another display needs a formula panel; "comments" for point/edge annotations. geo2d XOR geo3d — never both, and there is no third geometry module.
 
 OUTPUT: the JSON object ALONE — no fences, no prose, nothing after the closing brace. Prose is discarded unread; it only costs tokens.
 {"status":"ok","lang":"<code>","modules":[...],"exampleIds":["<closest reference lesson id — required>","<optional 2nd>","<optional 3rd>"]}

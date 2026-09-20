@@ -62,7 +62,7 @@ function TextBox({ box }) {
         ) : (
           <div className="tb-body">
             {box.items.map((item, i) => (
-              <p key={i} className={`tb-para${isPureMathLine(item) ? ' tb-para--eq' : ''}`}><MathText text={item} /></p>
+              <p key={i} className={`tb-para${isPureMathLine(item) ? ' tb-para--eq' : ''}`}><MathText text={item} display /></p>
             ))}
           </div>
         )}

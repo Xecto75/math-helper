@@ -126,18 +126,24 @@ export function isPureMathLine(text) {
   return parts.length === 1 && parts[0].t === 'math'
 }
 
-function renderParts(parts) {
+function renderParts(parts, display = false) {
+  // A line that is nothing but a formula is set the way $$…$$ is, in display
+  // style. Inside a line of prose a fraction is squeezed into the line height —
+  // 1/(s²(1+2s)) came out smaller than the words around it — and a line with
+  // nothing else on it has no reason to pay that price.
+  const lone = display && parts.length === 1 && parts[0].t === 'math'
   return parts.map((p, i) => {
     if (p.t === 'text')  return <span key={i}>{p.s}</span>
     if (p.t === 'bold')  return <strong key={i} style={{ whiteSpace: 'nowrap' }}><MathText text={p.s} /></strong>
     if (p.t === 'color') return <span key={i} style={{ color: resolveColor(p.color) }}><MathText text={p.s} /></span>
     if (p.t === 'sup')   return <sup key={i} style={{ fontSize: '0.7em' }}>{p.s}</sup>
     try {
+      const block = p.block || lone
       const html = katex.renderToString(resolveLatexColors(p.s), {
-        throwOnError: false, displayMode: p.block, output: 'html', trust: true,
+        throwOnError: false, displayMode: block, output: 'html', trust: true,
       })
       // $$…$$ (display math) sits on its own line AND renders larger; $…$ stays inline.
-      return <FitKatex key={i} html={html} block={p.block} />
+      return <FitKatex key={i} html={html} block={block} />
     } catch {
       return <span key={i} className="tb-math-err">{p.s}</span>
     }
@@ -147,18 +153,22 @@ function renderParts(parts) {
 // Renders text with geo refs, computed {{ }} blocks, {color: …}, **bold**, ^sup,
 // $LaTeX$, and line breaks (\n or a real newline). Shared by text boxes, comments,
 // and comments.
-export default function MathText({ text, className }) {
+// `display`: a line holding nothing but a formula may be set in display style
+// (see renderParts). The caller decides, since it knows whether the line has a
+// line of its own to grow into — a text box paragraph does, a comment bubble
+// squeezed beside a point does not.
+export default function MathText({ text, className, display = false }) {
   const resolved = evalExprs(resolveGeoRefs(text ?? ''))
   const lines    = resolved.split(/\\n|\n/)   // literal "\n" or a real newline
   // Single line → render inline (keeps bold/color recursion inline). Multiple
   // lines → one block per line so they stack.
   if (lines.length === 1) {
-    return <span className={className}>{renderParts(parseMath(lines[0]))}</span>
+    return <span className={className}>{renderParts(parseMath(lines[0]), display)}</span>
   }
   return (
     <span className={className}>
       {lines.map((line, li) => (
-        <span key={li} style={{ display: 'block' }}>{renderParts(parseMath(line))}</span>
+        <span key={li} style={{ display: 'block' }}>{renderParts(parseMath(line), display)}</span>
       ))}
     </span>
   )

@@ -1019,9 +1019,9 @@ export const EXAMPLE_LESSONS = [
         id: u(), title: 'What a Fraction Counts', layout: 'text-grid',
         steps: [
           { id: u(), funcId: 'text-create', inputs: { boxId: 'q', title: 'Numerator and denominator', content: 'The **denominator** says how many equal parts the whole is cut into.|The **numerator** says how many of those parts are taken.', isList: 'true' } },
-          { id: u(), funcId: 'chart-pie', inputs: { chartId: 'pizza', num: '3', den: '8', color: 'orange' } },
+          { id: u(), funcId: 'chart-pie', inputs: { chartId: 'whole', num: '3', den: '8', color: 'orange' } },
           { id: u(), funcId: 'text-fade-content', inputs: { boxId: 'q', content: '$\\clr{orange}{\\dfrac{3}{8}}$: the circle is cut into **8** equal parts and **3** are taken.' } },
-          { id: u(), funcId: 'chart-pie-set', inputs: { chartId: 'pizza', num: '5' } },
+          { id: u(), funcId: 'chart-pie-set', inputs: { chartId: 'whole', num: '5' } },
           { id: u(), funcId: 'text-fade-content', inputs: { boxId: 'q', content: 'Two more parts of that same size are taken.|$\\dfrac{3}{8} + \\dfrac{2}{8} = \\clr{orange}{\\dfrac{5}{8}}$ — same denominator, so only the numerators add.' } },
         ],
       },

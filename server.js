@@ -98,15 +98,6 @@ import { repairLesson, dropBadSteps, buildRepairPrompt } from './src/server/vali
 import { startTrace } from './src/server/trace.js'
 import { costOf } from './src/server/pricing.js'
 
-// ── TEMPORARY: the router's refusals are switched off ────────────────────────
-// Asked for on 2026-09-20, meant to be short-lived. With this false, a prompt
-// the router calls off-topic, too-advanced or trivial is generated anyway,
-// out of whatever displays fit it best. To put the limits back: set it to true
-// AND delete the paragraph marked TEMPORARY in the router prompt
-// (src/data/moduleCatalog.js), which tells the router to answer "ok" to
-// everything.
-const ENFORCE_ROUTER_VERDICT = false
-
 // Single door to the API: every request and its full response is written to the
 // run's transcript file here, so no call can be logged partially or forgotten.
 async function callModel(trace, label, params) {
@@ -387,7 +378,7 @@ app.post('/api/generate-lesson', async (req, res) => {
     const lang = route.lang
     trace.note(`lang: ${lang ?? '— none from the router, the generator reads it off the request'}`)
 
-    if (ENFORCE_ROUTER_VERDICT && route.status !== 'ok') {
+    if (route.status !== 'ok') {
       // No lesson was produced, so the credit should not be spent.
       await refund()
       trace.section('REFUSED', `status: ${route.status}\n${route.message ?? ''}\n` +
@@ -400,13 +391,7 @@ app.post('/api/generate-lesson', async (req, res) => {
         lang,
       })
     }
-    if (route.status !== 'ok') {
-      console.log(`  router said "${route.status}" — refusals are off, generating anyway`)
-      trace.note(`router verdict "${route.status}" ignored — ENFORCE_ROUTER_VERDICT is off`)
-    }
-    // A refused verdict comes with no modules of its own, so the equation and
-    // text panels stand in: something every topic can be written on.
-    const moduleIds = route.modules?.length ? route.modules : ['equation', 'text']
+    const moduleIds = route.modules
     // The generator is never sent to work without a worked model: it copies
     // one, and with nothing to copy it invents pages with nothing good on them.
     // The reference does NOT have to share the topic — it is a model of how a

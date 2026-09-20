@@ -550,6 +550,9 @@ export function moveShape3D(threeRef, id, dx, dy, dz = 0, duration = 0.5) {
 
   const sideLabelPrefix = `sl_${id}_`
   const cmtLabelPrefix  = `cmt_${id}_`
+  // A vertex's name belongs to that corner: it travels with it, like the side
+  // labels and the comments already did.
+  const vertLabelPrefix = `vn_${id}_`
 
   return new Promise(resolve => {
     const t0   = performance.now()
@@ -568,6 +571,7 @@ export function moveShape3D(threeRef, id, dx, dy, dz = 0, duration = 0.5) {
       const frameDy = (p - prevP) * (endY - startY)
       display.offsetLabels(sideLabelPrefix, frameDx, frameDy)
       display.offsetLabels(cmtLabelPrefix, frameDx, frameDy)
+      display.offsetLabels(vertLabelPrefix, frameDx, frameDy)
       prevP = p
       if (t < 1) requestAnimationFrame(tick)
       // A move can carry the shape past the edge of the frame just as easily as
@@ -604,6 +608,8 @@ export function flipShape2D(threeRef, id) {
         const newGroup = buildFlatGroupFromVerts(entry.vertices, hexColor, entry.opts)
         newGroup.position.copy(savedPos)
         display.addObject(id, newGroup)
+        // The corners have swapped sides — their names go with them.
+        if (entry.vertexNames) nameVertices3D(threeRef, id, entry.vertexNames, entry.vertexNameOpts ?? {})
       } else {
         group.scale.x = -origScaleX
       }
@@ -646,6 +652,8 @@ export function rotateShape2D(threeRef, id, degrees = 90) {
         const newGroup = buildFlatGroupFromVerts(entry.vertices, hexColor, entry.opts)
         newGroup.position.copy(savedPos)
         display.addObject(id, newGroup)
+        // The corners have turned with the shape — their names turn with them.
+        if (entry.vertexNames) nameVertices3D(threeRef, id, entry.vertexNames, entry.vertexNameOpts ?? {})
       }
       // A rotated shape has a different bounding box — what fitted lying flat
       // can stick out once it stands up.
@@ -2036,6 +2044,11 @@ export function nameVertices3D(threeRef, id, names = [], opts = {}) {
   if (!display || !entry?.vertices?.length) return
 
   const verts = entry.vertices
+  // Where the shape actually IS. A rotation or a flip is baked back into the
+  // vertices, but a move is not: it lives on the group's position, and naming a
+  // moved shape put every letter back where the shape had been — an image
+  // translated to the right wore its A′B′C′ over the original.
+  const pos = display.getObject(id)?.position ?? { x: 0, y: 0 }
   // A SNAPPED shape has every corner sitting on its parent's outline, so "away
   // from this shape" points straight back INTO the parent — the letters end up
   // under the figure instead of beside the points they name. Push away from the
@@ -2057,15 +2070,22 @@ export function nameVertices3D(threeRef, id, names = [], opts = {}) {
     if (!raw || raw === '-') { display.removeLabel3D(`vn_${id}_${i}`); return }
     let dx = v[0] - cx, dy = v[1] - cy
     const m = Math.hypot(dx, dy) || 1
-    display.addLabel3D(`vn_${id}_${i}`, r4(v[0]), r4(v[1]), 0.1,
+    display.addLabel3D(`vn_${id}_${i}`, r4(v[0] + pos.x), r4(v[1] + pos.y), 0.1,
       raw, { color, fontSize: opts.fontSize ?? 17, offsetPx: [(dx / m) * OFF_PX, (dy / m) * OFF_PX] })
   })
+  // Kept so a later rotation or flip can write them again at the corners they
+  // name — those two rebuild the shape from baked vertices, which would leave
+  // the letters behind at the corners the shape used to have.
+  entry.vertexNames = names
+  entry.vertexNameOpts = opts
 }
 
 export function unnameVertices3D(threeRef, id) {
   const display = threeRef?.current
   if (!display) return
   for (let i = 0; i < 30; i++) display.removeLabel3D(`vn_${id}_${i}`)
+  const entry = registry.get(id)
+  if (entry) { delete entry.vertexNames; delete entry.vertexNameOpts }
 }
 
 export function addText3D(threeRef, id, text, x, y, opts = {}) {

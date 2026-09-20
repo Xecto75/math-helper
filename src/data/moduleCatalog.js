@@ -495,7 +495,8 @@ ORDERING: fp before fV/fr/fn/fP/fs/fK on the same function. fp needs an id arg. 
   fs:[funcId,a,b]                                      — shade area under curve from a to b
   fi:[f1,f2,color,hideLabel]                           — intersection points of two functions (also general forms like
                                     "-6x+3y=12"); shows (x,y) unless hideLabel=1
-  fa:[x,y,id,funcId,color,label,showCoords,style,hideLabel] — add point; all but x,y optional.
+  fa:[x,y,id,funcId,color,label,style,hideLabel] — add point; all but x,y optional. A blank label writes the point's
+                                    coordinates; a label writes the label INSTEAD of them — never both.
                                     funcId = take that curve's colour. style "open" = hollow dot (endpoint NOT included);
                                     hideLabel=1 = a bare dot.
   fap:[id]                                             — remove point

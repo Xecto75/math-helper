@@ -951,7 +951,12 @@ export async function addPoint(calc, id, x, y, opts = {}) {
 
   const calcIds = [cId]
 
-  if (opts.showCoords) {
+  // A point says ONE thing. Given a label of its own, that label is what it
+  // says and the coordinates are dropped: written as well, the same point read
+  // "(2, −1)" beside the dot AND "Vertex (2, −1)" off toward the origin — the
+  // same value twice, in two places. With no label, the coordinates are what
+  // the point is read by, and they are written here.
+  if (opts.showCoords && !opts.label) {
     // Coordinate label sits directly on the point with a fixed screen-space
     // orientation (always to its right, tight against the dot) — not offset
     // radially from the origin (only reads sensibly for a trig-circle-style
@@ -966,17 +971,6 @@ export async function addPoint(calc, id, x, y, opts = {}) {
     calc.setExpression({ id: cId, latex: `(${latX},${latY})`, color,
       showLabel: true, label: `(${xLbl}, ${yLbl})`, labelOrientation: 'below_right',
       pointStyle, pointOpacity: 0 })
-
-    // Angle label slightly inside the circle (0.65× toward center) — this one
-    // legitimately wants to radiate from the origin (trig-circle angle call-outs).
-    if (opts.label) {
-      const inId = `pt_in_${id}`
-      const inX  = +(numX * 0.65).toFixed(6)
-      const inY  = +(numY * 0.65).toFixed(6)
-      calc.setExpression({ id: inId, latex: `(${inX},${inY})`, color,
-        showLabel: true, label: formatPointLabel(opts.label), pointSize: 1, pointOpacity: 0 })
-      calcIds.push(inId)
-    }
   } else {
     // Same fixed screen-space orientation as the coordinate label above.
     // Without it Desmos falls back to its own anti-collision placement, which

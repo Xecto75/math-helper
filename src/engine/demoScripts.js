@@ -876,10 +876,11 @@ export function demoGraphAddPoint(xRaw, yRaw, idRaw, funcIdRaw, labelRaw, showCo
   // Hiding wins over both the label and the coordinates: showCoords writes the
   // coordinates itself, so leaving it on would put back exactly what was hidden.
   const hideLabel  = String(hideLabelRaw ?? '').trim() === '1'
-  const label      = hideLabel ? ''
-    : (labelRaw !== undefined && String(labelRaw).trim() !== '') ? String(labelRaw).trim()
-    : `(${x}, ${y})`
-  const showCoords = !hideLabel && (showCoordsRaw === true || String(showCoordsRaw).trim() === 'true')
+  const label      = hideLabel ? '' : String(labelRaw ?? '').trim()
+  // A point with no label of its own is read by its coordinates, so they are
+  // what gets written beside it (addPoint writes them). A label replaces them:
+  // both at once put the same value on the dot twice, in two places.
+  const showCoords = !hideLabel && !label
   const open = String(styleRaw ?? '').trim() === 'open'
   const opts = { size: 6, label, showCoords, open }
   // A named colour beats the default; a funcId still wins over both, since

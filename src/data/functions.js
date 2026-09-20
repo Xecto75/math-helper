@@ -655,8 +655,10 @@ export const CATEGORIES = [
           { id: 'id',         label: 'Point ID (blank = auto)', type: 'text', default: '', placeholder: 'e.g. pA' },
           { id: 'funcId',     label: 'Color from func (optional)', type: 'text', default: '', placeholder: 'e.g. f → same color as that curve' },
           { id: 'color',      label: 'Color (optional)', type: 'color-name', default: '' },
-          { id: 'label',      label: 'Label (| = new line)', type: 'text', default: '', placeholder: 'e.g. Vertex|(2, -1)' },
-          { id: 'showCoords', label: 'Show coords outside', type: 'text', default: 'false', placeholder: 'true / false' },
+          // No "show coords" switch: a point with no label is written with its
+          // coordinates, a point with a label is written with the label, and
+          // Hide label gives a dot with nothing on it.
+          { id: 'label',      label: 'Label (blank = coordinates, | = new line)', type: 'text', default: '', placeholder: 'e.g. Vertex|(2, -1)' },
           { id: 'style', label: 'Point style', type: 'select', default: 'filled',
             options: [
               { value: 'filled', label: 'Filled \u25cf (default)' },

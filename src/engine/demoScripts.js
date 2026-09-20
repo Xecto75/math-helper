@@ -465,6 +465,18 @@ export function demoChartVennHighlight(idRaw, exprRaw, colorRaw) {
   ] }
 }
 
+// ── chart-venn-counts ─────────────────────────────────────────────────────────
+// How many elements sit in each region — "A:3, AB:2, B:5" — drawn as dots
+// scattered inside it, so the counts a lesson works with can be counted.
+export function demoChartVennCounts(idRaw, countsRaw) {
+  const id = (idRaw || 'venn1').trim()
+  const counts = String(countsRaw ?? '').trim()
+  return { snapshot: null, script: [
+    { type: 'showTitle', text: `vennCounts("${counts}")` },
+    { type: 'chart-venn-counts', id, counts },
+  ] }
+}
+
 export function demoChartNumberSets(idRaw, setsRaw) {
   const id = (idRaw || 'sets1').trim()
   const rows = String(setsRaw ?? '').split('\n').map(s => s.trim()).filter(Boolean)

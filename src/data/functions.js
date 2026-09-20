@@ -579,6 +579,15 @@ export const CATEGORIES = [
         ],
       },
       {
+        id: 'chart-venn-counts', label: 'Venn Counts',
+        description: 'Put the elements themselves in the diagram, one blue dot each, scattered at random inside their region: "A:3, AB:2, B:5" is 3 in A alone, 2 in both, 5 in B alone. A key is the sets an element belongs to (AB, ABC…), and "U" is the rest of the universe, outside every circle. The dots land one after another, so what a lesson then computes — 2 for A∩B, 3+2+5 for A∪B — can be counted on the diagram.',
+        status: 'ready', useTable: true,
+        inputs: [
+          { id: 'counts', label: 'Counts (region:how many)', type: 'text', default: 'A:3, AB:2, B:5', placeholder: 'A:3, AB:2, B:5, U:1' },
+          { id: 'chartId', label: 'Chart ID', type: 'text', default: 'venn1' },
+        ],
+      },
+      {
         id: 'chart-remove', label: 'Remove Chart',
         description: 'Fade a chart out and drop it.',
         status: 'ready', useTable: true,

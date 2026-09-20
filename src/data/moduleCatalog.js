@@ -320,6 +320,11 @@ ONE colour per chart, and whatever refers to it in text or an equation carries t
   cVh:[expr,color,id]                                  — shade the region expr names: "A∩B", "A∪B", "A'", "A∩B'", "(A∪B)'",
                                     "A∩B∩C". Use ∩ or &, ∪ or U, ' for the complement, () to group. Each cVh cross-fades out
                                     of the previous one, so walk the cases with several cVh on ONE cV. expr="" clears it.
+  cVc:[counts,id]                                      — put the ELEMENTS in the diagram, one blue dot each, scattered inside
+                                    their own region: "A:3, AB:2, B:5" is 3 in A alone, 2 in both, 5 in B alone. A key is the
+                                    sets an element is in (AB, ABC…); "U" is the rest of the universe, outside every circle.
+                                    Use it when the lesson counts elements (|A∪B| = 3+2+5, |A∩B| = 2) — the numbers are then
+                                    countable on the picture instead of asserted beside it.
   cX:[chartId]                          — several at once with "a|b|c" — fade a chart out and drop it
 Several charts can share the panel — they lay out in a row automatically, so two pies side by side
 is just two cP with different ids.

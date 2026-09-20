@@ -77,7 +77,7 @@ import {
   demoGeo2dFlip, demoGeo2dRotate,
   demoGeo3dSnapShape, demoGeo3dNameVertices, demoGeo3dPolygonPoints,
   demoEquationAnnotate, demoEquationTermOp, demoSciExpand, demoFactorialExpand, demoCrossMultiply, demoFractionOp, demoEquationAnnotateClear, demoEquationArrow, demoEquationArrowClear, demoEquationArrowChain, demoEquationSequence,
-  demoChartPie, demoChartPieSet, demoChartPieMode, demoChartRemove, demoChartNumberSets, demoChartVenn, demoChartTree, demoChartTreePath, demoChartVennHighlight,
+  demoChartPie, demoChartPieSet, demoChartPieMode, demoChartRemove, demoChartNumberSets, demoChartVenn, demoChartTree, demoChartTreePath, demoChartVennHighlight, demoChartVennCounts,
  demoTableCreateGrid, demoTableEraseGrid, demoTableAddColumn,
   demoTableRemoveColumn, demoTableAddRow, demoTableRemoveRow,
   demoTableChangeValue, demoTableChangeValues,
@@ -818,6 +818,7 @@ export default function App() {
       case 'chart-tree-path':        return demoChartTreePath(inputs.chartId, inputs.path)
       case 'chart-venn':             return demoChartVenn(inputs.chartId, inputs.sets)
       case 'chart-venn-highlight':   return demoChartVennHighlight(inputs.chartId, inputs.expr, inputs.color)
+      case 'chart-venn-counts':      return demoChartVennCounts(inputs.chartId, inputs.counts)
       case 'chart-number-sets':      return demoChartNumberSets(inputs.chartId, inputs.sets)
       case 'chart-remove':            return demoChartRemove(inputs.chartId)
       case 'tab-create-grid':         return demoTableCreateGrid(inputs.cols, inputs.rows, inputs.values, inputs.headerRow, inputs.gridId, inputs.headerCol, inputs.color)

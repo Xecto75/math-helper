@@ -90,6 +90,13 @@ export async function highlightVenn(chartRef, id, expr, color) {
   await d.vennHighlight(id, expr, color)
 }
 
+// The elements in each region, as dots: "A:3, AB:2, B:5".
+export async function countsVenn(chartRef, id, counts) {
+  const d = chartRef?.current
+  if (!d) return
+  await d.vennCounts(id, counts)
+}
+
 export async function createNumberSets(chartRef, id, opts = {}) {
   const d = chartRef?.current
   if (!d) return

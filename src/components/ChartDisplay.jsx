@@ -1,4 +1,4 @@
-import { useImperativeHandle, forwardRef, useState, useRef } from 'react'
+import { useImperativeHandle, forwardRef, useState, useRef, useMemo } from 'react'
 import { animMs } from '../engine/animSpeed.js'
 
 /**
@@ -125,7 +125,77 @@ function ringAt(i, n, cx, cy) {
 // than from the circles. A cell is one answer to "in or out of each set", so
 // any expression a lesson can write (A∩B, A', (A∪B)') is just the set of cells
 // that satisfy it, and the same code shades all of them.
-const VENN_MS = { appear: 520, shade: 430 }
+const VENN_MS = { appear: 520, shade: 430, dots: 620 }
+
+// ── Elements in the regions ──────────────────────────────────────────────────
+// "A:3 AB:2 B:5" — how many elements each region holds. A key is the sets an
+// element belongs to, so "AB" is the overlap and "A" is A alone; "U" (or "-")
+// is the rest of the universe, outside every circle. A count is read into the
+// same cell number the shading uses: bit b set = inside circle b.
+function parseVennCounts(raw, sets) {
+  const names = sets.map(s => String(s).trim().toUpperCase())
+  const out = []
+  for (const piece of String(raw ?? '').split(/[,;\n]+/)) {
+    const m = /^\s*([^:=]+)[:=]\s*(\d+)\s*$/.exec(piece)
+    if (!m) continue
+    const key = m[1].replace(/[\s∩&·]/g, '').toUpperCase()
+    // A region drawn with more dots than anyone can count is not a diagram.
+    const n = Math.min(parseInt(m[2], 10), 60)
+    if (!n || !key) continue
+    if (['U', '-', 'NONE', 'OUT', 'OUTSIDE'].includes(key)) { out.push({ cell: 0, n }); continue }
+    let cell = 0, rest = key
+    names.forEach((name, i) => { if (rest.includes(name)) { cell |= 1 << i; rest = rest.replace(name, '') } })
+    if (!rest.length) out.push({ cell, n })   // a name this diagram does not have is skipped, not drawn wrong
+  }
+  return out
+}
+
+const VENN_DOT_R = 5
+
+// Dots scattered in a region rather than lined up in it: a point is taken at
+// random inside the box and kept only when it sits comfortably inside every
+// circle its region belongs to and comfortably outside the others. Of several
+// candidates the one furthest from the dots already placed wins, which spaces
+// them out without putting them on a grid.
+function vennDots(cell, n, circles, box, rnd) {
+  const pad = VENN_DOT_R + 4
+  const fits = (x, y) => circles.every((c, i) => {
+    const d = Math.hypot(x - c.x, y - c.y)
+    return (cell & (1 << i)) ? d <= c.r - pad : d >= c.r + pad
+  })
+  const x0 = box.x + pad + 6, x1 = box.x + box.w - pad - 6
+  // The band across the top of the box is where the expression is written.
+  const y0 = box.y + 48, y1 = box.y + box.h - pad - 6
+  const placed = []
+  for (let k = 0; k < n; k++) {
+    let best = null, bestGap = -1
+    for (let t = 0; t < 140; t++) {
+      const x = x0 + rnd() * (x1 - x0)
+      const y = y0 + rnd() * (y1 - y0)
+      if (!fits(x, y)) continue
+      if (!placed.length) { best = { x, y }; break }
+      const gap = Math.min(...placed.map(p => Math.hypot(p.x - x, p.y - y)))
+      if (gap > bestGap) { bestGap = gap; best = { x, y } }
+    }
+    if (!best) break          // a region with no room left keeps the dots it has
+    placed.push(best)
+  }
+  return placed
+}
+
+// The same scatter on every render: a dot that moved each time the diagram
+// animated would read as a different element.
+function seededRandom(seed) {
+  let s = 0
+  for (const ch of String(seed)) s = (Math.imul(s, 31) + ch.charCodeAt(0)) >>> 0
+  return () => {
+    s = (s + 0x6D2B79F5) >>> 0
+    let t = s
+    t = Math.imul(t ^ (t >>> 15), 1 | t)
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
 
 // The universe box, and the circles inside it.
 function vennBox(cx, cy, slotW) {
@@ -432,8 +502,27 @@ const ChartDisplay = forwardRef(function ChartDisplay(_, ref) {
           : String(spec.sets ?? 'A,B').split(',')
         let sets = raw.map(s => String(s).trim()).filter(Boolean).slice(0, 3)
         if (sets.length < 2) sets = ['A', 'B']
-        put(id, { kind: 'venn', sets, appear: 0, hi: null, fade: null })
+        put(id, { kind: 'venn', sets, appear: 0, hi: null, fade: null, counts: null, countsT: 0 })
         return animate(id, VENN_MS.appear, easeOut, e => ({ appear: e }))
+      },
+
+      /**
+       * The elements themselves, one dot each, in the region they belong to:
+       * "A:3 AB:2 B:5" is three in A alone, two in both, five in B alone. The
+       * numbers a lesson then computes — 3 + 2 + 5 for A∪B, 2 for A∩B — are
+       * countable on the diagram instead of asserted beside it.
+       *
+       * They arrive one after another, in the order they were written, so a
+       * region fills while the reader watches rather than appearing full.
+       */
+      vennCounts(id, countsRaw) {
+        const c = chartsRef.current[id]
+        if (!c || c.kind !== 'venn') return Promise.resolve()
+        const counts = parseVennCounts(countsRaw, c.sets)
+        commit(prev => ({ ...prev, [id]: { ...prev[id], counts, countsT: 0 } }))
+        if (!counts.length) return Promise.resolve()
+        const total = counts.reduce((s, r) => s + r.n, 0)
+        return animate(id, VENN_MS.dots + total * 55, easeOut, e => ({ countsT: e }))
       },
 
       /**
@@ -918,6 +1007,17 @@ function Venn({ id, c, cx, cy, slotW }) {
 
   const bands = [c.fade, c.hi].filter(h => h && h.cells.length && h.t > 0.001)
 
+  // Sampled once per set of counts, not per frame: the scatter is the same
+  // picture for as long as the numbers are.
+  const dots = useMemo(() => {
+    const out = []
+    for (const { cell, n } of c.counts ?? []) {
+      const rnd = seededRandom(`${id}:${cell}:${n}`)
+      vennDots(cell, n, circles, box, rnd).forEach((p, i) => out.push({ ...p, key: `${cell}-${i}` }))
+    }
+    return out
+  }, [c.counts, id, box.x, box.y, box.w, box.h, n])   // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <g style={{ opacity: c.appear }}>
       <defs>
@@ -968,6 +1068,18 @@ function Venn({ id, c, cx, cy, slotW }) {
           fill="none" stroke="var(--text-h)" strokeWidth={2.5}
         />
       ))}
+
+      {dots.map((d, i) => {
+        // Each dot has its own slice of the sweep, so they land one by one.
+        const t = Math.max(0, Math.min(1, (c.countsT ?? 0) * (dots.length + 2) - i))
+        if (t <= 0) return null
+        return (
+          <circle
+            key={d.key} cx={d.x} cy={d.y} r={VENN_DOT_R * (0.6 + 0.4 * t)}
+            fill="#60a5fa" opacity={t}
+          />
+        )
+      })}
       {circles.map((p, b) => {
         const l = labelAt(p)
         return (

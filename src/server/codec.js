@@ -49,7 +49,7 @@ const FUNCS = {
   cP: 'chart-pie',           cS: 'chart-pie-set',
   cM: 'chart-pie-mode',      cX: 'chart-remove',        cN: 'chart-number-sets',
   cT: 'chart-tree',          cTp: 'chart-tree-path',
-  cV: 'chart-venn',          cVh: 'chart-venn-highlight',
+  cV: 'chart-venn',          cVh: 'chart-venn-highlight',   cVc: 'chart-venn-counts',
 
   gE: 'geo-highlight-edge',  gA: 'geo-highlight-angle', gC: 'geo-clear',
   gs: 'geo-snap-shape',      gv: 'geo-name-vertices',

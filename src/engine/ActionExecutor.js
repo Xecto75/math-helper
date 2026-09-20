@@ -834,6 +834,10 @@ async function runAction(action, state, equationRef, setState, setUI, geoRef, gr
       await chartEngine.highlightVenn(kidRefs.chartRef, action.id, action.expr, action.color)
       break
     }
+    case 'chart-venn-counts': {
+      await chartEngine.countsVenn(kidRefs.chartRef, action.id, action.counts)
+      break
+    }
 
     case 'chart-number-sets': {
       await chartEngine.createNumberSets(kidRefs.chartRef, action.id, action.opts ?? {})

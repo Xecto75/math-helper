@@ -1456,11 +1456,11 @@
   "parabola": [
     {
       "title": "f(x) = ax² + bx + c — drag to explore",
-      "id": "lb160",
+      "id": "lb275",
       "layout": "text-graph",
       "steps": [
         {
-          "id": "lb161",
+          "id": "lb276",
           "funcId": "text-create",
           "inputs": {
             "boxId": "intro",
@@ -1470,7 +1470,7 @@
           }
         },
         {
-          "id": "lb162",
+          "id": "lb277",
           "funcId": "graph-plot-function",
           "inputs": {
             "expr": "|a|*x^2+|b|*x+|c|",
@@ -1479,7 +1479,7 @@
           }
         },
         {
-          "id": "lb163",
+          "id": "lb278",
           "funcId": "graph-adjust-view",
           "inputs": {
             "cx": "0",
@@ -1491,11 +1491,11 @@
     },
     {
       "title": "Key Features — Roots, Vertex, Axis of Symmetry",
-      "id": "lb164",
+      "id": "lb279",
       "layout": "single-graph",
       "steps": [
         {
-          "id": "lb165",
+          "id": "lb280",
           "funcId": "graph-plot-function",
           "inputs": {
             "expr": "x^2 - 4*x + 3",
@@ -1503,7 +1503,7 @@
           }
         },
         {
-          "id": "lb166",
+          "id": "lb281",
           "funcId": "graph-name-func",
           "inputs": {
             "funcId": "par",
@@ -1513,21 +1513,22 @@
           }
         },
         {
-          "id": "lb167",
+          "id": "lb282",
           "funcId": "graph-mark-roots",
           "inputs": {
             "funcId": "par"
           }
         },
         {
-          "id": "lb168",
+          "id": "lb283",
           "funcId": "graph-add-point",
           "inputs": {
             "x": "2",
             "y": "-1",
             "id": "vert",
-            "label": "Vertex (2, −1)",
-            "showCoords": "true"
+            "label": "",
+            "showCoords": "true",
+            "hideLabel": "0"
           }
         }
       ]

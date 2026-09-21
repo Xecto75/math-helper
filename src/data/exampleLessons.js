@@ -1375,16 +1375,18 @@ export const EXAMPLE_LESSONS = [
     id: 'exponents-scientific',
     emoji: '🔬',
     title: 'Exponents and Scientific Notation',
-    desc: '1,5 × 10⁸ written out in full one decimal place at a time, the product rule for powers of the same base checked against the real product, then two numbers put on the same power of ten before they are added',
+    desc: 'The three parts of 1,5 × 10⁸ framed and named — coefficient, base, exponent — then the product rule for powers of the same base checked against the real product, then two numbers put on the same power of ten before they are added',
     color: '#eab308',
     pages: [
       {
-        id: u(), title: 'What the Exponent Does to the Decimal Point', layout: 'text-equation',
+        id: u(), title: 'The Parts of Scientific Notation', layout: 'text-equation',
         steps: [
-          { id: u(), funcId: 'text-create', inputs: { boxId: 'q', title: 'Scientific notation', content: 'A number in scientific notation is a number between 1 and 10, times a power of ten.|The exponent counts how many places the decimal point moves.', isList: 'true' } },
+          { id: u(), funcId: 'text-create', inputs: { boxId: 'q', title: 'Scientific notation', content: 'A number in scientific notation is a number between 1 and 10, times a power of ten.|Each part of it has a name.', isList: 'true' } },
           { id: u(), funcId: 'eq-create', inputs: { eq: '1,5 x 10^8' } },
-          { id: u(), funcId: 'eq-sci-expand', inputs: { side: 'left', index: '0' } },
-          { id: u(), funcId: 'text-fade-content', inputs: { boxId: 'q', content: 'The exponent 8 moves the decimal point **8 places** to the right.|Writing it as $1{,}5 \\times 10^8$ says the same thing without the zeros.' } },
+          { id: u(), funcId: 'cmt-equation', inputs: { cmtId: 'cc', text: 'The coefficient', side: 'left', indices: '0', color: 'orange' } },
+          { id: u(), funcId: 'cmt-equation', inputs: { cmtId: 'cb', text: 'The base', side: 'left', indices: '1', color: 'green' } },
+          { id: u(), funcId: 'cmt-equation', inputs: { cmtId: 'ce', text: 'The exponent', side: 'left', indices: '2', color: 'purple' } },
+          { id: u(), funcId: 'text-fade-content', inputs: { boxId: 'q', content: 'The **coefficient** $1{,}5$ is at least 1 and less than 10.|The **base** of a power of ten is always 10.|The **exponent** 8 counts the places the decimal point moves: $1{,}5 \\times 10^8 = 150\\,000\\,000$.' } },
         ],
       },
       {

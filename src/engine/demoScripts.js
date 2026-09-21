@@ -2365,8 +2365,11 @@ export function demoGeo3dHighlight(idRaw) {
 export function demoGeo3dLabelSides(idRaw, labelsRaw) {
   const id     = (idRaw || 'shape1').trim()
   // Preserve empty entries so ",,5" means "skip first two, set third to 5"
+  // Each label reads value references the same way text boxes and comments
+  // do, so "c = [c]v" on a side writes the number that was just solved for
+  // instead of the token itself.
   const labels = labelsRaw
-    ? String(labelsRaw).split(',').map(s => s.trim())
+    ? String(labelsRaw).split(',').map(s => substituteValueRefs(s.trim()))
     : []
   return {
     snapshot: null,

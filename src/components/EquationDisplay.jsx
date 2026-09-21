@@ -419,9 +419,19 @@ const EquationDisplay = forwardRef(function EquationDisplay({ snapshot }, ref) {
     return () => ro.disconnect()
   }, [fit])
 
-  // Rebuild ref arrays on every render so they stay in sync with the DOM
-  leftRefs.current = []
-  rightRefs.current = []
+  // Keep the ref arrays in sync with the DOM by TRIMMING them after a commit,
+  // never by emptying them during render. Clearing them in the render body
+  // looked equivalent, but a render React starts and then throws away (it
+  // does that routinely) left both arrays empty with the cells still on
+  // screen, and nothing re-attached them until the next commit. Everything
+  // measured from them silently drew nothing in that window — the divide-
+  // both-sides bracket and its divisor simply never appeared, leaving a
+  // long pause where the animation belonged. Each cell writes its own slot
+  // as it commits, so only the leftovers of removed terms need clearing.
+  useLayoutEffect(() => {
+    leftRefs.current.length  = snapshot?.left?.length  ?? 0
+    rightRefs.current.length = snapshot?.right?.length ?? 0
+  })
 
   // Same rAF-driven value animation the rest of the app uses. `out` runs both
   // fields backwards at once so a removed annotation leaves the way it came.

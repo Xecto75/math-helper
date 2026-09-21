@@ -1346,9 +1346,23 @@ export default function App() {
   // Clicking the stage advances too, but only on empty space: a click that
   // landed on the graph's explore button, an exercise choice, a slider or the
   // prompt box was meant for that control, not for the deck.
+  // Where the press started, so a DRAG can be told apart from a click. Turning
+  // a solid on its axis is a press, a long mouse travel and a release — the
+  // release landed on the stage and skipped the page forward, which is the
+  // opposite of what the reader was doing. A press that stays put is still a
+  // click and still advances.
+  const pressAtRef = useRef(null)
+  const handleStagePress = useCallback((e) => {
+    pressAtRef.current = { x: e.clientX, y: e.clientY }
+  }, [])
+
   const handleStageClick = useCallback((e) => {
     // Works while a beat is playing too — there it hurries it along.
     if (!lessonPages) return
+    const from = pressAtRef.current
+    pressAtRef.current = null
+    // 6px of slack: a hand never holds perfectly still on a click.
+    if (from && Math.hypot(e.clientX - from.x, e.clientY - from.y) > 6) return
     if (e.target.closest('button, input, textarea, select, a, [role="button"], .desmos-container, .slider-panel')) return
     handleLessonNav(1)
   }, [lessonPages, handleLessonNav])
@@ -1568,6 +1582,7 @@ export default function App() {
       {/* ── MAIN AREA ────────────────────────────────────────────────────────── */}
       <div
         className={`main-area${awaitingClick ? ' main-area--awaiting' : ''}`}
+        onPointerDown={handleStagePress}
         onClick={handleStageClick}
       >
 

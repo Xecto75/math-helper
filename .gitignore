@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Text-to-speech sentences, paid for once and kept on disk
+cache/

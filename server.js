@@ -11,6 +11,7 @@ import {
   isAdminEmail,
 } from './src/server/auth.js'
 import { clientIp, consumeAnon, refundAnon } from './src/server/anonQuota.js'
+import { synthesize, lookupSpeech, listVoices, TTS_AUDIO_DIR } from './src/server/tts.js'
 
 const app  = express()
 // A host decides which port it wants the process to listen on and passes it in;
@@ -477,6 +478,64 @@ app.post('/api/generate-lesson', async (req, res) => {
     trace.finish()
     res.status(500).json({ error: err.message ?? 'Generation failed', rawOutput: rawApiText })
   }
+})
+
+// ── Text to speech (dormant) ─────────────────────────────────────────────────
+// No lesson uses this: it is the voice side of a possible move from on-screen
+// text to narration, built ahead so the switch would find it ready. Serving a
+// sentence that is already on disk costs nothing and is open to anyone; making
+// a new one spends real characters, so it is switched off unless TTS_ENABLED=1,
+// and even then only an admin — or, in local development, TTS_LOCAL_OPEN=1 on
+// a request from this machine — may make one.
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
+async function mayMakeSpeech(req) {
+  if (process.env.TTS_ENABLED !== '1') return { error: 'Text to speech is switched off (TTS_ENABLED)', status: 403 }
+  if (process.env.TTS_LOCAL_OPEN === '1' && LOOPBACK.has(req.socket.remoteAddress)) return {}
+  const { user, error, status } = await getUser(req)
+  if (error) return { error, status }
+  if (!isAdminEmail(user.email)) return { error: 'Admins only', status: 403 }
+  return {}
+}
+
+const speechReply = (r) => ({
+  cached: !!r.cached, key: r.key, url: `/api/tts/audio/${r.key}.mp3`,
+  lang: r.code, voice: r.voiceId, model: r.model, words: r.meta?.words ?? [],
+})
+
+app.post('/api/tts', async (req, res) => {
+  const { text, lang, voice, dryRun } = req.body ?? {}
+  const found = lookupSpeech({ text, lang, voice })
+  if (found.error) return res.status(found.status).json({ error: found.error })
+  if (found.meta) return res.json(speechReply({ ...found, cached: true }))
+  // A dry run says what a sentence would cost and whether it is already paid
+  // for, without spending anything.
+  if (dryRun) return res.json({ cached: false, key: found.key, chars: found.clean.length })
+
+  const gate = await mayMakeSpeech(req)
+  if (gate.error) return res.status(gate.status).json({ error: gate.error })
+  try {
+    const r = await synthesize({ text, lang, voice })
+    if (r.error) return res.status(r.status).json({ error: r.error })
+    res.json({ ...speechReply(r), billed: r.meta.billed })
+  } catch (err) {
+    console.error('tts error:', err.message)
+    res.status(500).json({ error: err.message ?? 'Speech failed' })
+  }
+})
+
+app.get('/api/tts/audio/:file', (req, res) => {
+  if (!/^[a-f0-9]{32}.mp3$/.test(req.params.file)) return res.status(400).end()
+  const file = path.join(TTS_AUDIO_DIR, req.params.file)
+  if (!fs.existsSync(file)) return res.status(404).end()
+  res.type('audio/mpeg').sendFile(file)
+})
+
+app.get('/api/tts/voices', async (req, res) => {
+  const gate = await mayMakeSpeech(req)
+  if (gate.error) return res.status(gate.status).json({ error: gate.error })
+  const r = await listVoices(req.query.lang ?? null)
+  if (r.error) return res.status(r.status).json({ error: r.error })
+  res.json(r)
 })
 
 app.listen(port, () => console.log(`math-engine server → http://localhost:${port}`))

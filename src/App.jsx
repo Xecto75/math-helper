@@ -33,6 +33,7 @@ import SettingsView         from './views/SettingsView.jsx'
 import ProfileView          from './views/ProfileView.jsx'
 import { CATEGORIES, defaultInputs } from './data/functions.js'
 import { executeScript, cancelAllAnimations, setSubStepGate, setHurry, isHurrying } from './engine/ActionExecutor.js'
+import * as voiceEngine from './engine/voiceEngine.js'
 import * as graphEngine     from './engine/desmosEngine.js'
 import * as tableEngine     from './engine/tableEngine.js'
 import * as chartEngine     from './engine/chartEngine.js'
@@ -938,6 +939,7 @@ export default function App() {
     // so its coroutine can observe `cancelled` and unwind instead of leaking.
     if (subGateReleaseRef.current) { const r = subGateReleaseRef.current; subGateReleaseRef.current = null; r() }
     cancelAllAnimations()
+    voiceEngine.stop()
 
     currentPageRef.current = pg
 
@@ -1101,6 +1103,13 @@ export default function App() {
       // left overlay elements. Kill them before we start the new script.
       cancelAllAnimations()
 
+      // A voice-say step (dormant test feature, see voiceEngine.js) is fetched
+      // now, while the steps before it play, so the voice starts on time.
+      const voiceLang = lessonLangRef.current ?? langRef.current ?? 'en'
+      pg.steps.forEach(st => {
+        if (st.funcId === 'voice-say') voiceEngine.prepare(st.inputs?.text, { lang: st.inputs?.lang || voiceLang, voice: st.inputs?.voice || null }).catch(() => {})
+      })
+
       for (let si = startFromStep; si < pg.steps.length; si++) {
         if (signal.cancelled) break
         if (signal.pausePending) break
@@ -1110,6 +1119,15 @@ export default function App() {
         subPageStepRef.current = si   // where a sub-step rewind re-enters
 
         const step   = pg.steps[si]
+        // Not a drawing step: it starts the voice and the page carries on.
+        if (step.funcId === 'voice-say') {
+          await voiceEngine.begin(step.inputs, si, { lang: voiceLang, signal, hurried: isHurrying })
+          pageStepIdxRef.current = si + 1
+          continue
+        }
+        // A step the voice names waits for the voice to get there.
+        await voiceEngine.gate(si)
+        if (signal.cancelled) break
         const result = runDemoFunc(step.funcId, step.inputs)
         if (!result) { pageStepIdxRef.current = si + 1; continue }
         const { snapshot, script } = result
@@ -1132,6 +1150,8 @@ export default function App() {
           await rAF()
         }
       }
+
+      if (!signal.cancelled) await voiceEngine.finished()
 
       if (!signal.cancelled && (signal.pausePending || (stopAtStep !== null && pauseAtStop))) {
         pausedRef.current = true

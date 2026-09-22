@@ -4,16 +4,30 @@
     {
       "name": "math-engine",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5174,
       "autoPort": true
     },
     {
       "name": "math-engine-ui-only",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:ui"],
+      "runtimeArgs": [
+        "run",
+        "dev:ui"
+      ],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "math-engine-api",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "server.js"
+      ],
+      "port": 3001
     }
   ]
 }

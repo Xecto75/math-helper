@@ -236,6 +236,21 @@ function expandPageSegments(pg) {
   return [...breaks.map(stopStep => ({ pg, stopStep })), { pg, stopStep: null }]
 }
 
+// Narration. "n" is what the compact lesson format calls it; the other two are
+// names the step has had while this was being built.
+const NARRATION_FUNCS = new Set(['narrate', 'n', 'voice-say'])
+const baseFuncId = (funcId) => String(funcId ?? '').replace(/@\d+$/, '')
+const isNarrationStep = (funcId) => NARRATION_FUNCS.has(baseFuncId(funcId))
+
+// A step's marker: its own `at` field, or "@2" at the end of its funcId, which
+// is how the compact format can carry one without a field of its own.
+function stepMarker(step) {
+  const m = /@(\d+)$/.exec(String(step?.funcId ?? ''))
+  const raw = step?.at ?? step?.inputs?.at ?? (m ? m[1] : null)
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 // Thrown by the sub-step gate to unwind a solve whose run was cancelled.
 // Not an error condition — buildPage swallows it (its catch already ignores
 // anything raised by an already-cancelled signal).
@@ -1067,8 +1082,11 @@ export default function App() {
           pausedRef.current = true
           setPaused(true)
         }
+        // A page that parks stops talking too, exactly where it is.
+        voiceEngine.pause()
         // eslint-disable-next-line no-await-in-loop
         await new Promise(res => { subGateReleaseRef.current = res })
+        voiceEngine.resume()
         subGateReleaseRef.current = null
         setWaitingGate(false)
         if (signal.cancelled) throw CANCELLED
@@ -1103,51 +1121,94 @@ export default function App() {
       // left overlay elements. Kill them before we start the new script.
       cancelAllAnimations()
 
-      // A voice-say step (dormant test feature, see voiceEngine.js) is fetched
-      // now, while the steps before it play, so the voice starts on time.
+      // The page's narration is fetched now, while the first steps play, so
+      // the voice starts on time. Dormant: see voiceEngine.js.
       const voiceLang = lessonLangRef.current ?? langRef.current ?? 'en'
-      pg.steps.forEach(st => {
-        if (st.funcId === 'voice-say') voiceEngine.prepare(st.inputs?.text, { lang: st.inputs?.lang || voiceLang, voice: st.inputs?.voice || null }).catch(() => {})
+      const narration = pg.steps.find(st => isNarrationStep(st.funcId))
+      if (narration) {
+        voiceEngine.prepare(narration.inputs?.text, { lang: narration.inputs?.lang || voiceLang, voice: narration.inputs?.voice || null }).catch(() => {})
+      }
+      // Which steps a narration marker fires. "@2" on a step (its own field or
+      // the end of its funcId) means "fire when the voice reaches @2"; several
+      // steps may share one marker and then fire together.
+      const marked = new Map()
+      pg.steps.forEach((st, i) => {
+        if (isNarrationStep(st.funcId)) return
+        const n = stepMarker(st)
+        if (!n) return
+        if (!marked.has(n)) marked.set(n, [])
+        marked.get(n).push(i)
       })
 
-      for (let si = startFromStep; si < pg.steps.length; si++) {
-        if (signal.cancelled) break
-        if (signal.pausePending) break
-        if (stopAtStep !== null && si >= stopAtStep) break
-
+      // One page step, run exactly as the sequential loop has always run it. A
+      // marker fires this WITHOUT waiting for it, which is why an animation a
+      // marker triggers has to be short and non-blocking.
+      const runStepAt = async (si) => {
         stepSnapshotsRef.current[si] = captureSnapshot()
         subPageStepRef.current = si   // where a sub-step rewind re-enters
 
         const step   = pg.steps[si]
-        // Not a drawing step: it starts the voice and the page carries on.
-        if (step.funcId === 'voice-say') {
-          await voiceEngine.begin(step.inputs, si, { lang: voiceLang, signal, hurried: isHurrying })
-          pageStepIdxRef.current = si + 1
-          continue
-        }
-        // A step the voice names waits for the voice to get there.
-        await voiceEngine.gate(si)
-        if (signal.cancelled) break
-        const result = runDemoFunc(step.funcId, step.inputs)
-        if (!result) { pageStepIdxRef.current = si + 1; continue }
+        const result = runDemoFunc(baseFuncId(step.funcId), step.inputs)
+        if (!result) { pageStepIdxRef.current = si + 1; return }
         const { snapshot, script } = result
         if (snapshot) {
           latestEquationSnapRef.current = snapshot
           setEquationSnapTracked(snapshot)
-          if (signal.cancelled) break
+          if (signal.cancelled) return
           // This one sits in the step loop, outside the executor, so it never
           // saw the hurry — a dozen steps of it added a second of dead time to
           // every skip, which is most of what still felt slow after the tweens
           // had been sped up.
           await new Promise(r => setTimeout(r, (isHurrying() ? 12 : 120) / speed))
         }
-        if (signal.cancelled) break
+        if (signal.cancelled) return
         await executeScript(script, snapshot ?? latestEquationSnapRef.current, equationRef, setEquationSnapTracked, setUITracked, geoRef, graphRef, tableRef, setCommentsTracked, textRef, speed, { skipTitle: true }, calcRef, arithRef, signal, multRef, clockRef, numbersRef, mdasRef, { pizzaRef, counterRef, numberlineRef, threeRef, divisionRef, setDivisionUp, chartRef })
         inSolveRef.current = false   // this step's solve (if any) is finished
 
         if (!signal.cancelled) {
           pageStepIdxRef.current = si + 1
           await rAF()
+        }
+      }
+
+      if (narration && marked.size) {
+        // The voice drives this page. Everything no marker names is the page
+        // setting itself up and happens at once; the rest waits for its word.
+        for (let si = 0; si < pg.steps.length; si++) {
+          if (signal.cancelled || signal.pausePending) break
+          const st = pg.steps[si]
+          if (isNarrationStep(st.funcId) || stepMarker(st)) continue
+          await runStepAt(si)
+        }
+        // Re-entering the page part-way (a rewind, or Resume after a stop):
+        // the words pick up at the marker of the first step still to come,
+        // and everything marked before it is replayed at once so the picture
+        // is whole before the voice carries on.
+        const fromMarker = startFromStep > 0
+          ? [...marked.entries()].filter(([, idxs]) => idxs.some(i => i >= startFromStep))
+              .map(([n]) => n).sort((a, b) => a - b)[0] ?? null
+          : null
+        if (!signal.cancelled) {
+          await voiceEngine.start(narration.inputs, {
+            lang: voiceLang, signal, fromMarker,
+            fire: (n) => (marked.get(n) ?? []).forEach(si => { void runStepAt(si) }),
+          })
+        }
+      } else {
+        for (let si = startFromStep; si < pg.steps.length; si++) {
+          if (signal.cancelled) break
+          if (signal.pausePending) break
+          if (stopAtStep !== null && si >= stopAtStep) break
+
+          const step = pg.steps[si]
+          // Not a drawing step: it starts the voice, and the page carries on
+          // with the animations in their usual order while it reads.
+          if (isNarrationStep(step.funcId)) {
+            await voiceEngine.start(step.inputs, { lang: voiceLang, signal })
+            pageStepIdxRef.current = si + 1
+            continue
+          }
+          await runStepAt(si)
         }
       }
 
@@ -1172,6 +1233,7 @@ export default function App() {
         // Back to normal speed the moment the beat lands — a hurry applies to
         // the beat the viewer asked to skim, never to the next one.
         setHurry(false)
+        voiceEngine.setFastMode(false)
         setRunning(false)
         setGraphFuncIds(graphEngine.getFunctionIds())
         setTableGridIds(tableEngine.getGridIds())
@@ -1326,7 +1388,7 @@ export default function App() {
     // "jump past it". Jumping would start the next beat from a canvas missing
     // everything the unfinished steps were about to draw. Every step still
     // runs, just fast enough that nobody waits.
-    if (dir > 0 && running) { setHurry(true); return }
+    if (dir > 0 && running) { setHurry(true); voiceEngine.setFastMode(true); return }
     const next = Math.max(0, Math.min(lessonPages.length - 1, lessonPageIdx + dir))
     if (next === lessonPageIdx) return
     navigateToSegment(lessonPageIdx, next)
@@ -1418,6 +1480,7 @@ export default function App() {
   const handleResume = useCallback(() => {
     pausedRef.current = false
     setPaused(false)
+    voiceEngine.resume()
     // Parked inside a full-solve: just un-park it. Rebuilding the page here
     // would restart the whole solve from its first mini-step.
     if (grantSubSteps(Infinity)) return

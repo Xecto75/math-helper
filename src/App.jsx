@@ -134,7 +134,9 @@ function pagesFromJson(jsonStr) {
     title:  p.title  ?? '',
     layout: p.layout ?? 'single-graph',
     steps:  (p.steps ?? []).map(s => {
-      const fn  = ALL_READY_APP.find(f => f.id === s.func)
+      // A step id may carry a narration marker ("eq-divide@2"); the defaults
+      // belong to the function, not to the marker.
+      const fn  = ALL_READY_APP.find(f => f.id === baseFuncId(s.func))
       const def = fn ? defaultInputs(fn) : {}
       return { id: appUid(), funcId: s.func, inputs: { ...def, ...(s.inputs ?? {}) } }
     }),
@@ -147,6 +149,21 @@ function pagesFromJson(jsonStr) {
 // always replays its page from step 0 (never a lightweight continuation),
 // so jumping straight to a later segment — e.g. skipping page 1 entirely —
 // still renders correctly instead of assuming the prior segment already ran.
+// Narration. "n" is what the compact lesson format calls it; the other two are
+// names the step has had while this was being built.
+const NARRATION_FUNCS = new Set(['narrate', 'n', 'voice-say'])
+const baseFuncId = (funcId) => String(funcId ?? '').replace(/@\d+$/, '')
+const isNarrationStep = (funcId) => NARRATION_FUNCS.has(baseFuncId(funcId))
+
+// A step's marker: its own `at` field, or "@2" at the end of its funcId, which
+// is how the compact format can carry one without a field of its own.
+function stepMarker(step) {
+  const m = /@(\d+)$/.exec(String(step?.funcId ?? ''))
+  const raw = step?.at ?? step?.inputs?.at ?? (m ? m[1] : null)
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 // ── Where a page pauses for a click ──────────────────────────────────────────
 // A lesson plays like a slide deck, not a video: it stops wherever the viewer
 // has something new to READ, and resumes on their click. Everything that is
@@ -208,6 +225,9 @@ const onlyAdds = (before, after) => Object.entries(after).every(([k, next]) => {
 
 function expandPageSegments(pg) {
   const steps  = pg.steps ?? []
+  // A narrated page is ONE beat: the voice paces it, and breaking it in two
+  // would start the narration again from the top on the second half.
+  if (steps.some(s => isNarrationStep(s.funcId))) return [{ pg, stopStep: null }]
   const breaks = []
   const live   = new Map()   // id → { title, body } currently on screen
 
@@ -216,10 +236,10 @@ function expandPageSegments(pg) {
   steps.forEach((s, i) => {
     const id     = targetOf(s)
     const fields = fieldsOf(s)
-    const erases = ERASES.has(s.funcId) ||
+    const erases = ERASES.has(baseFuncId(s.funcId)) ||
       (!!id && live.has(id) && !onlyAdds(live.get(id), fields))
     // A layout change always splits — the panels themselves rearrange.
-    const breaker = s.funcId === 'set-layout' || erases
+    const breaker = baseFuncId(s.funcId) === 'set-layout' || erases
 
     // Erasing steps that sit side by side are ONE clearing-out, not several:
     // removing a comment and then its text box asks the viewer to click twice
@@ -228,28 +248,15 @@ function expandPageSegments(pg) {
     prevBroke = breaker
 
     if (id) live.set(id, { ...(live.get(id) ?? {}), ...fields })
-    if (s.funcId === 'text-remove' && id) live.delete(id)
-    if (s.funcId === 'cmt-remove'  && id) live.delete(id)
-    if (s.funcId === 'text-clear' || s.funcId === 'cmt-clear') live.clear()
+    const fn = baseFuncId(s.funcId)
+    if (fn === 'text-remove' && id) live.delete(id)
+    if (fn === 'cmt-remove'  && id) live.delete(id)
+    if (fn === 'text-clear' || fn === 'cmt-clear') live.clear()
   })
   if (!breaks.length) return [{ pg, stopStep: null }]
   return [...breaks.map(stopStep => ({ pg, stopStep })), { pg, stopStep: null }]
 }
 
-// Narration. "n" is what the compact lesson format calls it; the other two are
-// names the step has had while this was being built.
-const NARRATION_FUNCS = new Set(['narrate', 'n', 'voice-say'])
-const baseFuncId = (funcId) => String(funcId ?? '').replace(/@\d+$/, '')
-const isNarrationStep = (funcId) => NARRATION_FUNCS.has(baseFuncId(funcId))
-
-// A step's marker: its own `at` field, or "@2" at the end of its funcId, which
-// is how the compact format can carry one without a field of its own.
-function stepMarker(step) {
-  const m = /@(\d+)$/.exec(String(step?.funcId ?? ''))
-  const raw = step?.at ?? step?.inputs?.at ?? (m ? m[1] : null)
-  const n = Number(raw)
-  return Number.isFinite(n) && n > 0 ? n : null
-}
 
 // Thrown by the sub-step gate to unwind a solve whose run was cancelled.
 // Not an error condition — buildPage swallows it (its catch already ignores
@@ -987,8 +994,8 @@ export default function App() {
       // the shape itself switched the panel to 2D.
       if (/3d/.test(pg.layout ?? '')) {
         const FLAT_CREATORS = new Set(['geo3d-create-2d', 'geo3d-polygon-points', 'geo3d-snap-shape'])
-        const firstCreate = pg.steps?.find(s => FLAT_CREATORS.has(s.funcId) || s.funcId === 'geo3d-create')
-        threeRef.current?.setDisplayMode(FLAT_CREATORS.has(firstCreate?.funcId) ? '2d' : '3d')
+        const firstCreate = pg.steps?.find(s => FLAT_CREATORS.has(baseFuncId(s.funcId)) || baseFuncId(s.funcId) === 'geo3d-create')
+        threeRef.current?.setDisplayMode(FLAT_CREATORS.has(baseFuncId(firstCreate?.funcId)) ? '2d' : '3d')
       }
       latestEquationSnapRef.current = null
       setEquationSnapTracked(null)

@@ -127,6 +127,8 @@ const FUNCS = {
   ck: 'clock-show',          ct: 'clock-set-time',      ch: 'clock-highlight-hand',
   ns: 'numbers-show',        nh: 'numbers-show-numeral',
   Mx: 'mdas-example',
+  // The voice. Every page has exactly one.
+  n: 'narrate',
 }
 
 // Build input metadata from the live function catalog
@@ -139,7 +141,12 @@ for (const cat of CATEGORIES) {
 
 const CLR = ['red','purple','orange','green','yellow','pink','teal','white']
 
-function expandStep([code, ...vals]) {
+function expandStep([rawCode, ...vals]) {
+  // A step can carry a narration marker: "eD@2" is "divide both sides, and fire
+  // it when the voice reaches @2". The marker rides on the id through to the
+  // page player, which is what reads it (App.jsx stepMarker).
+  const m = /@(\d+)$/.exec(String(rawCode))
+  const code = m ? String(rawCode).slice(0, -m[0].length) : String(rawCode)
   const funcId = FUNCS[code]
   if (!funcId) throw new Error(`Unknown compact func code: "${code}"`)
   const inputDefs = FUNC_META[funcId] ?? []
@@ -158,7 +165,7 @@ function expandStep([code, ...vals]) {
       ? (raw === 0 ? 'false' : 'true')
       : String(raw)
   })
-  return { func: funcId, inputs }
+  return { func: funcId + (m ? m[0] : ''), inputs }
 }
 
 function expandCompact(compact) {
@@ -179,8 +186,10 @@ const LAYOUTS_BY_ID = Object.fromEntries(Object.entries(LAYOUTS).map(([c, id]) =
 const CLR_BY_NAME   = Object.fromEntries(Object.entries(CLR).map(([n, name]) => [name, Number(n)]))
 
 function compactStep(step) {
-  const funcId = step.func ?? step.funcId
-  const code   = FUNCS_BY_ID[funcId]
+  const withMark = String(step.func ?? step.funcId ?? '')
+  const mark     = /@\d+$/.exec(withMark)?.[0] ?? ''
+  const funcId   = mark ? withMark.slice(0, -mark.length) : withMark
+  const code     = FUNCS_BY_ID[funcId]
   if (!code) return null                       // not expressible in the codec — drop the step
   const defs = FUNC_META[funcId] ?? []
   const vals = defs.map(def => {
@@ -194,7 +203,7 @@ function compactStep(step) {
     return v
   })
   while (vals.length && vals[vals.length - 1] === '') vals.pop()   // drop trailing defaults
-  return [code, ...vals]
+  return [code + mark, ...vals]
 }
 
 // The panel spec for a layout, or null when there is none that resolves BACK to

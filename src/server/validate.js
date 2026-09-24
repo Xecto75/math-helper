@@ -225,7 +225,12 @@ export function repairLesson(compact) {
     const created = new Set()
 
     const outSteps = steps.map((step, si) => {
-      const [code, ...rest] = step
+      // "es@1" is "send to the other side, fired when the voice reaches @1". The
+      // marker is not part of the function id: it is looked up without it and
+      // handed back on, for the page player to read.
+      const [rawCode, ...rest] = step
+      const mark = /@\d+$/.exec(String(rawCode))?.[0] ?? ''
+      const code = mark ? String(rawCode).slice(0, -mark.length) : String(rawCode)
       const where = { page: pi, step: si, code }
 
       const defs = defsFor(code)
@@ -328,18 +333,53 @@ export function repairLesson(compact) {
         warnings.push(`p${pi}s${si} ${code}: needs a ${need} panel, layout "${curLayout}" shows ${have.join(' + ')}`)
       }
 
-      return [code, ...vals]
+      return [code + mark, ...vals]
     })
+
+    // ── Narration ─────────────────────────────────────────────────────────
+    // Every page is paced by one narration, and a marker is only real when it
+    // exists on both sides: in the spoken text and on a step.
+    const bare = (c) => String(c ?? '').replace(/@\d+$/, '')
+    const narrAt = outSteps.map((st, si) => (bare(st[0]) === 'n' ? si : -1)).filter(i => i >= 0)
+    let liveSteps = outSteps
+    if (!narrAt.length) {
+      issues.push({ page: pi, kind: 'missing-narration',
+        message: 'no n step: every page needs exactly one narration, and its @N markers are what fire the steps that carry them' })
+    } else if (narrAt.length > 1) {
+      // Two voices on one page would talk over each other; the first is kept.
+      const drop = new Set(narrAt.slice(1))
+      liveSteps = outSteps.filter((_, si) => !drop.has(si))
+      fixed.push(`p${pi}: ${narrAt.length} narrations on one page — kept the first, dropped ${narrAt.length - 1}`)
+    }
+
+    const narrText = String(liveSteps.find(st => bare(st[0]) === 'n')?.[1] ?? '')
+    const spoken   = new Set([...narrText.matchAll(/@(\d+)/g)].map(m => m[1]))
+    const carried  = new Set()
+    liveSteps = liveSteps.map((st, si) => {
+      const m = /@(\d+)$/.exec(String(st[0]))
+      if (!m || bare(st[0]) === 'n') return st
+      if (!spoken.has(m[1])) {
+        // Nothing says this word, so the step would never fire at all. It runs
+        // with the page instead of being lost.
+        fixed.push(`p${pi}s${si} ${st[0]}: @${m[1]} is not in the narration — the step now runs as the page opens`)
+        return [bare(st[0]), ...st.slice(1)]
+      }
+      carried.add(m[1])
+      return st
+    })
+    for (const n of spoken) {
+      if (!carried.has(n)) warnings.push(`p${pi}: the narration says @${n} but no step carries it`)
+    }
 
     // a layout with a text panel must actually put something in it
     // An empty text panel looks unfinished but renders fine, and several
     // hand-built lessons do it deliberately — a warning, never a retry trigger.
     if (curLayout && (PANELS[curLayout] ?? []).includes('text') &&
-        !outSteps.some(([c]) => c === 'tc' || c === 'tf')) {
+        !liveSteps.some(([c]) => c === 'tc' || c === 'tf')) {
       warnings.push(`p${pi}: layout "${curLayout}" has a text panel but no tc step`)
     }
 
-    return [title, layoutCode, outSteps]
+    return [title, layoutCode, liveSteps]
   })
 
   return { lesson: pages, fixed, warnings, issues }
@@ -377,6 +417,13 @@ export function buildRepairPrompt(compact, issues, docFor) {
       ...list.map(i => `  problem: [${i.kind}] ${i.message}`),
     ].join('\n')
   })
+
+  // Issues about the page itself (a missing narration) have no step to quote,
+  // and were being dropped here — the repair pass then never fixed them.
+  const pageBlocks = issues.filter(i => i.step === undefined).map(i =>
+    [`PAGE ${i.page}  (layout "${compact[i.page]?.[1]}", ${(compact[i.page]?.[2] ?? []).length} steps)`,
+     `  problem: [${i.kind}] ${i.message}`].join('\n'))
+  blocks.push(...pageBlocks)
 
   const codes = [...new Set([...byStep.values()].flat().map(i => i.code).filter(Boolean))]
   const docs  = codes.map(c => docFor(c)).filter(Boolean)

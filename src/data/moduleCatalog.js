@@ -33,6 +33,27 @@ FORMAT: [["Title","PN",[["FC",a,...],...]],...]
 
 ANIMATION FIRST: teach by drawing/animating, not text. Every step = a visual action.
 
+NARRATION — EVERY PAGE HAS EXACTLY ONE n, and the page is paced by it. The voice explains,
+  the panels show it happening.
+  n:[text] — what the voice says. Plain speech: no LaTeX, no $ $, no markup, no |. Write maths
+    the way it is said: "x squared", "minus five", "three over four", "twelve x plus five".
+  @1 … @10 go in that text right AFTER the word that should set something off. A step whose
+    code carries the same marker fires the moment the voice reaches that word:
+      ["n","The five@1 moves to the other side, so both sides are divided@2 by twelve."]
+      ["es@1",1]   ["eD@2",12]
+    Several steps may share one marker and then fire together. A step with NO marker fires as
+    the page opens — that is where the setting-up belongs (viewport, creating the shape).
+  Every @N in the text must be carried by at least one step, and every step marker must exist
+    in the text. A marker matching nothing is dropped.
+  What a marker fires must be SHORT and must not block — under 400ms. A whole solve (ef), a
+    shape being built, a sweep: no marker. Those either open the page or get a page of their own,
+    because the voice does not wait for them and would talk over the picture.
+  2 to 5 markers on a page is the usual shape: one per thing the voice points at.
+
+TEXT IS RARE NOW: the voice carries the explanation, so a text panel is only for something worth
+  keeping on screen — a formula, a rule, a value. Never a paragraph of what the voice just said.
+  Prefer no text panel at all: a page whose text box repeats the narration tells one idea twice.
+
 COLORS: 0=red 1=purple 2=orange 3=green 4=yellow 5=pink 6=teal 7=white. Never blue. Never repeat one on a page.
 
 LENGTH: 4-6 pages typical, 3 min, 8 max. Arc: concept → worked example → different case → recap.
@@ -77,6 +98,9 @@ reads. Put the maths between $ … $ and write ordinary LaTeX (KaTeX renders it)
 
   Outside the $ $ it is plain prose: write "the square root of 25", never a loose \\sqrt.
   Equation-panel strings (eq/ev/er) are NOT LaTeX — those take plain math, x/2 and x^2.
+
+n:[text] — the page's narration (see NARRATION). Exactly one per page, plain speech, @N markers
+  right after the trigger word.
 
 sL:[mode] — change THIS page's panels mid-script ("0" → "03"). Shared panels resize smoothly,
   others fade. Same digits as the page field. Most pages need no sL.
@@ -725,7 +749,7 @@ COVERAGE — judged on the TOPIC, separately from which example fits:
         complex numbers, formal proofs, and everything past them up to research level →
         too-advanced, however simply they are asked.
 
-MODULE PICK (ok only): minimum set, nothing speculative. "text" whenever another display needs a formula panel; "comments" for point/edge annotations. geo2d XOR geo3d — never both, and there is no third geometry module.
+MODULE PICK (ok only): minimum set, nothing speculative. Every lesson is narrated, so "text" only when a formula or value has to STAY on screen — the voice does the explaining, and most pages need no text panel at all. "comments" for point/edge annotations. geo2d XOR geo3d — never both, and there is no third geometry module.
 
 OUTPUT: the JSON object ALONE — no fences, no prose, nothing after the closing brace. Prose is discarded unread; it only costs tokens.
 {"status":"ok","lang":"<code>","modules":[...],"exampleIds":["<closest reference lesson id — required>","<optional 2nd>","<optional 3rd>"]}
@@ -783,7 +807,9 @@ function pruneToDocumented(compact, documented) {
     .map(page => {
       if (!Array.isArray(page)) return page
       const [title, layout, steps] = page
-      return [title, layout, (steps ?? []).filter(s => documented.has(s?.[0]))]
+      // A step can carry a narration marker ("es@1"); the code is what is documented.
+      const bare = (c) => String(c ?? '').replace(/@\d+$/, '')
+      return [title, layout, (steps ?? []).filter(s => documented.has(bare(s?.[0])))]
     })
     .filter(page => !Array.isArray(page) || (page[2] ?? []).length > 0)
 }
@@ -864,14 +890,18 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', references = null) 
     parts.push(
       `\n# REFERENCE LESSON\n` +
       `Verified, in the exact output format. Copy its structure/pacing/step use; ` +
-      `NOT its topic or numbers.\n` +
+      `NOT its topic or numbers. It was written BEFORE the lesson had a voice, so it carries ` +
+      `no n step and leans on a text panel: add the narration the rules above require, and drop ` +
+      `the text the voice now says.\n` +
       JSON.stringify(pruneToDocumented(refs[0], documented))
     )
   } else if (refs.length > 1) {
     parts.push(
       `\n# REFERENCE LESSONS\n` +
       `${refs.length} verified lessons related to this subject, the closest first, in the exact output ` +
-      `format. Copy their structure/pacing/step use; NOT their topics or numbers.\n` +
+      `format. Copy their structure/pacing/step use; NOT their topics or numbers. They were ` +
+      `written BEFORE the lesson had a voice, so they carry no n step and lean on text panels: ` +
+      `add the narration the rules above require, and drop the text the voice now says.\n` +
       refs.map((r, i) => `## ${i + 1}\n` + JSON.stringify(pruneToDocumented(r, documented))).join('\n')
     )
   }

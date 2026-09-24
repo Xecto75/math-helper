@@ -243,7 +243,8 @@ function pagesFromJson(jsonStr) {
       answer: p.answer ?? '',
     } : {}),
     steps:      (p.steps ?? []).map(s => {
-      const fn       = ALL_READY.find(f => f.id === s.func)
+      // A step id may carry a narration marker ("eq-divide@2").
+      const fn       = ALL_READY.find(f => f.id === String(s.func ?? "").replace(/@d+$/, ""))
       const defaults = fn ? defaultInputs(fn) : {}
       return { id: uid(), funcId: s.func, inputs: { ...defaults, ...(s.inputs ?? {}) } }
     }),

@@ -1196,10 +1196,22 @@ export default function App() {
               .map(([n]) => n).sort((a, b) => a - b)[0] ?? null
           : null
         if (!signal.cancelled) {
-          await voiceEngine.start(narration.inputs, {
+          const session = await voiceEngine.start(narration.inputs, {
             lang: voiceLang, signal, fromMarker,
             fire: (n) => (marked.get(n) ?? []).forEach(si => { void runStepAt(si) }),
           })
+          // No voice — switched off, none for this language, offline, out of
+          // quota. The marked steps would then never fire and the page would
+          // show nothing but its setting-up, so it falls back to the ordinary
+          // order: the lesson is silent, never empty.
+          if (!session) {
+            for (let si = 0; si < pg.steps.length; si++) {
+              if (signal.cancelled || signal.pausePending) break
+              const st = pg.steps[si]
+              if (isNarrationStep(st.funcId) || !stepMarker(st)) continue
+              await runStepAt(si)
+            }
+          }
         }
       } else {
         for (let si = startFromStep; si < pg.steps.length; si++) {

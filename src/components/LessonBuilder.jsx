@@ -1400,7 +1400,7 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                               return (
                                 <div className="lb-step-inputs">
                                   {inputDefs.map(inp => (
-                                    <div key={inp.id} className="lb-step-inp-row">
+                                    <div key={inp.id} className={`lb-step-inp-row${inp.type === 'textarea' ? ' lb-step-inp-row--stack' : ''}`}>
                                       <label className="lb-step-inp-lbl">{inp.label}</label>
                                       {renderStepInput(step, inp)}
                                     </div>

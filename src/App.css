@@ -327,6 +327,33 @@
   padding-top: 8px;
   padding-bottom: 10px;
 }
+/* The narration, under the page controls. Empty is not gone: the band keeps
+   its height so the controls and the prompt box never jump, and the words
+   fade in and out. */
+.bottom-section--narration {
+  background: var(--bg-raised);
+  padding-top: 8px;
+  padding-bottom: 8px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.narration-line {
+  margin: 0;
+  max-width: 780px;
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-h);
+  opacity: 0.8;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.bottom-section--narration.is-quiet .narration-line {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
 .bottom-section--exercise {
   background: var(--bg-raised);
   padding-top: 10px;
@@ -4026,6 +4053,14 @@
   align-items: center;
   gap: 8px;
 }
+/* A paragraph field (the narration) goes UNDER its label: the label does not
+   shrink, so a long one on the same line squeezed the box to nothing. */
+.lb-step-inp-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
 .lb-step-inp-lbl {
   font-size: 0.67rem;
   font-weight: 600;

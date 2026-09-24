@@ -505,6 +505,8 @@ export default function App() {
   const [lessonPageIdx,   setLessonPageIdx]   = useState(0)
   const [lastBuiltPage,   setLastBuiltPage]   = useState(null)
   const [paused,          setPaused]          = useState(false)
+  // What the voice is saying on this page, shown under the controls.
+  const [narrationText,   setNarrationText]   = useState('')
   // True while the solve coroutine is suspended mid-way through a full-solve —
   // the toolbar's ‹/› then step through mini-steps instead of page steps.
   const [inSubStep,       setInSubStep]       = useState(false)
@@ -1132,6 +1134,9 @@ export default function App() {
       // the voice starts on time. Dormant: see voiceEngine.js.
       const voiceLang = lessonLangRef.current ?? langRef.current ?? 'en'
       const narration = pg.steps.find(st => isNarrationStep(st.funcId))
+      // The words go on screen whether or not there is a voice to say them:
+      // markers are for the animation, so they are stripped out first.
+      setNarrationText(narration ? voiceEngine.parseMarkers(narration.inputs?.text).text : '')
       if (narration) {
         voiceEngine.prepare(narration.inputs?.text, { lang: narration.inputs?.lang || voiceLang, voice: narration.inputs?.voice || null }).catch(() => {})
       }
@@ -1826,6 +1831,14 @@ export default function App() {
             </div>
             <button className="pb-btn pb-btn--restart" onClick={handleReplay} disabled={!lastBuiltPage} title="Restart">↺</button>
           </div>
+        </div>
+
+        {/* ── What the voice is saying ──────────────────────────────────────── */}
+        {/* Between the page controls and the prompt box: the reader can follow
+            the words without the page having to carry a paragraph of text. It
+            fades rather than appearing, like everything else here. */}
+        <div className={`bottom-section bottom-section--narration${narrationText ? '' : ' is-quiet'}`}>
+          <p className="narration-line">{narrationText}</p>
         </div>
 
         {/* ── AI Prompt ─────────────────────────────────────────────────────── */}

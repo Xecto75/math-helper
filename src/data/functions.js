@@ -1236,7 +1236,7 @@ export const CATEGORIES = [
         useAll: true,
         description: 'What the voice says on this page — one per page, and the page is paced by it. Write @1, @2 … right after the word that should trigger something: every step whose id ends in that marker (e.g. "eq-divide@2") fires the moment the voice reaches that word, and several steps may share one marker. Steps with no marker run as the page opens. An animation a marker fires must be short and must not block — under about 400ms — because the voice does not wait for it. Plain speech only: no LaTeX, no markup, and write symbols as they are said ("x squared", "minus five").',
         inputs: [
-          { id: 'text', label: 'What the voice says (@1, @2 … after the trigger word)', type: 'textarea',
+          { id: 'text', label: 'What the voice says', type: 'textarea',
             default: '', placeholder: 'The five@1 moves to the other side, then both sides are divided@2 by twelve.' },
         ],
       },

@@ -6,6 +6,15 @@ import ColorInput from './ColorInput.jsx'
 import { generateLesson } from '../api/generateLesson.js'
 import { EXAMPLE_LESSONS } from '../data/exampleLessons.js'
 
+// A step id can end in the narration marker that fires it: "cmt-equation@1".
+// The marker is not part of the function id — it is stripped for every lookup
+// and written back when the marker box is edited.
+const bareFunc      = (id) => String(id ?? '').replace(/@\d+$/, '')
+const markerOf      = (step) => /@(\d+)$/.exec(String(step?.funcId ?? ''))?.[1] ?? ''
+const NARRATE_IDS   = new Set(['narrate', 'n', 'voice-say'])
+const isNarrateStep = (id) => NARRATE_IDS.has(bareFunc(id))
+const marksSpokenIn = (text) => new Set([...String(text ?? '').matchAll(/@(\d+)/g)].map(m => m[1]))
+
 // Flat funcId → inputDefs for new-style actions
 const FUNC_INPUT_DEFS = {}
 const FUNC_LABEL_MAP  = {}
@@ -740,15 +749,32 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
 
   // Returns inputDefs for a step (new-style primary display steps first, then legacy)
   const getInputDefs = (step) => {
-    if (FUNC_INPUT_DEFS[step.funcId]) return FUNC_INPUT_DEFS[step.funcId]
-    const fn = ALL_READY.find(f => f.id === step.funcId)
+    const id = bareFunc(step.funcId)
+    if (FUNC_INPUT_DEFS[id]) return FUNC_INPUT_DEFS[id]
+    const fn = ALL_READY.find(f => f.id === id)
     return fn ? fn.inputs : []
   }
 
   const getStepLabel = (step) => {
-    if (FUNC_LABEL_MAP[step.funcId]) return FUNC_LABEL_MAP[step.funcId]
-    const fn = ALL_READY.find(f => f.id === step.funcId)
-    return fn ? fn.label : step.funcId
+    const id = bareFunc(step.funcId)
+    if (FUNC_LABEL_MAP[id]) return FUNC_LABEL_MAP[id]
+    const fn = ALL_READY.find(f => f.id === id)
+    return fn ? fn.label : id
+  }
+
+  // Which markers THIS page's narration actually says, so a step waiting on a
+  // marker nobody says can be shown as such.
+  const spokenMarks = marksSpokenIn(page?.steps?.find(st => isNarrateStep(st.funcId))?.inputs?.text)
+
+  // Editing the marker box rewrites the step id, which is where the marker
+  // lives, so it survives a copy out to the Preview JSON and back.
+  const setStepMarker = (stepId, raw) => {
+    const n = String(raw ?? '').replace(/[^0-9]/g, '').slice(0, 2)
+    setPages(prev => prev.map((p, i) => i !== activePage ? p : {
+      ...p,
+      steps: p.steps.map(st => st.id !== stepId ? st
+        : { ...st, funcId: bareFunc(st.funcId) + (n ? `@${n}` : '') }),
+    }))
   }
 
   // Floats an overflowing text input into a wide fixed-position overlay so
@@ -778,6 +804,14 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
         value={val}
         onChange={v => updateInput(step.id, inp.id, v)}
         placeholder={String(inp.placeholder ?? inp.default ?? 'yellow / #hex')}
+      />
+    )
+    if (inp.type === 'textarea') return (
+      <textarea className="lb-input lb-input--area"
+        rows={3}
+        value={val}
+        placeholder={String(inp.placeholder ?? inp.default ?? '')}
+        onChange={e => updateInput(step.id, inp.id, e.target.value)}
       />
     )
     return (
@@ -1321,6 +1355,19 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                               <span className="lb-step-num">{idx + 1}</span>
                               <span className="lb-step-name">{stepLabel}</span>
                               <div className="lb-step-ctrl">
+                                {!isNarrateStep(step.funcId) && (
+                                  <input
+                                    className={`lb-step-mark${markerOf(step) && !spokenMarks.has(markerOf(step)) ? ' lb-step-mark--orphan' : ''}`}
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="@"
+                                    title={spokenMarks.size
+                                      ? `Fires when the voice reaches this marker. The narration says ${[...spokenMarks].map(n => '@' + n).join(' ')}. Blank = as the page opens.`
+                                      : 'Write @1, @2 … in the narration first, then put the same number here. Blank = as the page opens.'}
+                                    value={markerOf(step) ? `@${markerOf(step)}` : ''}
+                                    onChange={e => setStepMarker(step.id, e.target.value)}
+                                  />
+                                )}
                                 <button className="lb-icon-btn lb-icon-btn--del" title="Remove"
                                   onClick={() => removeStep(step.id)}>✕</button>
                               </div>

@@ -3958,6 +3958,33 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The narration marker a step waits for: @1, @2 … Blank means it runs as the
+   page opens. Orange when the narration says no such marker, because the step
+   would then never be reached. */
+.lb-step-mark {
+  width: 44px;
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  text-align: center;
+  padding: 3px 4px;
+  background: var(--bg-3);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+  outline: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.lb-step-mark::placeholder { color: var(--text-d); }
+.lb-step-mark:focus { border-color: var(--accent); }
+.lb-step-mark--orphan { color: #f97316; border-color: #f97316; }
+
+.lb-input--area {
+  min-height: 62px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
 .lb-step-ctrl {
   display: flex;
   gap: 4px;

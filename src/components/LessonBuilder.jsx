@@ -175,7 +175,7 @@ function detectVarLabels(page, currentStep) {
   let labels = []
   for (const step of page.steps) {
     if (step === currentStep) break
-    if (step.funcId === 'eq-create') {
+    if (bareFunc(step.funcId) === 'eq-create') {
       labels = []
       const eq = step.inputs?.eq ?? ''
       for (const m of eq.matchAll(/\|([^|]+)\|/g)) labels.push(m[1].trim())
@@ -227,7 +227,7 @@ function effectiveLayoutAt(page, afterIdx) {
   let layout = page.layout
   for (let i = 0; i <= upTo && i < page.steps.length; i++) {
     const step = page.steps[i]
-    if (step.funcId === 'set-layout' && step.inputs?.mode) layout = step.inputs.mode
+    if (bareFunc(step.funcId) === 'set-layout' && step.inputs?.mode) layout = step.inputs.mode
   }
   return layout
 }
@@ -236,7 +236,7 @@ let _uid = 0
 const uid = () => `lb${++_uid}`
 
 function makeStep(funcId) {
-  const fn = ALL_READY.find(f => f.id === funcId)
+  const fn = ALL_READY.find(f => f.id === bareFunc(funcId))
   return { id: uid(), funcId, inputs: fn ? defaultInputs(fn) : {} }
 }
 
@@ -1383,7 +1383,7 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                               </div>
                             </div>
                             {inputDefs.length > 0 && (() => {
-                              if (step.funcId === 'eq-replace-variable') {
+                              if (bareFunc(step.funcId) === 'eq-replace-variable') {
                                 const detectedVars = detectVarLabels(page, step)
                                 if (detectedVars.length > 0) {
                                   return (

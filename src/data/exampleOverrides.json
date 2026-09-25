@@ -1,29 +1,57 @@
 {
   "linear-eq": [
     {
-      "title": "Auto-solve: parentheses and a fraction",
+      "title": "One equation, every rule at once",
       "id": "lb318",
       "layout": "single-equation",
       "background": "default",
       "steps": [
         {
-          "id": "nr7150",
+          "id": "nr67656",
           "funcId": "narrate",
           "inputs": {
-            "text": "Here is one equation with every rule in it at once: brackets to open, a fraction on x, and x on both sides. Watch it come apart one rule at a time — open the brackets, gather the like terms, bring the x terms together, then divide."
+            "text": "This one equation has every rule in it: brackets, a fraction on x, and x on both sides. First the brackets open@1. Then the like terms on the left gather into one@2. The x on the right crosses over@3, the plain number crosses the other way@4, and one division@5 leaves x on its own."
           }
         },
         {
-          "id": "lb320",
+          "id": "nr67657",
           "funcId": "eq-create",
           "inputs": {
             "eq": "4(x + 2) - x/2 = 2x + 9"
           }
         },
         {
-          "id": "lb321",
-          "funcId": "eq-full-solve",
+          "id": "nr67658",
+          "funcId": "eq-distribute@1",
+          "inputs": {
+            "eq": "4(x + 2)"
+          }
+        },
+        {
+          "id": "nr67659",
+          "funcId": "eq-combine@2",
           "inputs": {}
+        },
+        {
+          "id": "nr67660",
+          "funcId": "eq-send-other-side@3",
+          "inputs": {
+            "term": ""
+          }
+        },
+        {
+          "id": "nr67661",
+          "funcId": "eq-send-other-side@4",
+          "inputs": {
+            "term": ""
+          }
+        },
+        {
+          "id": "nr67662",
+          "funcId": "eq-divide@5",
+          "inputs": {
+            "divisor": "1.5"
+          }
         }
       ]
     },
@@ -34,36 +62,44 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr7151",
+          "id": "nr67720",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same equation written with letters@1: a times x, plus b, equals c. Solve that shape once and any numbers can drop in@2 afterwards, and the same steps run again."
+            "text": "The same shape written with letters@1: a times x, plus b, equals c. Solve it once like this and any numbers can drop in@2 afterwards. b crosses over@3, and dividing by a@4 leaves x alone — the answer is c minus b, over a."
           }
         },
         {
-          "id": "lb325",
+          "id": "nr67721",
           "funcId": "eq-create@1",
           "inputs": {
             "eq": "|a|x + |b| = |c|"
           }
         },
         {
-          "id": "lb326",
+          "id": "nr67722",
           "funcId": "eq-replace-variable@2",
           "inputs": {
-            "replacements": "a=2,b=-3,c=1",
             "var_a": "3",
             "var_b": "-5",
             "var_c": "10"
           }
         },
         {
-          "id": "lb327",
-          "funcId": "eq-full-solve",
-          "inputs": {}
+          "id": "nr67723",
+          "funcId": "eq-send-other-side@3",
+          "inputs": {
+            "term": ""
+          }
         },
         {
-          "id": "lb328",
+          "id": "nr67724",
+          "funcId": "eq-divide@4",
+          "inputs": {
+            "divisor": "3"
+          }
+        },
+        {
+          "id": "nr67725",
           "funcId": "eq-save-result",
           "inputs": {
             "name": "sol"
@@ -79,10 +115,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr7267",
+          "id": "nr43604",
           "funcId": "narrate",
           "inputs": {
-            "text": "In a right triangle the two short sides@1 and the long one@2, the hypotenuse, are tied together by a single equation@3: the square of the hypotenuse is the sum of the squares of the other two. So when two of the sides are known@4, the third one comes out of it."
+            "text": "In a right triangle the two short sides@1 and the long one@2, the hypotenuse, are tied together by a single equation@3: the square of the hypotenuse is the sum of the squares of the other two. So when two of the sides are known@4, the arithmetic runs on its own@5 and writes the third one onto the figure@6."
           }
         },
         {
@@ -106,7 +142,7 @@
         },
         {
           "id": "lb133",
-          "funcId": "geo3d-label-sides",
+          "funcId": "geo3d-label-sides@6",
           "inputs": {
             "id": "tri",
             "labels": "a,b,c"
@@ -165,12 +201,12 @@
         },
         {
           "id": "lb140",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@5",
           "inputs": {}
         },
         {
           "id": "lb141",
-          "funcId": "geo3d-label-sides",
+          "funcId": "geo3d-label-sides@6",
           "inputs": {
             "id": "tri",
             "labels": ",,5"
@@ -186,22 +222,22 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr7217",
+          "id": "nr87551",
           "funcId": "narrate",
           "inputs": {
-            "text": "An equation with x squared does not have one answer, it usually has two. First everything goes to one side, so it reads a x squared plus b x plus c equals zero. Then the discriminant tells us how many zeros@1 there are, and the formula gives them."
+            "text": "An equation with x squared rarely has one answer, it usually has two. Everything goes to one side first, so it reads a x squared plus b x plus c equals zero@1. Then the discriminant and the formula@2 take over, step by step, and the zeros come out at the end."
           }
         },
         {
           "id": "lb94",
-          "funcId": "eq-create",
+          "funcId": "eq-create@1",
           "inputs": {
             "eq": "x^2 - 5x + 6 = -4 + 2x"
           }
         },
         {
           "id": "lb96",
-          "funcId": "quadratic-solve@1",
+          "funcId": "quadratic-solve@2",
           "inputs": {}
         }
       ]
@@ -214,15 +250,15 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr82882",
+          "id": "nr27913",
           "funcId": "narrate",
           "inputs": {
-            "text": "A cube is the same length on every edge@1, so its volume is that one length multiplied by itself three times@2 — the length, the width and the height are the same number@3."
+            "text": "A cube is the same length on every edge@1, so its volume is that one length multiplied by itself three times@2 — length, width and height are the same number@3 — and the arithmetic finishes it@4."
           }
         },
         {
           "id": "lb1008",
-          "funcId": "geo3d-create",
+          "funcId": "geo3d-create@1",
           "inputs": {
             "id": "shape1",
             "type": "cube",
@@ -234,7 +270,7 @@
         },
         {
           "id": "lb1009",
-          "funcId": "geo3d-show-volume-measures@1",
+          "funcId": "geo3d-show-volume-measures@2",
           "inputs": {
             "id": "shape1",
             "color": "red"
@@ -242,7 +278,7 @@
         },
         {
           "id": "lb1010",
-          "funcId": "cmt-free@2",
+          "funcId": "cmt-free@3",
           "inputs": {
             "cmtId": "",
             "title": "Volume of cube",
@@ -268,7 +304,7 @@
         },
         {
           "id": "lb1013",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@4",
           "inputs": {}
         }
       ]
@@ -279,15 +315,15 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr82883",
+          "id": "nr27914",
           "funcId": "narrate",
           "inputs": {
-            "text": "A cylinder is a circle carried up to a height@1. Its volume is the area of that circle, pi times the radius squared, times the height@2 — so the radius and the height are all we need@3."
+            "text": "A cylinder is a circle carried up to a height@1. Its volume is the area of that circle, pi times the radius squared, times the height@2, so the radius and the height are all we need@3 — and the arithmetic finishes it@4."
           }
         },
         {
           "id": "lb1015",
-          "funcId": "geo3d-create",
+          "funcId": "geo3d-create@1",
           "inputs": {
             "id": "1",
             "type": "cylinder",
@@ -299,7 +335,7 @@
         },
         {
           "id": "lb1016",
-          "funcId": "geo3d-show-volume-measures@1",
+          "funcId": "geo3d-show-volume-measures@2",
           "inputs": {
             "id": "1",
             "color": "red"
@@ -307,7 +343,7 @@
         },
         {
           "id": "lb1017",
-          "funcId": "cmt-free@2",
+          "funcId": "cmt-free@3",
           "inputs": {
             "cmtId": "",
             "title": "Volume of cylinder",
@@ -333,7 +369,7 @@
         },
         {
           "id": "lb1020",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@4",
           "inputs": {}
         }
       ]
@@ -427,10 +463,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr27437",
+          "id": "nr43668",
           "funcId": "narrate",
           "inputs": {
-            "text": "The area of a trapezoid is the two parallel sides added together, times the height, divided by two@1. The figure carries all three measurements@2, so what is left is arithmetic@3."
+            "text": "The area of a trapezoid is the two parallel sides added together, times the height, divided by two@1. The figure carries all three measurements@2, they drop into the formula@3, and the arithmetic finishes it@4."
           }
         },
         {
@@ -490,7 +526,7 @@
         },
         {
           "id": "lb133",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@4",
           "inputs": {}
         }
       ]
@@ -501,10 +537,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr27438",
+          "id": "nr43669",
           "funcId": "narrate",
           "inputs": {
-            "text": "A circle has no sides to add, only a radius: its area is pi times that radius squared@1. One measurement@2 is enough, and the rest is arithmetic@3."
+            "text": "A circle has no sides to add, only a radius: its area is pi times that radius squared@1. One measurement@2 is enough, it goes into the formula@3, and the arithmetic finishes it@4."
           }
         },
         {
@@ -560,7 +596,7 @@
         },
         {
           "id": "lb141",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@4",
           "inputs": {}
         }
       ]
@@ -888,14 +924,14 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr27315",
+          "id": "nr70401",
           "funcId": "narrate",
           "inputs": {
-            "text": "The first equation already has y on its own@1, so what it equals can take the place of y in the other one@2. That leaves an equation with x alone, and solving it gives the value of x. Putting that back@3 into the first equation gives y, and the pair is exactly where the two lines cross@4."
+            "text": "The first equation already has y on its own@1, so what it equals can take the place of y in the other one@2. Now only x is left in it: the brackets open@3, the x terms gather@4, the number crosses over@5, and one division@6 gives x@7. Putting that value back into the first equation@8 and working it out@9 gives y — and the pair is exactly where the two lines cross@10."
           }
         },
         {
-          "id": "lb242",
+          "id": "nr70402",
           "funcId": "text-create",
           "inputs": {
             "boxId": "box0",
@@ -906,14 +942,14 @@
           }
         },
         {
-          "id": "lb244",
+          "id": "nr70403",
           "funcId": "eq-create@1",
           "inputs": {
             "eq": "y=-x+3"
           }
         },
         {
-          "id": "lb245",
+          "id": "nr70404",
           "funcId": "cmt-equation@1",
           "inputs": {
             "cmtId": "1",
@@ -924,42 +960,62 @@
           }
         },
         {
-          "id": "lb247",
+          "id": "nr70405",
           "funcId": "cmt-remove@2",
           "inputs": {
             "cmtId": "1"
           }
         },
         {
-          "id": "lb248",
+          "id": "nr70406",
           "funcId": "eq-create@2",
           "inputs": {
             "eq": "-6x+3|y|=12"
           }
         },
         {
-          "id": "lb249",
+          "id": "nr70407",
           "funcId": "eq-replace-variable@2",
           "inputs": {
-            "replacements": "a=2,b=-3,c=1",
             "var_y": "-x+3"
           }
         },
         {
-          "id": "lb251",
-          "funcId": "eq-full-solve",
+          "id": "nr70408",
+          "funcId": "eq-distribute@3",
+          "inputs": {
+            "eq": "3(-x+3)"
+          }
+        },
+        {
+          "id": "nr70409",
+          "funcId": "eq-combine@4",
           "inputs": {}
         },
         {
-          "id": "lb252",
+          "id": "nr70410",
+          "funcId": "eq-send-other-side@5",
+          "inputs": {
+            "term": ""
+          }
+        },
+        {
+          "id": "nr70411",
+          "funcId": "eq-divide@6",
+          "inputs": {
+            "divisor": "-9"
+          }
+        },
+        {
+          "id": "nr70412",
           "funcId": "eq-save-result",
           "inputs": {
             "name": "x"
           }
         },
         {
-          "id": "lb360",
-          "funcId": "cmt-free",
+          "id": "nr70413",
+          "funcId": "cmt-free@7",
           "inputs": {
             "cmtId": "1",
             "title": "",
@@ -969,35 +1025,34 @@
           }
         },
         {
-          "id": "lb256",
-          "funcId": "eq-create@3",
+          "id": "nr70414",
+          "funcId": "eq-create@8",
           "inputs": {
             "eq": "|y|=-|x|+3"
           }
         },
         {
-          "id": "lb257",
-          "funcId": "eq-replace-variable@3",
+          "id": "nr70415",
+          "funcId": "eq-replace-variable@8",
           "inputs": {
-            "replacements": "a=2,b=-3,c=1",
             "var_x": "[x]v"
           }
         },
         {
-          "id": "lb258",
-          "funcId": "eq-full-solve",
+          "id": "nr70416",
+          "funcId": "eq-full-solve@9",
           "inputs": {}
         },
         {
-          "id": "lb259",
+          "id": "nr70417",
           "funcId": "eq-save-result",
           "inputs": {
             "name": "y"
           }
         },
         {
-          "id": "lb361",
-          "funcId": "cmt-update",
+          "id": "nr70418",
+          "funcId": "cmt-update@9",
           "inputs": {
             "cmtId": "1",
             "text": "x = [x]v|y = [y]v",
@@ -1005,22 +1060,22 @@
           }
         },
         {
-          "id": "lb262",
-          "funcId": "cmt-remove@4",
+          "id": "nr70419",
+          "funcId": "cmt-remove@10",
           "inputs": {
             "cmtId": "1"
           }
         },
         {
-          "id": "lb263",
-          "funcId": "set-layout@4",
+          "id": "nr70420",
+          "funcId": "set-layout@10",
           "inputs": {
             "mode": "single-graph"
           }
         },
         {
-          "id": "lb264",
-          "funcId": "graph-plot-function@4",
+          "id": "nr70421",
+          "funcId": "graph-plot-function@10",
           "inputs": {
             "expr": "y=-x+3",
             "id": "f",
@@ -1028,8 +1083,8 @@
           }
         },
         {
-          "id": "lb265",
-          "funcId": "graph-plot-function@4",
+          "id": "nr70422",
+          "funcId": "graph-plot-function@10",
           "inputs": {
             "expr": "-6x+3y=12",
             "id": "g",
@@ -1037,8 +1092,8 @@
           }
         },
         {
-          "id": "lb266",
-          "funcId": "graph-find-intersections@4",
+          "id": "nr70423",
+          "funcId": "graph-find-intersections@10",
           "inputs": {
             "f1": "f",
             "f2": "g",
@@ -1056,10 +1111,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr82946",
+          "id": "nr84855",
           "funcId": "narrate",
           "inputs": {
-            "text": "The perimeter is every side added up, one after another@1. Here the two slanted sides are the same length, so the sum is twice one of them plus the two parallel sides@2, and the figure carries all the lengths@3."
+            "text": "The perimeter is every side added up, one after another@1. The lengths are written on the figure@2, and here the two slanted sides are equal, so the sum is twice one of them plus the two parallel sides@3. The measurements drop in@4 and the addition finishes it@5."
           }
         },
         {
@@ -1120,21 +1175,21 @@
         },
         {
           "id": "lb177",
-          "funcId": "geo3d-label-sides",
+          "funcId": "geo3d-label-sides@2",
           "inputs": {
             "id": "trap"
           }
         },
         {
           "id": "lb179",
-          "funcId": "eq-create@2",
+          "funcId": "eq-create@3",
           "inputs": {
             "eq": "|P| = 2*|s| + |b| + |B|"
           }
         },
         {
           "id": "lb180",
-          "funcId": "eq-replace-variable@3",
+          "funcId": "eq-replace-variable@4",
           "inputs": {
             "replacements": "a=2,b=-3,c=1",
             "var_s": "[trap]0",
@@ -1144,7 +1199,7 @@
         },
         {
           "id": "lb181",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@5",
           "inputs": {}
         }
       ]
@@ -1155,10 +1210,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr82947",
+          "id": "nr84856",
           "funcId": "narrate",
           "inputs": {
-            "text": "Around a circle the distance has its own name: the circumference@1. It is two times pi times the radius@2, so measuring the radius@3 is enough."
+            "text": "Around a circle the distance has its own name, the circumference, and it is two times pi times the radius@1. So the radius@2 is the only measurement needed: it goes into the formula@3 and the arithmetic finishes it@4."
           }
         },
         {
@@ -1181,7 +1236,7 @@
         },
         {
           "id": "lb185",
-          "funcId": "geo3d-label-sides@1",
+          "funcId": "geo3d-label-sides@2",
           "inputs": {
             "id": "circ",
             "labels": "r=3"
@@ -1189,7 +1244,7 @@
         },
         {
           "id": "lb186",
-          "funcId": "cmt-free@2",
+          "funcId": "cmt-free@1",
           "inputs": {
             "cmtId": "",
             "title": "Peremeter of circle",
@@ -1214,7 +1269,7 @@
         },
         {
           "id": "lb189",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@4",
           "inputs": {}
         }
       ]
@@ -1227,7 +1282,7 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr66734",
+          "id": "nr27979",
           "funcId": "narrate",
           "inputs": {
             "text": "These two lines never meet@1. Look at what they have in common: the number in front of x, the slope@2, is the same for both — and that is exactly what makes them parallel. Only the constant is different, so one simply sits above the other."
@@ -1253,7 +1308,7 @@
         },
         {
           "id": "lb4",
-          "funcId": "graph-name-func",
+          "funcId": "graph-name-func@1",
           "inputs": {
             "funcId": "f1",
             "label": "f₁ = 2x+1",
@@ -1263,7 +1318,7 @@
         },
         {
           "id": "lb5",
-          "funcId": "graph-name-func",
+          "funcId": "graph-name-func@1",
           "inputs": {
             "funcId": "f2",
             "label": "f₂ = 2x−2",
@@ -1312,50 +1367,66 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr66735",
+          "id": "nr70336",
           "funcId": "narrate",
           "inputs": {
-            "text": "These two do cross, and the crossing point is where their two expressions are equal@1. Solving that gives the x of the meeting point. Putting it back into either line@2 gives the y, and on the graph that is exactly where they touch@3."
+            "text": "These two lines do cross@1, and the crossing point is where their two expressions are equal@2. So the x terms come together@3, the numbers go the other way@4, and one division@5 gives the x of the meeting point@6. Putting that x back into either line@7 and working it out@8 gives the y — and on the graph that is exactly where they touch@9."
           }
         },
         {
-          "id": "lb10",
-          "funcId": "graph-plot-function",
+          "id": "nr70337",
+          "funcId": "graph-plot-function@1",
           "inputs": {
             "expr": "2*x + 1",
             "id": "f1"
           }
         },
         {
-          "id": "lb11",
-          "funcId": "graph-plot-function",
+          "id": "nr70338",
+          "funcId": "graph-plot-function@1",
           "inputs": {
             "expr": "-x + 4",
             "id": "f2"
           }
         },
         {
-          "id": "lb12",
-          "funcId": "eq-create@1",
+          "id": "nr70339",
+          "funcId": "eq-create@2",
           "inputs": {
-            "eq": "2|x| + 1 = -|x| + 4"
+            "eq": "2x + 1 = -x + 4"
           }
         },
         {
-          "id": "lb13",
-          "funcId": "eq-full-solve",
-          "inputs": {}
+          "id": "nr70340",
+          "funcId": "eq-send-other-side@3",
+          "inputs": {
+            "term": ""
+          }
         },
         {
-          "id": "lb14",
+          "id": "nr70341",
+          "funcId": "eq-send-other-side@4",
+          "inputs": {
+            "term": ""
+          }
+        },
+        {
+          "id": "nr70342",
+          "funcId": "eq-divide@5",
+          "inputs": {
+            "divisor": "3"
+          }
+        },
+        {
+          "id": "nr70343",
           "funcId": "eq-save-result",
           "inputs": {
             "name": "x"
           }
         },
         {
-          "id": "lb15",
-          "funcId": "cmt-free",
+          "id": "nr70344",
+          "funcId": "cmt-free@6",
           "inputs": {
             "cmtId": "1",
             "title": "",
@@ -1365,36 +1436,34 @@
           }
         },
         {
-          "id": "lb16",
-          "funcId": "eq-create@2",
+          "id": "nr70345",
+          "funcId": "eq-create@7",
           "inputs": {
             "eq": "|y| = 2|x|+1"
           }
         },
         {
-          "id": "lb89",
-          "funcId": "eq-replace-variable@2",
+          "id": "nr70346",
+          "funcId": "eq-replace-variable@7",
           "inputs": {
-            "replacements": "a=2,b=-3,c=1",
-            "var_y": "",
             "var_x": "[x]v"
           }
         },
         {
-          "id": "lb17",
-          "funcId": "eq-full-solve",
+          "id": "nr70347",
+          "funcId": "eq-full-solve@8",
           "inputs": {}
         },
         {
-          "id": "lb18",
+          "id": "nr70348",
           "funcId": "eq-save-result",
           "inputs": {
             "name": "y"
           }
         },
         {
-          "id": "lb19",
-          "funcId": "cmt-update",
+          "id": "nr70349",
+          "funcId": "cmt-update@8",
           "inputs": {
             "cmtId": "1",
             "text": "x = [x]v|y = [y]v",
@@ -1402,15 +1471,15 @@
           }
         },
         {
-          "id": "lb20",
-          "funcId": "set-layout@3",
+          "id": "nr70350",
+          "funcId": "set-layout@9",
           "inputs": {
             "mode": "single-graph"
           }
         },
         {
-          "id": "lb21",
-          "funcId": "graph-find-intersections@3",
+          "id": "nr70351",
+          "funcId": "graph-find-intersections@9",
           "inputs": {
             "f1": "f1",
             "f2": "f2",
@@ -1419,8 +1488,8 @@
           }
         },
         {
-          "id": "lb22",
-          "funcId": "cmt-graph@3",
+          "id": "nr70352",
+          "funcId": "cmt-graph@9",
           "inputs": {
             "cmtId": "",
             "text": "Intersection point",
@@ -1471,15 +1540,15 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr69342",
+          "id": "nr28046",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same parabola, read off the graph. Where it crosses the horizontal axis@1 are the roots — the two values of x that make it zero. And its lowest point@2, the vertex, sits exactly halfway between them."
+            "text": "The same parabola@1, now read off the graph. Where it crosses the horizontal axis@2 are the roots — the two values of x that make it zero. And its lowest point@3, the vertex, sits exactly halfway between them."
           }
         },
         {
           "id": "lb143",
-          "funcId": "graph-plot-function",
+          "funcId": "graph-plot-function@1",
           "inputs": {
             "expr": "x^2 - 4*x + 3",
             "id": "par"
@@ -1487,7 +1556,7 @@
         },
         {
           "id": "lb144",
-          "funcId": "graph-name-func",
+          "funcId": "graph-name-func@1",
           "inputs": {
             "funcId": "par",
             "label": "x² − 4x + 3",
@@ -1497,14 +1566,14 @@
         },
         {
           "id": "lb145",
-          "funcId": "graph-mark-roots@1",
+          "funcId": "graph-mark-roots@2",
           "inputs": {
             "funcId": "par"
           }
         },
         {
           "id": "lb146",
-          "funcId": "graph-add-point@2",
+          "funcId": "graph-add-point@3",
           "inputs": {
             "x": "2",
             "y": "-1",
@@ -1608,10 +1677,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr66792",
+          "id": "nr47028",
           "funcId": "narrate",
           "inputs": {
-            "text": "The coefficient r puts a number on that link@1, always between minus one and one: near one the two rise together, near minus one one falls as the other rises, near zero there is no link. It is built from two pieces@2 — how the two columns move together, and how much each one spreads on its own@3 — and every row of the table adds its share@4."
+            "text": "The coefficient r puts a number on that link@1, always between minus one and one: near one the two rise together, near minus one one falls as the other rises, near zero there is no link at all. It is built from two pieces@2 — how the columns move together, and how much each one spreads on its own@3. Every row of the table adds its share@4, the six of them add up to the first piece@5, the spread of each column gives the second@6, and then the fraction@7 and one division@8 say how strong the link really is@9."
           }
         },
         {
@@ -1653,7 +1722,7 @@
         },
         {
           "id": "lb998",
-          "funcId": "cmt-free@3",
+          "funcId": "cmt-free@2",
           "inputs": {
             "cmtId": "legend",
             "title": "The two pieces",
@@ -1664,7 +1733,7 @@
         },
         {
           "id": "lb999",
-          "funcId": "cmt-free@4",
+          "funcId": "cmt-free@3",
           "inputs": {
             "cmtId": "row",
             "title": "Row by row",
@@ -1693,7 +1762,7 @@
         },
         {
           "id": "lb1002",
-          "funcId": "cmt-update",
+          "funcId": "cmt-update@4",
           "inputs": {
             "cmtId": "row",
             "text": "Row 2: $(2-3.5)(62-72) = 15$",
@@ -1783,7 +1852,7 @@
         },
         {
           "id": "lb1012",
-          "funcId": "cmt-update",
+          "funcId": "cmt-update@5",
           "inputs": {
             "cmtId": "row",
             "text": "$S_{xy} = 42.5+15+2+1.5+15+45$|$S_{xy} = 121$ — every row pushed the same way.",
@@ -1792,14 +1861,14 @@
         },
         {
           "id": "lb1013",
-          "funcId": "tab-clear-row-highlight",
+          "funcId": "tab-clear-row-highlight@6",
           "inputs": {
             "gridId": "etude3"
           }
         },
         {
           "id": "lb1014",
-          "funcId": "cmt-update",
+          "funcId": "cmt-update@6",
           "inputs": {
             "cmtId": "legend",
             "text": "$S_{xx} = 17.5$ and $S_{yy} = 838$|$D = \\sqrt{17.5 \\times 838} = 121.099$",
@@ -1808,7 +1877,7 @@
         },
         {
           "id": "lb1015",
-          "funcId": "eq-replace-variable",
+          "funcId": "eq-replace-variable@7",
           "inputs": {
             "replacements": "a=2,b=-3,c=1",
             "var_Sxy": "121",
@@ -1817,19 +1886,19 @@
         },
         {
           "id": "lb1016",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@8",
           "inputs": {}
         },
         {
           "id": "lb1017",
-          "funcId": "eq-save-result",
+          "funcId": "eq-save-result@6",
           "inputs": {
             "name": "r"
           }
         },
         {
           "id": "lb1018",
-          "funcId": "cmt-free",
+          "funcId": "cmt-free@9",
           "inputs": {
             "cmtId": "verdict",
             "title": "Reading r",
@@ -1909,10 +1978,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr27382",
+          "id": "nr44050",
           "funcId": "narrate",
           "inputs": {
-            "text": "Here two of the angles and one side are known@1, and the side facing the second angle is not. The law of sines becomes a single equation@2 for that side: the known side times the sine of its facing angle, divided by the sine of the other. The triangle's own numbers drop in@3, and a division finishes it."
+            "text": "Here two of the angles and one side are known@1, and the side facing the second angle is not. The law of sines becomes a single equation@2 for that side: the known side times the sine of its facing angle, divided by the sine of the other. The triangle's own numbers drop in@3, the division runs@4, and the side appears on the figure@5."
           }
         },
         {
@@ -1970,12 +2039,12 @@
         },
         {
           "id": "lb154",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@4",
           "inputs": {}
         },
         {
           "id": "lb155",
-          "funcId": "geo3d-label-sides",
+          "funcId": "geo3d-label-sides@5",
           "inputs": {
             "id": "tri2",
             "labels": "a=,b=,c="
@@ -2074,10 +2143,10 @@
       "layout": "text-graph",
       "steps": [
         {
-          "id": "nr69287",
+          "id": "nr28111",
           "funcId": "narrate",
           "inputs": {
-            "text": "Three angles come back all the time: thirty@1, forty five@2 and sixty degrees@3. Dropping each point onto the two axes gives its cosine and its sine, and those are the values worth remembering."
+            "text": "The same circle@1, and three angles that come back all the time: thirty@2, forty five@3 and sixty degrees@4. Dropping each point onto the two axes gives its cosine and its sine, and those are the values worth remembering."
           }
         },
         {
@@ -2102,7 +2171,7 @@
         },
         {
           "id": "lb558",
-          "funcId": "graph-plot-function",
+          "funcId": "graph-plot-function@1",
           "inputs": {
             "expr": "x^2+y^2=1",
             "id": "circle",
@@ -2111,7 +2180,7 @@
         },
         {
           "id": "lb559",
-          "funcId": "graph-add-point@1",
+          "funcId": "graph-add-point@2",
           "inputs": {
             "x": "0.866",
             "y": "0.5",
@@ -2121,7 +2190,7 @@
         },
         {
           "id": "lb560",
-          "funcId": "graph-show-projection@1",
+          "funcId": "graph-show-projection@2",
           "inputs": {
             "pointId": "p30",
             "showValues": "false"
@@ -2129,7 +2198,7 @@
         },
         {
           "id": "lb561",
-          "funcId": "graph-add-point@2",
+          "funcId": "graph-add-point@3",
           "inputs": {
             "x": "0.707",
             "y": "0.707",
@@ -2139,7 +2208,7 @@
         },
         {
           "id": "lb562",
-          "funcId": "graph-show-projection@2",
+          "funcId": "graph-show-projection@3",
           "inputs": {
             "pointId": "p45",
             "showValues": "false"
@@ -2147,7 +2216,7 @@
         },
         {
           "id": "lb563",
-          "funcId": "graph-add-point@3",
+          "funcId": "graph-add-point@4",
           "inputs": {
             "x": "0.5",
             "y": "0.866",
@@ -2157,7 +2226,7 @@
         },
         {
           "id": "lb564",
-          "funcId": "graph-show-projection@3",
+          "funcId": "graph-show-projection@4",
           "inputs": {
             "pointId": "p60",
             "showValues": "false"
@@ -2206,10 +2275,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr69403",
+          "id": "nr28175",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two things describe an exponential curve. It never reaches this flat line@1, its asymptote: it only gets closer and closer. And where it crosses the vertical axis@2 is the value it starts from."
+            "text": "One exponential curve@1, and two things that describe it. It never reaches this flat line@2, its asymptote: it only gets closer and closer. And where it crosses the vertical axis@3 is the value it starts from."
           }
         },
         {
@@ -2224,7 +2293,7 @@
         },
         {
           "id": "lb280",
-          "funcId": "graph-plot-function",
+          "funcId": "graph-plot-function@1",
           "inputs": {
             "expr": "2^x - 3",
             "id": "exp",
@@ -2233,7 +2302,7 @@
         },
         {
           "id": "lb281",
-          "funcId": "graph-name-func",
+          "funcId": "graph-name-func@1",
           "inputs": {
             "funcId": "exp",
             "label": "f(x) = 2ˣ − 3",
@@ -2243,14 +2312,14 @@
         },
         {
           "id": "lb282",
-          "funcId": "graph-horizontal-line@1",
+          "funcId": "graph-horizontal-line@2",
           "inputs": {
             "y": "-3"
           }
         },
         {
           "id": "lb283",
-          "funcId": "cmt-graph@1",
+          "funcId": "cmt-graph@2",
           "inputs": {
             "text": "Asymptote y = −3",
             "x": "2.5",
@@ -2260,7 +2329,7 @@
         },
         {
           "id": "lb284",
-          "funcId": "graph-add-point@2",
+          "funcId": "graph-add-point@3",
           "inputs": {
             "x": "0",
             "y": "-2",
@@ -2280,10 +2349,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr83003",
+          "id": "nr28240",
           "funcId": "narrate",
           "inputs": {
-            "text": "The slope says how steeply a line climbs. Take any two points on it@1: the run is how far you go across@2, the rise is how far you go up@3, and the slope is the rise divided by the run — the same answer wherever you measure it."
+            "text": "The slope says how steeply a line climbs@1. Take any two points on it@2: the run is how far you go across@3, the rise is how far you go up@4, and the slope is the rise divided by the run — the same answer wherever you measure it."
           }
         },
         {
@@ -2309,7 +2378,7 @@
         },
         {
           "id": "lb2022",
-          "funcId": "graph-plot-function",
+          "funcId": "graph-plot-function@1",
           "inputs": {
             "expr": "2*x + 1",
             "id": "f1",
@@ -2318,7 +2387,7 @@
         },
         {
           "id": "lb2023",
-          "funcId": "graph-name-func",
+          "funcId": "graph-name-func@1",
           "inputs": {
             "funcId": "f1",
             "label": "y = ax + b",
@@ -2327,7 +2396,7 @@
         },
         {
           "id": "lb2024",
-          "funcId": "graph-add-point@1",
+          "funcId": "graph-add-point@2",
           "inputs": {
             "x": "1",
             "y": "3",
@@ -2339,7 +2408,7 @@
         },
         {
           "id": "lb2025",
-          "funcId": "graph-add-point@1",
+          "funcId": "graph-add-point@2",
           "inputs": {
             "x": "4",
             "y": "9",
@@ -2351,7 +2420,7 @@
         },
         {
           "id": "lb2026",
-          "funcId": "graph-add-segment@2",
+          "funcId": "graph-add-segment@3",
           "inputs": {
             "x1": "1",
             "y1": "3",
@@ -2363,7 +2432,7 @@
         },
         {
           "id": "lb2027",
-          "funcId": "cmt-graph-func@2",
+          "funcId": "cmt-graph-func@3",
           "inputs": {
             "cmtId": "",
             "text": "run = [run]len",
@@ -2374,7 +2443,7 @@
         },
         {
           "id": "lb2028",
-          "funcId": "graph-add-segment@3",
+          "funcId": "graph-add-segment@4",
           "inputs": {
             "x1": "4",
             "y1": "3",
@@ -2386,7 +2455,7 @@
         },
         {
           "id": "lb2029",
-          "funcId": "cmt-graph-func@3",
+          "funcId": "cmt-graph-func@4",
           "inputs": {
             "cmtId": "",
             "text": "rise = [rise]len",
@@ -2404,10 +2473,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr83004",
+          "id": "nr70470",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two points are enough to find the whole line@1. First the slope: the difference of the y values over the difference of the x values@2. Then that slope goes into y equals m x plus b@3, one of the points is put in for x and y@4, and the only unknown left is b — which finishes the equation of the line@5."
+            "text": "Two points are enough to find the whole line@1. First the slope: the difference of the y values over the difference of the x values@2, worked out@3. Then that slope goes into y equals m x plus b@4, one of the points is put in for x and y@5, and what comes out@6 is the only unknown left, b — which finishes the equation of the line@7."
           }
         },
         {
@@ -2464,7 +2533,7 @@
         },
         {
           "id": "lb2039",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@3",
           "inputs": {}
         },
         {
@@ -2476,14 +2545,14 @@
         },
         {
           "id": "lb2041",
-          "funcId": "eq-create@3",
+          "funcId": "eq-create@4",
           "inputs": {
             "eq": "|y| = |m| * |x| + |b|"
           }
         },
         {
           "id": "lb2042",
-          "funcId": "eq-replace-variable@3",
+          "funcId": "eq-replace-variable@4",
           "inputs": {
             "replacements": "a=2,b=-3,c=1",
             "var_m": "[m]v"
@@ -2491,7 +2560,7 @@
         },
         {
           "id": "lb2044",
-          "funcId": "eq-replace-variable@4",
+          "funcId": "eq-replace-variable@5",
           "inputs": {
             "replacements": "a=2,b=-3,c=1",
             "var_y": "[pA]y",
@@ -2500,7 +2569,7 @@
         },
         {
           "id": "lb2045",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@6",
           "inputs": {}
         },
         {
@@ -2512,14 +2581,14 @@
         },
         {
           "id": "lb2047",
-          "funcId": "set-layout@5",
+          "funcId": "set-layout@7",
           "inputs": {
             "mode": "text-graph"
           }
         },
         {
           "id": "lb2048",
-          "funcId": "text-create@5",
+          "funcId": "text-create@7",
           "inputs": {
             "boxId": "result",
             "title": "The equation",
@@ -2530,7 +2599,7 @@
         },
         {
           "id": "lb2049",
-          "funcId": "graph-plot-function@5",
+          "funcId": "graph-plot-function@7",
           "inputs": {
             "expr": "2*x + 1",
             "id": "line",
@@ -2548,7 +2617,7 @@
         },
         {
           "id": "lb2051",
-          "funcId": "graph-name-func@5",
+          "funcId": "graph-name-func@7",
           "inputs": {
             "funcId": "line",
             "label": "y = 2x + 1",
@@ -2765,10 +2834,10 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr43425",
+          "id": "nr66682",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same triangle, and now that relation becomes an equation@1: the altitude is the square root of the two pieces multiplied. Their lengths come straight from the figure@2, and the altitude is written back onto the drawing@3 once it is known."
+            "text": "The same triangle, and now that relation becomes an equation@1: the altitude is the square root of the two pieces multiplied. Their lengths come straight from the figure@2, the arithmetic runs@3, and the altitude is written back onto the drawing@4."
           }
         },
         {
@@ -2827,7 +2896,7 @@
         },
         {
           "id": "lb953",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@3",
           "inputs": {}
         },
         {
@@ -2839,7 +2908,7 @@
         },
         {
           "id": "lb955",
-          "funcId": "cmt-geo-edge@3",
+          "funcId": "cmt-geo-edge@4",
           "inputs": {
             "text": "h = [h]v",
             "shapeId": "h",
@@ -2855,15 +2924,15 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr43426",
+          "id": "nr66683",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two sides and the angle between them are known, and the third side is not. The law of cosines@1 handles it: it is the Pythagorean theorem plus a correction for that angle@2. The equation@3 takes the triangle's own numbers@4, and the missing side lands on the figure@5."
+            "text": "Two sides and the angle between them are known@1, and the third side is not. The law of cosines@2 handles it: the Pythagorean theorem plus a correction for that angle@3. The equation@4 takes the triangle's own numbers@5, the arithmetic runs@6, and the missing side lands on the figure@7."
           }
         },
         {
           "id": "lb957",
-          "funcId": "cmt-free@1",
+          "funcId": "cmt-free@2",
           "inputs": {
             "title": "Law of cosines",
             "text": "$c^2 = a^2 + b^2 - 2ab\\cos C$",
@@ -2883,7 +2952,7 @@
         },
         {
           "id": "lb959",
-          "funcId": "geo3d-label-sides",
+          "funcId": "geo3d-label-sides@1",
           "inputs": {
             "id": "t",
             "labels": "a = 5,b = 8,c = ?"
@@ -2891,7 +2960,7 @@
         },
         {
           "id": "lb960",
-          "funcId": "geo3d-mark-angle@2",
+          "funcId": "geo3d-mark-angle@3",
           "inputs": {
             "id": "t",
             "markId": "port",
@@ -2904,21 +2973,21 @@
         },
         {
           "id": "lb961",
-          "funcId": "eq-create@3",
+          "funcId": "eq-create@4",
           "inputs": {
             "eq": "|c| = sqrt(|a|^2 + |b|^2 - 2 * |a| * |b| * cos(|C|{orange}))"
           }
         },
         {
           "id": "lb962",
-          "funcId": "eq-replace-variable@4",
+          "funcId": "eq-replace-variable@5",
           "inputs": {
             "replacements": "a=5,b=8,C=60"
           }
         },
         {
           "id": "lb963",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@6",
           "inputs": {}
         },
         {
@@ -2930,7 +2999,7 @@
         },
         {
           "id": "lb965",
-          "funcId": "cmt-geo-edge@5",
+          "funcId": "cmt-geo-edge@7",
           "inputs": {
             "text": "c = [c]v",
             "shapeId": "t",
@@ -2940,7 +3009,7 @@
         },
         {
           "id": "lb966",
-          "funcId": "geo3d-label-sides@5",
+          "funcId": "geo3d-label-sides@7",
           "inputs": {
             "id": "t",
             "labels": "a = 5,b = 8,c = [c]v"
@@ -2982,10 +3051,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr19051",
+          "id": "nr87491",
           "funcId": "narrate",
           "inputs": {
-            "text": "From kilometres to metres there are three steps along the row, so the point moves three places to the right — which is the same as multiplying by a thousand@1."
+            "text": "From kilometres to metres there are three steps along the row, so the point moves three places to the right@1 — which is the same as multiplying by a thousand@2."
           }
         },
         {
@@ -2997,7 +3066,7 @@
         },
         {
           "id": "ex272",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@2",
           "inputs": {}
         }
       ]
@@ -3229,29 +3298,29 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr19315",
+          "id": "nr87618",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same formula, with numbers taking the place of the letters@1: the first term is three, the rank is ten, the difference is four. Watch the rank minus one — from the first term to the tenth there are nine additions, not ten."
+            "text": "The same formula@1, with numbers taking the place of the letters@2: the first term three, the rank ten, the difference four. Then it works itself out@3 — and watch the rank minus one, because from the first term to the tenth there are nine additions, not ten."
           }
         },
         {
           "id": "ex294",
-          "funcId": "eq-create",
+          "funcId": "eq-create@1",
           "inputs": {
             "eq": "|t₁₀|{cyan} = |t₁|{green} + (|n|{purple} - 1) * |d|{orange}"
           }
         },
         {
           "id": "ex295",
-          "funcId": "eq-replace-variable@1",
+          "funcId": "eq-replace-variable@2",
           "inputs": {
             "replacements": "t₁=3,n=10,d=4"
           }
         },
         {
           "id": "ex296",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@3",
           "inputs": {}
         }
       ]
@@ -3385,10 +3454,10 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr91772",
+          "id": "nr43863",
           "funcId": "narrate",
           "inputs": {
-            "text": "The arrow is the hypotenuse of a right triangle@1: the step across and the step up are its two legs. So the length comes straight out of the Pythagorean theorem@2, with the components taken from the graph@3."
+            "text": "From one point to the other@1 the arrow is the hypotenuse of a right triangle: the step across and the step up@2 are its two legs. So its length comes straight out of the Pythagorean theorem@3, with the components taken from the graph@4, and the arithmetic finishes it@5."
           }
         },
         {
@@ -3403,7 +3472,7 @@
         },
         {
           "id": "ex312",
-          "funcId": "graph-add-point",
+          "funcId": "graph-add-point@1",
           "inputs": {
             "x": "1",
             "y": "1",
@@ -3413,7 +3482,7 @@
         },
         {
           "id": "ex313",
-          "funcId": "graph-add-point",
+          "funcId": "graph-add-point@1",
           "inputs": {
             "x": "5",
             "y": "4",
@@ -3437,7 +3506,7 @@
         },
         {
           "id": "ex315",
-          "funcId": "graph-show-projection@1",
+          "funcId": "graph-show-projection@2",
           "inputs": {
             "pointId": "ab",
             "showValues": "true"
@@ -3445,21 +3514,21 @@
         },
         {
           "id": "ex316",
-          "funcId": "eq-create@2",
+          "funcId": "eq-create@3",
           "inputs": {
             "eq": "|AB| = sqrt(|Δx|^2 + |Δy|^2)"
           }
         },
         {
           "id": "ex317",
-          "funcId": "eq-replace-variable@3",
+          "funcId": "eq-replace-variable@4",
           "inputs": {
             "replacements": "Δx=4,Δy=3"
           }
         },
         {
           "id": "ex318",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@5",
           "inputs": {}
         }
       ]
@@ -3547,15 +3616,15 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr91900",
+          "id": "nr43928",
           "funcId": "narrate",
           "inputs": {
-            "text": "A parabola has three things worth naming@1: the vertex where it turns around, the focus inside the curve@2, and the directrix, a line outside it. Every single point of the curve is exactly as far from the focus as it is from that line."
+            "text": "This is a parabola@1, and it has three things worth naming@2: the vertex where it turns around, the focus inside the curve@3, and the directrix, a line outside it. Every single point of the curve is exactly as far from the focus as it is from that line."
           }
         },
         {
           "id": "ex328",
-          "funcId": "graph-plot-function",
+          "funcId": "graph-plot-function@1",
           "inputs": {
             "expr": "y = x^2 / 8",
             "id": "ant"
@@ -3563,7 +3632,7 @@
         },
         {
           "id": "ex329",
-          "funcId": "graph-conic-elements@1",
+          "funcId": "graph-conic-elements@2",
           "inputs": {
             "funcId": "ant",
             "show": "vertices,foci,directrix",
@@ -3573,7 +3642,7 @@
         },
         {
           "id": "ex330",
-          "funcId": "cmt-graph@2",
+          "funcId": "cmt-graph@3",
           "inputs": {
             "text": "Focus",
             "x": "[PF]x",
@@ -3588,15 +3657,15 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr91901",
+          "id": "nr10506",
           "funcId": "narrate",
           "inputs": {
-            "text": "The focus can be found from the equation itself. Written the standard way@1, x squared equals four p y, the number in front is what gives p@2 — and p is the distance from the vertex up to the focus@3."
+            "text": "The focus of this parabola@1 can be found from the equation itself. Written the standard way@2, x squared equals four p y, the number in front is what gives p@3. One division@4 settles it, and p turns out to be the distance from the vertex up to the focus@5."
           }
         },
         {
           "id": "ex332",
-          "funcId": "graph-plot-function",
+          "funcId": "graph-plot-function@1",
           "inputs": {
             "expr": "y = x^2 / 8",
             "id": "ant"
@@ -3604,7 +3673,7 @@
         },
         {
           "id": "ex333",
-          "funcId": "graph-conic-elements",
+          "funcId": "graph-conic-elements@1",
           "inputs": {
             "funcId": "ant",
             "show": "vertices,foci",
@@ -3614,7 +3683,7 @@
         },
         {
           "id": "ex334",
-          "funcId": "cmt-free@1",
+          "funcId": "cmt-free@2",
           "inputs": {
             "title": "Compare the two forms",
             "text": "$y = \\dfrac{x^2}{8}$ is the same as $x^2 = 8y$.|The standard form is $x^2 = 4py$, so $4p = 8$.",
@@ -3623,14 +3692,14 @@
         },
         {
           "id": "ex335",
-          "funcId": "eq-create@2",
+          "funcId": "eq-create@3",
           "inputs": {
             "eq": "4|p| = 8"
           }
         },
         {
           "id": "ex336",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@4",
           "inputs": {}
         },
         {
@@ -3642,7 +3711,7 @@
         },
         {
           "id": "ex338",
-          "funcId": "cmt-graph@3",
+          "funcId": "cmt-graph@5",
           "inputs": {
             "text": "p = [p]v: the focus sits [p]v units above the vertex",
             "x": "[PF]x",
@@ -3657,15 +3726,15 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr91902",
+          "id": "nr43930",
           "funcId": "narrate",
           "inputs": {
-            "text": "An ellipse has two foci@1, both on its long axis, each one the same distance from the centre. That distance comes from the two radiuses@2 of the ellipse, the ones read off its equation@3: the square root of the big one squared minus the small one squared."
+            "text": "An ellipse@1 has two foci@2, both on its long axis, each the same distance from the centre. That distance comes from the two radiuses@3 of the ellipse, the ones read off its equation@4: the square root of the big one squared minus the small one squared@5 — and it lands on the drawing@6."
           }
         },
         {
           "id": "ex340",
-          "funcId": "graph-plot-function",
+          "funcId": "graph-plot-function@1",
           "inputs": {
             "expr": "x^2/25 + y^2/16 = 1",
             "id": "orb"
@@ -3673,7 +3742,7 @@
         },
         {
           "id": "ex341",
-          "funcId": "graph-conic-elements@1",
+          "funcId": "graph-conic-elements@2",
           "inputs": {
             "funcId": "orb",
             "show": "vertices,foci",
@@ -3683,7 +3752,7 @@
         },
         {
           "id": "ex342",
-          "funcId": "cmt-free@2",
+          "funcId": "cmt-free@3",
           "inputs": {
             "title": "Where the foci are",
             "text": "The two foci sit on the long axis, at a distance $c$ from the centre.|$c = \\sqrt{a^2 - b^2}$, with $a$ and $b$ read off the equation.",
@@ -3692,21 +3761,21 @@
         },
         {
           "id": "ex343",
-          "funcId": "eq-create@2",
+          "funcId": "eq-create@3",
           "inputs": {
             "eq": "|c| = sqrt(|a|^2 - |b|^2)"
           }
         },
         {
           "id": "ex344",
-          "funcId": "eq-replace-variable@3",
+          "funcId": "eq-replace-variable@4",
           "inputs": {
             "replacements": "a=[E]a,b=[E]b"
           }
         },
         {
           "id": "ex345",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@5",
           "inputs": {}
         },
         {
@@ -3718,7 +3787,7 @@
         },
         {
           "id": "ex347",
-          "funcId": "cmt-graph",
+          "funcId": "cmt-graph@6",
           "inputs": {
             "text": "Focus: [c]v from the centre",
             "x": "[EF2]x",
@@ -3830,23 +3899,32 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr38881",
+          "id": "nr67784",
           "funcId": "narrate",
           "inputs": {
-            "text": "An inequality is solved like an equation. First comes its boundary@1, the place where the two sides are exactly equal, and that is solved the ordinary way. Then all that is left is to decide which side of the boundary keeps the inequality true."
+            "text": "An inequality is solved like an equation. Its boundary is where the two sides are exactly equal@1, so the five crosses over@2, both sides are divided by twelve@3, and that leaves the number where the two sides meet. Then all that is left is choosing which side of it keeps the inequality true."
           }
         },
         {
-          "id": "ex383",
+          "id": "nr67785",
           "funcId": "eq-create@1",
           "inputs": {
             "eq": "12x + 5 = 50"
           }
         },
         {
-          "id": "ex384",
-          "funcId": "eq-full-solve",
-          "inputs": {}
+          "id": "nr67786",
+          "funcId": "eq-send-other-side@2",
+          "inputs": {
+            "term": ""
+          }
+        },
+        {
+          "id": "nr67787",
+          "funcId": "eq-divide@3",
+          "inputs": {
+            "divisor": "12"
+          }
         }
       ]
     },
@@ -4059,7 +4137,7 @@
       "layout": "single-3d",
       "steps": [
         {
-          "id": "nr39009",
+          "id": "nr44179",
           "funcId": "narrate",
           "inputs": {
             "text": "The altitude of a triangle runs from one vertex@1 straight down to the opposite side, and it meets that side at a right angle@2. Its length is the height used in the area formula@3."
@@ -4078,7 +4156,7 @@
         },
         {
           "id": "ex411",
-          "funcId": "geo3d-name-vertices",
+          "funcId": "geo3d-name-vertices@1",
           "inputs": {
             "shapeId": "t",
             "names": "A,B,C"
@@ -4125,10 +4203,10 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr39010",
+          "id": "nr44180",
           "funcId": "narrate",
           "inputs": {
-            "text": "The area of a triangle is its base times its height, divided by two@1. The base is one side of the figure and the height is the altitude@2, so both numbers come from the drawing itself@3 — nothing is measured twice."
+            "text": "The area of a triangle is its base times its height, divided by two@1. The base is one side of the figure@2 and the height is the altitude@3, so both numbers come from the drawing itself@4 — and the arithmetic finishes it@5."
           }
         },
         {
@@ -4144,7 +4222,7 @@
         },
         {
           "id": "ex417",
-          "funcId": "geo3d-label-sides",
+          "funcId": "geo3d-label-sides@2",
           "inputs": {
             "id": "t",
             "labels": "b =,,"
@@ -4152,7 +4230,7 @@
         },
         {
           "id": "ex418",
-          "funcId": "geo3d-snap-shape@2",
+          "funcId": "geo3d-snap-shape@3",
           "inputs": {
             "shapeId": "h",
             "parentId": "t",
@@ -4162,7 +4240,7 @@
         },
         {
           "id": "ex419",
-          "funcId": "cmt-geo-edge@2",
+          "funcId": "cmt-geo-edge@3",
           "inputs": {
             "text": "h",
             "shapeId": "h",
@@ -4179,14 +4257,14 @@
         },
         {
           "id": "ex421",
-          "funcId": "eq-replace-variable@3",
+          "funcId": "eq-replace-variable@4",
           "inputs": {
             "replacements": "b=[t]0,h=[h]0"
           }
         },
         {
           "id": "ex422",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@5",
           "inputs": {}
         }
       ]
@@ -4346,10 +4424,10 @@
       "layout": "single-3d",
       "steps": [
         {
-          "id": "nr54606",
+          "id": "nr28308",
           "funcId": "narrate",
           "inputs": {
-            "text": "A reflection flips the figure@1 like a mirror@2. Lengths and angles are still the same, but the vertices are now read in the opposite order."
+            "text": "A reflection flips the figure@1 like a mirror@2. Lengths and angles are still the same, but the vertices are read in the opposite order@3."
           }
         },
         {
@@ -4399,7 +4477,7 @@
         },
         {
           "id": "ex447",
-          "funcId": "geo3d-move",
+          "funcId": "geo3d-move@3",
           "inputs": {
             "id": "g",
             "dx": "3",
@@ -4408,7 +4486,7 @@
         },
         {
           "id": "ex448",
-          "funcId": "geo3d-name-vertices",
+          "funcId": "geo3d-name-vertices@3",
           "inputs": {
             "shapeId": "g",
             "names": "A',B',C'",
@@ -4425,22 +4503,22 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr92720",
+          "id": "nr67849",
           "funcId": "narrate",
           "inputs": {
-            "text": "Operations are not done simply left to right. Brackets come first, then every multiplication and division, and only after that the additions and subtractions@1. Watch this expression come apart in that order — straight left to right would give something else entirely."
+            "text": "Operations are not done left to right. Brackets first, then the multiplications and divisions, and only then the additions and subtractions. So in this expression@1 the division and the product collapse first@2, each on its own, and the plus and the minus wait their turn."
           }
         },
         {
-          "id": "ex451",
+          "id": "nr67850",
           "funcId": "eq-create@1",
           "inputs": {
             "eq": "4 + 8 ÷ 2 - 1 × 3"
           }
         },
         {
-          "id": "ex452",
-          "funcId": "eq-full-solve",
+          "id": "nr67851",
+          "funcId": "eq-full-solve@2",
           "inputs": {}
         }
       ]
@@ -4451,10 +4529,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr92721",
+          "id": "nr87357",
           "funcId": "narrate",
           "inputs": {
-            "text": "Brackets say: this is one number, work it out before anything else touches it@1. Without them the multiplication would go first, and the answer would not be the same."
+            "text": "Brackets say: this is one number, work it out before anything else touches it. So here@1 the inside goes first@2, and only then the multiplication. Without the brackets the product would come first and the answer would not be the same."
           }
         },
         {
@@ -4466,7 +4544,7 @@
         },
         {
           "id": "ex457",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@2",
           "inputs": {}
         }
       ]
@@ -4477,10 +4555,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr92722",
+          "id": "nr87358",
           "funcId": "narrate",
           "inputs": {
-            "text": "A longer expression, the same rules@1: two products and no brackets, so both products are worked out first, then the addition and the subtraction, left to right. A decimal changes nothing about the order."
+            "text": "A longer one, the same rules@1: two products and no brackets, so both products collapse first@2, and only then the plus and the minus, left to right. A decimal changes nothing about the order."
           }
         },
         {
@@ -4492,7 +4570,7 @@
         },
         {
           "id": "ex462",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@2",
           "inputs": {}
         }
       ]
@@ -4634,10 +4712,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr43370",
+          "id": "nr28370",
           "funcId": "narrate",
           "inputs": {
-            "text": "Every term of the first bracket multiplies every term of the second@1, and that gives four products@2. Then the like terms among them collect together into one shorter expression."
+            "text": "Every term of the first bracket multiplies every term of the second@1, and that gives four products@2. Then the like terms among them collect together@3 into one shorter expression."
           }
         },
         {
@@ -4656,7 +4734,7 @@
         },
         {
           "id": "ex483",
-          "funcId": "eq-combine",
+          "funcId": "eq-combine@3",
           "inputs": {}
         }
       ]
@@ -4749,15 +4827,15 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr43563",
+          "id": "nr44112",
           "funcId": "narrate",
           "inputs": {
-            "text": "This time the volume and the radius are known@1, and the height is not. So the formula is turned around@2: the height is the volume divided by the area of the disc@3."
+            "text": "This time the volume and the radius are known@1, and the height is not@2. So the formula is turned around@3: the height is the volume divided by the area of the disc. The numbers drop in@4 and the division finishes it@5."
           }
         },
         {
           "id": "ex526",
-          "funcId": "cmt-free",
+          "funcId": "cmt-free@2",
           "inputs": {
             "title": "Isolating the height",
             "text": "The volume and the radius are known; the height is not.",
@@ -4784,21 +4862,21 @@
         },
         {
           "id": "ex529",
-          "funcId": "eq-create@2",
+          "funcId": "eq-create@3",
           "inputs": {
             "eq": "|h| = |V| / (pi * |r|^2)"
           }
         },
         {
           "id": "ex530",
-          "funcId": "eq-replace-variable@3",
+          "funcId": "eq-replace-variable@4",
           "inputs": {
             "replacements": "r=2,V=62.83"
           }
         },
         {
           "id": "ex531",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@5",
           "inputs": {}
         }
       ]
@@ -4911,10 +4989,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr43689",
+          "id": "nr87428",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two to the third is three twos multiplied, and two to the fourth is four of them@1. Multiplied together that is seven twos, which is why the exponents simply add. It only works because the base is the same on both sides."
+            "text": "Two to the third is three twos multiplied, and two to the fourth is four of them@1. Multiplied together@2 that makes seven twos — which is exactly why the exponents add. It only works because the base is the same on both sides."
           }
         },
         {
@@ -4926,7 +5004,7 @@
         },
         {
           "id": "ex548",
-          "funcId": "eq-full-solve",
+          "funcId": "eq-full-solve@2",
           "inputs": {}
         }
       ]
@@ -4937,10 +5015,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr43690",
+          "id": "nr87429",
           "funcId": "narrate",
           "inputs": {
-            "text": "Powers of ten can only be added when the power is the same@1. So one of the numbers is rewritten on the other's power of ten — the comma moves one way while the exponent moves the other — and then the numbers in front are what gets added."
+            "text": "Powers of ten can only be added when the power is the same@1. So one of the numbers is rewritten on the other's power@2: the comma walks one way while the exponent walks the other, and then the numbers in front are what gets added."
           }
         },
         {
@@ -4952,19 +5030,11 @@
         },
         {
           "id": "ex553",
-          "funcId": "eq-sci-expand",
+          "funcId": "eq-sci-expand@2",
           "inputs": {
             "side": "left",
             "index": "0",
             "target": "2"
-          }
-        },
-        {
-          "id": "ex554",
-          "funcId": "text-fade-content",
-          "inputs": {
-            "boxId": "q",
-            "content": "$4{,}45 \\times 10^4 = 445 \\times 10^2$, the same number written on $10^2$.|$445 \\times 10^2 + 2{,}34 \\times 10^2 = {{ 445 + 2.34 }} \\times 10^2$"
           }
         }
       ]

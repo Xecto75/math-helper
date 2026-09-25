@@ -1191,14 +1191,6 @@ export default function App() {
       }
 
       if (narration && marked.size) {
-        // The voice drives this page. Everything no marker names is the page
-        // setting itself up and happens at once; the rest waits for its word.
-        for (let si = 0; si < pg.steps.length; si++) {
-          if (signal.cancelled || signal.pausePending) break
-          const st = pg.steps[si]
-          if (isNarrationStep(st.funcId) || stepMarker(st)) continue
-          await runStepAt(si)
-        }
         // Re-entering the page part-way (a rewind, or Resume after a stop):
         // the words pick up at the marker of the first step still to come,
         // and everything marked before it is replayed at once so the picture
@@ -1207,8 +1199,18 @@ export default function App() {
           ? [...marked.entries()].filter(([, idxs]) => idxs.some(i => i >= startFromStep))
               .map(([n]) => n).sort((a, b) => a - b)[0] ?? null
           : null
-        if (!signal.cancelled) {
-          const session = await voiceEngine.start(narration.inputs, {
+
+        // The narration is a step like any other: it starts WHERE IT IS WRITTEN.
+        // Written first — which is where it belongs — the voice opens the page and
+        // the setting-up plays while it talks. Running every unmarked step before
+        // starting it, as this did, left the reader watching four animations in
+        // silence before a word was said.
+        // Started, not awaited: the audio has to be fetched the first time a
+        // sentence is used, and the page should not sit still while that happens.
+        let voicing = null
+        const startVoice = () => {
+          if (voicing || signal.cancelled) return
+          voicing = voiceEngine.start(narration.inputs, {
             lang: voiceLang, signal, fromMarker,
             // Steps sharing a marker belong to the same moment, but landing them
             // all on the same frame reads as one thing happening, not three. They
@@ -1222,17 +1224,29 @@ export default function App() {
               setTimeout(() => { if (!signal.cancelled) void runStepAt(si) }, gap)
             }),
           })
-          // No voice — switched off, none for this language, offline, out of
-          // quota. The marked steps would then never fire and the page would
-          // show nothing but its setting-up, so it falls back to the ordinary
-          // order: the lesson is silent, never empty.
-          if (!session) {
-            for (let si = 0; si < pg.steps.length; si++) {
-              if (signal.cancelled || signal.pausePending) break
-              const st = pg.steps[si]
-              if (isNarrationStep(st.funcId) || !stepMarker(st)) continue
-              await runStepAt(si)
-            }
+        }
+
+        for (let si = 0; si < pg.steps.length; si++) {
+          if (signal.cancelled || signal.pausePending) break
+          const st = pg.steps[si]
+          if (isNarrationStep(st.funcId)) { startVoice(); continue }
+          if (stepMarker(st)) continue          // this one waits for its word
+          await runStepAt(si)
+        }
+        // A narration written after the steps it paces still has to start.
+        startVoice()
+        const session = voicing ? await voicing : null
+
+        // No voice — switched off, none for this language, offline, out of
+        // quota. The marked steps would then never fire and the page would show
+        // nothing but its setting-up, so it falls back to the ordinary order:
+        // the lesson is silent, never empty.
+        if (!session) {
+          for (let si = 0; si < pg.steps.length; si++) {
+            if (signal.cancelled || signal.pausePending) break
+            const st = pg.steps[si]
+            if (isNarrationStep(st.funcId) || !stepMarker(st)) continue
+            await runStepAt(si)
           }
         }
       } else {

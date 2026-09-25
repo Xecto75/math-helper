@@ -62,10 +62,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr67720",
+          "id": "nr5135",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same shape written with letters@1: a times x, plus b, equals c. Solve it once like this and any numbers can drop in@2 afterwards. b crosses over@3, and dividing by a@4 leaves x alone — the answer is c minus b, over a."
+            "text": "The same shape written with letters@1: a times x, plus b, equals c. Solve it once like this and any numbers can be put in@2 afterwards. b crosses over@3, and dividing by a@4 leaves x alone — the answer is c minus b, over a."
           }
         },
         {
@@ -115,10 +115,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr43604",
+          "id": "nr5194",
           "funcId": "narrate",
           "inputs": {
-            "text": "In a right triangle the two short sides@1 and the long one@2, the hypotenuse, are tied together by a single equation@3: the square of the hypotenuse is the sum of the squares of the other two. So when two of the sides are known@4, the arithmetic runs on its own@5 and writes the third one onto the figure@6."
+            "text": "In a right triangle the two short sides@1 and the long one@2, the hypotenuse, are tied together by a single equation@3: the square of the hypotenuse is the sum of the squares of the other two. So when two of the sides are known@4, we put them in the equation and solve it@5 to find the third side, and it is written onto the figure@6."
           }
         },
         {
@@ -250,10 +250,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr27913",
+          "id": "nr5251",
           "funcId": "narrate",
           "inputs": {
-            "text": "A cube is the same length on every edge@1, so its volume is that one length multiplied by itself three times@2 — length, width and height are the same number@3 — and the arithmetic finishes it@4."
+            "text": "A cube is the same length on every edge@1, so its volume is that one length multiplied by itself three times@2. We put that length in the formula@3 and solve it to find the volume@4."
           }
         },
         {
@@ -315,10 +315,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr27914",
+          "id": "nr5252",
           "funcId": "narrate",
           "inputs": {
-            "text": "A cylinder is a circle carried up to a height@1. Its volume is the area of that circle, pi times the radius squared, times the height@2, so the radius and the height are all we need@3 — and the arithmetic finishes it@4."
+            "text": "A cylinder is a circle carried up to a height@1. Its volume is the area of that circle, pi times the radius squared, times the height@2. We put the radius and the height in the formula@3 and solve it to find the volume@4."
           }
         },
         {
@@ -463,10 +463,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr43668",
+          "id": "nr5313",
           "funcId": "narrate",
           "inputs": {
-            "text": "The area of a trapezoid is the two parallel sides added together, times the height, divided by two@1. The figure carries all three measurements@2, they drop into the formula@3, and the arithmetic finishes it@4."
+            "text": "The area of a trapezoid is the two parallel sides added together, times the height, divided by two@1. The figure carries all three measurements@2: we put them in the equation@3 and solve it to find the area@4."
           }
         },
         {
@@ -537,10 +537,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr43669",
+          "id": "nr5314",
           "funcId": "narrate",
           "inputs": {
-            "text": "A circle has no sides to add, only a radius: its area is pi times that radius squared@1. One measurement@2 is enough, it goes into the formula@3, and the arithmetic finishes it@4."
+            "text": "A circle has no sides to add, only a radius: its area is pi times that radius squared@1. One measurement@2 is enough — we put it in the equation@3 and solve it to find the area@4."
           }
         },
         {
@@ -1111,10 +1111,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr84855",
+          "id": "nr5371",
           "funcId": "narrate",
           "inputs": {
-            "text": "The perimeter is every side added up, one after another@1. The lengths are written on the figure@2, and here the two slanted sides are equal, so the sum is twice one of them plus the two parallel sides@3. The measurements drop in@4 and the addition finishes it@5."
+            "text": "The perimeter is every side added up, one after another@1. The lengths are written on the figure@2, and here the two slanted sides are equal, so the sum is twice one of them plus the two parallel sides@3. We put the lengths in@4 and add them to find the perimeter@5."
           }
         },
         {
@@ -1210,10 +1210,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr84856",
+          "id": "nr5372",
           "funcId": "narrate",
           "inputs": {
-            "text": "Around a circle the distance has its own name, the circumference, and it is two times pi times the radius@1. So the radius@2 is the only measurement needed: it goes into the formula@3 and the arithmetic finishes it@4."
+            "text": "Around a circle the distance has its own name, the circumference, and it is two times pi times the radius@1. So the radius@2 is the only measurement needed: we put it in the equation@3 and solve it to find the circumference@4."
           }
         },
         {
@@ -1978,10 +1978,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr44050",
+          "id": "nr5427",
           "funcId": "narrate",
           "inputs": {
-            "text": "Here two of the angles and one side are known@1, and the side facing the second angle is not. The law of sines becomes a single equation@2 for that side: the known side times the sine of its facing angle, divided by the sine of the other. The triangle's own numbers drop in@3, the division runs@4, and the side appears on the figure@5."
+            "text": "Here two of the angles and one side are known@1, and the side facing the second angle is not. The law of sines becomes a single equation@2 for that side: the known side times the sine of its facing angle, divided by the sine of the other. We put the triangle's own numbers in@3 and solve it to find that side@4, which then appears on the figure@5."
           }
         },
         {
@@ -2473,10 +2473,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr70470",
+          "id": "nr5485",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two points are enough to find the whole line@1. First the slope: the difference of the y values over the difference of the x values@2, worked out@3. Then that slope goes into y equals m x plus b@4, one of the points is put in for x and y@5, and what comes out@6 is the only unknown left, b — which finishes the equation of the line@7."
+            "text": "Two points are enough to find the whole line@1. First the slope: the difference of the y values over the difference of the x values@2 — we put the coordinates in and solve it to find m@3. Then that slope goes into y equals m x plus b@4, one of the points is put in for x and y@5, and solving that@6 gives b, which completes the equation of the line@7."
           }
         },
         {
@@ -2834,10 +2834,10 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr66682",
+          "id": "nr5543",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same triangle, and now that relation becomes an equation@1: the altitude is the square root of the two pieces multiplied. Their lengths come straight from the figure@2, the arithmetic runs@3, and the altitude is written back onto the drawing@4."
+            "text": "The same triangle, and now that relation becomes an equation@1: the altitude is the square root of the two pieces multiplied. Their lengths come straight from the figure@2 — we put them in and solve it to find the altitude@3, which is written back onto the drawing@4."
           }
         },
         {
@@ -2924,10 +2924,10 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr66683",
+          "id": "nr5544",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two sides and the angle between them are known@1, and the third side is not. The law of cosines@2 handles it: the Pythagorean theorem plus a correction for that angle@3. The equation@4 takes the triangle's own numbers@5, the arithmetic runs@6, and the missing side lands on the figure@7."
+            "text": "Two sides and the angle between them are known@1, and the third side is not. The law of cosines@2 handles it: the Pythagorean theorem plus a correction for that angle@3. The equation@4 takes the triangle's own numbers@5, we solve it to find the missing side@6, and it lands on the figure@7."
           }
         },
         {
@@ -3454,10 +3454,10 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr43863",
+          "id": "nr5603",
           "funcId": "narrate",
           "inputs": {
-            "text": "From one point to the other@1 the arrow is the hypotenuse of a right triangle: the step across and the step up@2 are its two legs. So its length comes straight out of the Pythagorean theorem@3, with the components taken from the graph@4, and the arithmetic finishes it@5."
+            "text": "From one point to the other@1 the arrow is the hypotenuse of a right triangle: the step across and the step up@2 are its two legs. So its length comes straight out of the Pythagorean theorem@3 — we put the components from the graph in@4 and solve it to find the length of the arrow@5."
           }
         },
         {
@@ -3657,10 +3657,10 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr10506",
+          "id": "nr5778",
           "funcId": "narrate",
           "inputs": {
-            "text": "The focus of this parabola@1 can be found from the equation itself. Written the standard way@2, x squared equals four p y, the number in front is what gives p@3. One division@4 settles it, and p turns out to be the distance from the vertex up to the focus@5."
+            "text": "The focus of this parabola@1 can be found from the equation itself. Written the standard way@2, x squared equals four p y, the number in front is what gives p@3. We solve it to find p@4, and p turns out to be the distance from the vertex up to the focus@5."
           }
         },
         {
@@ -3726,10 +3726,10 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr43930",
+          "id": "nr5779",
           "funcId": "narrate",
           "inputs": {
-            "text": "An ellipse@1 has two foci@2, both on its long axis, each the same distance from the centre. That distance comes from the two radiuses@3 of the ellipse, the ones read off its equation@4: the square root of the big one squared minus the small one squared@5 — and it lands on the drawing@6."
+            "text": "An ellipse@1 has two foci@2, both on its long axis, each the same distance from the centre. That distance comes from the two radiuses@3 of the ellipse, the ones read off its equation@4: we put them in and solve it to find how far each focus sits from the centre@5 — and it lands on the drawing@6."
           }
         },
         {
@@ -4203,10 +4203,10 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr44180",
+          "id": "nr5658",
           "funcId": "narrate",
           "inputs": {
-            "text": "The area of a triangle is its base times its height, divided by two@1. The base is one side of the figure@2 and the height is the altitude@3, so both numbers come from the drawing itself@4 — and the arithmetic finishes it@5."
+            "text": "The area of a triangle is its base times its height, divided by two@1. The base is one side of the figure@2 and the height is the altitude@3, so both numbers come from the drawing itself@4 — we put them in and solve it to find the area@5."
           }
         },
         {
@@ -4827,10 +4827,10 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr44112",
+          "id": "nr5719",
           "funcId": "narrate",
           "inputs": {
-            "text": "This time the volume and the radius are known@1, and the height is not@2. So the formula is turned around@3: the height is the volume divided by the area of the disc. The numbers drop in@4 and the division finishes it@5."
+            "text": "This time the volume and the radius are known@1, and the height is not@2. So the formula is turned around@3: the height is the volume divided by the area of the disc. The numbers are put in@4 and we solve it to find the height@5."
           }
         },
         {

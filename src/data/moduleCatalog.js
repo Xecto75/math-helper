@@ -41,7 +41,8 @@ NARRATION — EVERY PAGE HAS EXACTLY ONE n, and the page is paced by it. The voi
     code carries the same marker fires the moment the voice reaches that word:
       ["n","The five@1 moves to the other side, so both sides are divided@2 by twelve."]
       ["es@1",1]   ["eD@2",12]
-    Several steps may share one marker and then fire together. A step with NO marker fires as
+    Several steps may share one marker: they go off in the ORDER they are written, a fifth of a
+    second apart, so three things at one word read as three things. A step with NO marker fires as
     the page opens — that is where the setting-up belongs (viewport, creating the shape).
   Every @N in the text must be carried by at least one step, and every step marker must exist
     in the text. A marker matching nothing is dropped.

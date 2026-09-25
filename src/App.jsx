@@ -155,6 +155,9 @@ const NARRATION_FUNCS = new Set(['narrate', 'n', 'voice-say'])
 // An author note for the lesson generator. It exists in the example lessons
 // and in the Builder; on screen it is nothing at all.
 const isNoteStep = (funcId) => baseFuncId(funcId) === 'note'
+
+// How far apart steps that share one marker are let go, in ms.
+const MARK_STAGGER = 200
 const baseFuncId = (funcId) => String(funcId ?? '').replace(/@\d+$/, '')
 const isNarrationStep = (funcId) => NARRATION_FUNCS.has(baseFuncId(funcId))
 
@@ -1207,7 +1210,17 @@ export default function App() {
         if (!signal.cancelled) {
           const session = await voiceEngine.start(narration.inputs, {
             lang: voiceLang, signal, fromMarker,
-            fire: (n) => (marked.get(n) ?? []).forEach(si => { void runStepAt(si) }),
+            // Steps sharing a marker belong to the same moment, but landing them
+            // all on the same frame reads as one thing happening, not three. They
+            // go off in the order they are written in the page, a fifth of a
+            // second apart — long enough to be followed, short enough to still be
+            // "as the voice says that word". A hurry drops the gap like every
+            // other wait.
+            fire: (n) => (marked.get(n) ?? []).forEach((si, k) => {
+              const gap = isHurrying() ? 0 : (k * MARK_STAGGER) / speed
+              if (!gap) { void runStepAt(si); return }
+              setTimeout(() => { if (!signal.cancelled) void runStepAt(si) }, gap)
+            }),
           })
           // No voice — switched off, none for this language, offline, out of
           // quota. The marked steps would then never fire and the page would

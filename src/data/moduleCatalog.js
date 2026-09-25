@@ -37,6 +37,13 @@ NARRATION — EVERY PAGE HAS EXACTLY ONE n, and the page is paced by it. The voi
   the panels show it happening.
   n:[text] — what the voice says. Plain speech: no LaTeX, no $ $, no markup, no |. Write maths
     the way it is said: "x squared", "minus five", "three over four", "twelve x plus five".
+  WHERE THE MARKER GOES IS THE WHOLE POINT: at the START of the phrase that describes the thing,
+    right after its first word or two — NEVER at the end of that phrase. An animation takes a
+    second or two, so a marker at the end of a sentence starts the picture just as the voice moves
+    on to the next idea, and the two are out of step for the rest of the page.
+      RIGHT: "These@1 two short sides and this@2 long one are tied together by one@3 equation"
+      WRONG: "Here are the study hours and the scores of six students@1." — the table appears
+             after the sentence that was describing it is over.
   @1 … @10 go in that text right AFTER the word that should set something off. A step whose
     code carries the same marker fires the moment the voice reaches that word:
       ["n","The five@1 moves to the other side, so both sides are divided@2 by twelve."]

@@ -7,10 +7,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr67656",
+          "id": "nr23061",
           "funcId": "narrate",
           "inputs": {
-            "text": "This one equation has every rule in it: brackets, a fraction on x, and x on both sides. First the brackets open@1. Then the like terms on the left gather into one@2. The x on the right crosses over@3, the plain number crosses the other way@4, and one division@5 leaves x on its own."
+            "text": "This one equation has every rule in it: brackets, a fraction on x, and x on both sides. First@1 the brackets open. Then@2 the like terms on the left gather into one. Now@3 the x on the right crosses over, and@4 the plain number goes the other way. One@5 division leaves x on its own."
           }
         },
         {
@@ -62,10 +62,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr5135",
+          "id": "nr23062",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same shape written with letters@1: a times x, plus b, equals c. Solve it once like this and any numbers can be put in@2 afterwards. b crosses over@3, and dividing by a@4 leaves x alone — the answer is c minus b, over a."
+            "text": "Here@1 is the same shape written with letters: a times x, plus b, equals c. Solve it once like this, and any@2 numbers can be put in afterwards. Then@3 b crosses over, and@4 dividing by a leaves x alone — the answer is c minus b, over a."
           }
         },
         {
@@ -115,10 +115,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr5194",
+          "id": "nr23182",
           "funcId": "narrate",
           "inputs": {
-            "text": "In a right triangle the two short sides@1 and the long one@2, the hypotenuse, are tied together by a single equation@3: the square of the hypotenuse is the sum of the squares of the other two. So when two of the sides are known@4, we put them in the equation and solve it@5 to find the third side, and it is written onto the figure@6."
+            "text": "In a right triangle, these@1 two short sides and this@2 long one, the hypotenuse, are tied together by one@3 equation: the square of the hypotenuse is the sum of the squares of the other two. So@4 when two of the sides are known, we@5 put them in and solve it to find the third one — and@6 it is written onto the figure."
           }
         },
         {
@@ -222,10 +222,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr87551",
+          "id": "nr23121",
           "funcId": "narrate",
           "inputs": {
-            "text": "An equation with x squared rarely has one answer, it usually has two. Everything goes to one side first, so it reads a x squared plus b x plus c equals zero@1. Then the discriminant and the formula@2 take over, step by step, and the zeros come out at the end."
+            "text": "An@1 equation with x squared rarely has one answer, it usually has two — everything goes to one side first, so it reads a x squared plus b x plus c equals zero. Then@2 the discriminant and the formula take over, step by step, and the zeros come out at the end."
           }
         },
         {
@@ -250,10 +250,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr5251",
+          "id": "nr23438",
           "funcId": "narrate",
           "inputs": {
-            "text": "A cube is the same length on every edge@1, so its volume is that one length multiplied by itself three times@2. We put that length in the formula@3 and solve it to find the volume@4."
+            "text": "A@1 cube is the same length on every edge, so@2 its volume is that one length multiplied by itself three times. We@3 put that length in the formula and@4 solve it to find the volume."
           }
         },
         {
@@ -315,10 +315,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr5252",
+          "id": "nr23439",
           "funcId": "narrate",
           "inputs": {
-            "text": "A cylinder is a circle carried up to a height@1. Its volume is the area of that circle, pi times the radius squared, times the height@2. We put the radius and the height in the formula@3 and solve it to find the volume@4."
+            "text": "A@1 cylinder is a circle carried up to a height. Its@2 volume is the area of that circle, pi times the radius squared, times the height. We@3 put the radius and the height in the formula and@4 solve it to find the volume."
           }
         },
         {
@@ -463,10 +463,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr5313",
+          "id": "nr23376",
           "funcId": "narrate",
           "inputs": {
-            "text": "The area of a trapezoid is the two parallel sides added together, times the height, divided by two@1. The figure carries all three measurements@2: we put them in the equation@3 and solve it to find the area@4."
+            "text": "The@1 area of a trapezoid is the two parallel sides added together, times the height, divided by two. The@2 figure carries all three measurements: we@3 put them in the equation and@4 solve it to find the area."
           }
         },
         {
@@ -537,10 +537,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr5314",
+          "id": "nr23377",
           "funcId": "narrate",
           "inputs": {
-            "text": "A circle has no sides to add, only a radius: its area is pi times that radius squared@1. One measurement@2 is enough — we put it in the equation@3 and solve it to find the area@4."
+            "text": "A@1 circle has no sides to add, only a radius: its area is pi times that radius squared. One@2 measurement is enough — we@3 put it in the equation and@4 solve it to find the area."
           }
         },
         {
@@ -891,10 +891,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr27314",
+          "id": "nr23247",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two lines@1 drawn on the same graph cross somewhere, and we want that point exactly, not read off the picture. The substitution method gets it: isolate y in one equation, put what it equals in place of y in the other, solve for x, then put x back in to find y."
+            "text": "These@1 two lines drawn on the same graph cross somewhere, and we want that point exactly, not read off the picture. The substitution method gets it: isolate y in one equation, put what it equals in place of y in the other, solve for x, then put x back in to find y."
           }
         },
         {
@@ -924,10 +924,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr70401",
+          "id": "nr23248",
           "funcId": "narrate",
           "inputs": {
-            "text": "The first equation already has y on its own@1, so what it equals can take the place of y in the other one@2. Now only x is left in it: the brackets open@3, the x terms gather@4, the number crosses over@5, and one division@6 gives x@7. Putting that value back into the first equation@8 and working it out@9 gives y — and the pair is exactly where the two lines cross@10."
+            "text": "The@1 first equation already has y on its own, so what@2 it equals takes the place of y in the other one. Now only x is left in it: the@3 brackets open, the@4 x terms gather, then@5 the number crosses over, and@6 one division gives x, which@7 we keep aside. Putting@8 that value back into the first equation, we@9 solve it to find y — and@10 the pair is exactly where the two lines cross."
           }
         },
         {
@@ -1111,10 +1111,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr5371",
+          "id": "nr23498",
           "funcId": "narrate",
           "inputs": {
-            "text": "The perimeter is every side added up, one after another@1. The lengths are written on the figure@2, and here the two slanted sides are equal, so the sum is twice one of them plus the two parallel sides@3. We put the lengths in@4 and add them to find the perimeter@5."
+            "text": "The@1 perimeter is every side added up, one after another. The@2 lengths are written on the figure, and here the two slanted sides are equal, so@3 the sum is twice one of them plus the two parallel sides. We@4 put the lengths in and@5 add them to find the perimeter."
           }
         },
         {
@@ -1210,10 +1210,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr5372",
+          "id": "nr23499",
           "funcId": "narrate",
           "inputs": {
-            "text": "Around a circle the distance has its own name, the circumference, and it is two times pi times the radius@1. So the radius@2 is the only measurement needed: we put it in the equation@3 and solve it to find the circumference@4."
+            "text": "Around@1 a circle the distance has its own name, the circumference, and it is two times pi times the radius. So@2 the radius is the only measurement needed: we@3 put it in the equation and@4 solve it to find the circumference."
           }
         },
         {
@@ -1282,10 +1282,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr27979",
+          "id": "nr55575",
           "funcId": "narrate",
           "inputs": {
-            "text": "These two lines never meet@1. Look at what they have in common: the number in front of x, the slope@2, is the same for both — and that is exactly what makes them parallel. Only the constant is different, so one simply sits above the other."
+            "text": "These@1 two lines never meet. Look@2 at what they have in common: the number in front of x, the slope, is the same for both — and that is exactly what makes them parallel. Only the constant is different, so one simply sits above the other."
           }
         },
         {
@@ -1367,10 +1367,10 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr70336",
+          "id": "nr55576",
           "funcId": "narrate",
           "inputs": {
-            "text": "These two lines do cross@1, and the crossing point is where their two expressions are equal@2. So the x terms come together@3, the numbers go the other way@4, and one division@5 gives the x of the meeting point@6. Putting that x back into either line@7 and working it out@8 gives the y — and on the graph that is exactly where they touch@9."
+            "text": "These@1 two do cross, and the@2 crossing point is where their two expressions are equal. So@3 the x terms come together, then@4 the numbers go the other way, and one@5 division gives the x of the meeting point, which@6 we keep aside. Putting@7 that x back into either line, we@8 solve it to find the y — and@9 on the graph that is exactly where they touch."
           }
         },
         {
@@ -1508,10 +1508,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr69341",
+          "id": "nr55637",
           "funcId": "narrate",
           "inputs": {
-            "text": "This parabola has three numbers you can drag@1. The first decides how wide it is and which way it opens, the second slides its tip sideways, and the last one is where the curve crosses the vertical axis. Drag them and watch the shape answer."
+            "text": "This@1 parabola has three numbers you can drag. The first decides how wide it is and which way it opens, the second slides its tip sideways, and the last one is where the curve crosses the vertical axis. Drag them and watch the shape answer."
           }
         },
         {
@@ -1540,10 +1540,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr28046",
+          "id": "nr55638",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same parabola@1, now read off the graph. Where it crosses the horizontal axis@2 are the roots — the two values of x that make it zero. And its lowest point@3, the vertex, sits exactly halfway between them."
+            "text": "Here@1 is the same parabola, now read off the graph. Where@2 it crosses the horizontal axis are the roots — the two values of x that make it zero. And@3 its lowest point, the vertex, sits exactly halfway between them."
           }
         },
         {
@@ -1594,10 +1594,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr66790",
+          "id": "nr55867",
           "funcId": "narrate",
           "inputs": {
-            "text": "Correlation is about whether two things move together. Here are the study hours and the scores of six students@1. If the score climbs when the hours climb the correlation is positive, if it falls it is negative, and if the pairs go nowhere in particular there is none."
+            "text": "Correlation is about whether two things move together. Here@1 are the study hours and the scores of six students. If the score climbs when the hours climb the correlation is positive, if it falls it is negative, and if the pairs go nowhere in particular there is none."
           }
         },
         {
@@ -1621,10 +1621,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr66791",
+          "id": "nr55868",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same six pairs, drawn as points@1. A line through the middle of them@2 leans upwards, and that lean is the trend@3: more hours, higher score."
+            "text": "Here@1 are the same six pairs, drawn as points. A@2 line through the middle of them leans upwards, and@3 that lean is the trend: more hours, higher score."
           }
         },
         {
@@ -1677,10 +1677,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr47028",
+          "id": "nr55869",
           "funcId": "narrate",
           "inputs": {
-            "text": "The coefficient r puts a number on that link@1, always between minus one and one: near one the two rise together, near minus one one falls as the other rises, near zero there is no link at all. It is built from two pieces@2 — how the columns move together, and how much each one spreads on its own@3. Every row of the table adds its share@4, the six of them add up to the first piece@5, the spread of each column gives the second@6, and then the fraction@7 and one division@8 say how strong the link really is@9."
+            "text": "The@1 coefficient r puts a number on that link, always between minus one and one: near one the two rise together, near minus one one falls as the other rises, near zero there is no link at all. It@2 is built from two pieces — how the columns move together, and@3 how much each one spreads on its own. Every@4 row of the table adds its share, the@5 six of them add up to the first piece, the@6 spread of each column gives the second, and then@7 the two pieces go into the fraction. One@8 division says how strong the link is, and@9 there it is: almost exactly one."
           }
         },
         {
@@ -1917,10 +1917,10 @@
       "layout": "text-geo",
       "steps": [
         {
-          "id": "nr27381",
+          "id": "nr23315",
           "funcId": "narrate",
           "inputs": {
-            "text": "In any triangle, every side has one angle facing it@1. The law of sines says that a side divided by the sine of the angle facing it gives the same number for all three@2 — whatever shape the triangle has."
+            "text": "In@1 any triangle, every side has one angle facing it. The@2 law of sines says that a side divided by the sine of the angle facing it gives the same number for all three, whatever shape the triangle has."
           }
         },
         {
@@ -1978,10 +1978,10 @@
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr5427",
+          "id": "nr23316",
           "funcId": "narrate",
           "inputs": {
-            "text": "Here two of the angles and one side are known@1, and the side facing the second angle is not. The law of sines becomes a single equation@2 for that side: the known side times the sine of its facing angle, divided by the sine of the other. We put the triangle's own numbers in@3 and solve it to find that side@4, which then appears on the figure@5."
+            "text": "Here@1 two of the angles and one side are known, and the side facing the second angle is not. The@2 law of sines becomes a single equation for it: the known side times the sine of its facing angle, divided by the sine of the other. We@3 put the triangle's own numbers in and@4 solve it to find that side, which@5 then appears on the figure."
           }
         },
         {
@@ -2060,10 +2060,10 @@
       "layout": "text-graph",
       "steps": [
         {
-          "id": "nr69286",
+          "id": "nr55752",
           "funcId": "narrate",
           "inputs": {
-            "text": "This circle has a radius of one and sits on the origin@1. For any angle, the point on the circle has the cosine for its x and the sine for its y@2. The four quarter turns@3 are the ones worth knowing by heart."
+            "text": "This@1 circle has a radius of one and sits on the origin. For@2 any angle, the point on the circle has the cosine for its x and the sine for its y. The@3 four quarter turns are the ones worth knowing by heart."
           }
         },
         {
@@ -2143,10 +2143,10 @@
       "layout": "text-graph",
       "steps": [
         {
-          "id": "nr28111",
+          "id": "nr51745",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same circle@1, and three angles that come back all the time: thirty@2, forty five@3 and sixty degrees@4. Dropping each point onto the two axes gives its cosine and its sine, and those are the values worth remembering."
+            "text": "Here@1 is the same circle, and three angles that come back all the time: thirty@2 degrees, forty@3 five degrees, and sixty@4 degrees. Dropping each point onto the two axes gives its cosine and its sine, and those are the values worth remembering."
           }
         },
         {
@@ -2242,10 +2242,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr69402",
+          "id": "nr55692",
           "funcId": "narrate",
           "inputs": {
-            "text": "This curve has three numbers to drag@1. The first stretches it, the second is the growth factor — above one it climbs, below one it fades away — and the last lifts the whole curve, taking its flat line with it."
+            "text": "This@1 curve has three numbers to drag. The first stretches it, the second is the growth factor — above one it climbs, below one it fades away — and the last lifts the whole curve, taking its flat line with it."
           }
         },
         {
@@ -2275,10 +2275,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr28175",
+          "id": "nr55693",
           "funcId": "narrate",
           "inputs": {
-            "text": "One exponential curve@1, and two things that describe it. It never reaches this flat line@2, its asymptote: it only gets closer and closer. And where it crosses the vertical axis@3 is the value it starts from."
+            "text": "Here@1 is one exponential curve, and two things that describe it. It@2 never reaches this flat line, its asymptote: it only gets closer and closer. And@3 where it crosses the vertical axis is the value it starts from."
           }
         },
         {
@@ -2349,10 +2349,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr28240",
+          "id": "nr55809",
           "funcId": "narrate",
           "inputs": {
-            "text": "The slope says how steeply a line climbs@1. Take any two points on it@2: the run is how far you go across@3, the rise is how far you go up@4, and the slope is the rise divided by the run — the same answer wherever you measure it."
+            "text": "The@1 slope says how steeply a line climbs. Take@2 any two points on it: the@3 run is how far you go across, the@4 rise is how far you go up, and the slope is the rise divided by the run — the same answer wherever you measure it."
           }
         },
         {
@@ -2473,10 +2473,10 @@
       "background": "default",
       "steps": [
         {
-          "id": "nr5485",
+          "id": "nr55810",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two points are enough to find the whole line@1. First the slope: the difference of the y values over the difference of the x values@2 — we put the coordinates in and solve it to find m@3. Then that slope goes into y equals m x plus b@4, one of the points is put in for x and y@5, and solving that@6 gives b, which completes the equation of the line@7."
+            "text": "Two@1 points are enough to find the whole line. First@2 the slope: the difference of the y values over the difference of the x values — we@3 put the coordinates in and solve it to find m. Then@4 that slope goes into y equals m x plus b, one@5 of the points is put in for x and y, and solving@6 that gives b, which@7 completes the equation of the line."
           }
         },
         {
@@ -2634,10 +2634,10 @@
       "layout": "single-grid",
       "steps": [
         {
-          "id": "nr91955",
+          "id": "nr78956",
           "funcId": "narrate",
           "inputs": {
-            "text": "A possibility tree puts one stage per column and one branch per outcome of that stage@1. Every path down the tree is one possible result, so each outcome of the first flip pairs with each outcome of the second."
+            "text": "This@1 possibility tree puts one stage per column and one branch per outcome of that stage. Every path down the tree is one possible result, so each outcome of the first flip pairs with each outcome of the second."
           }
         },
         {
@@ -2658,10 +2658,10 @@
       "layout": "single-grid",
       "steps": [
         {
-          "id": "nr91956",
+          "id": "nr78957",
           "funcId": "narrate",
           "inputs": {
-            "text": "When every path is as likely as any other@1, one result is worth one over the number of paths. Here the path that goes tails and then heads@2 is one of them."
+            "text": "When@1 every path is as likely as any other, one result is worth one over the number of paths. Here@2 is the path that goes tails and then heads — one of them."
           }
         },
         {
@@ -2690,10 +2690,10 @@
       "layout": "single-grid",
       "steps": [
         {
-          "id": "nr91957",
+          "id": "nr78958",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two sets that overlap@1: some elements are only in A, some only in B, and some are in both@2. The intersection@3 is the part that is in both. The union@4 is everything in at least one — and if you simply add the two sizes, the overlap gets counted twice, so it has to come off once."
+            "text": "These@1 two sets overlap: some elements are only in A, some@2 only in B, and some are in both. The@3 intersection is the part that is in both. The@4 union is everything in at least one — and if you simply add the two sizes, the overlap gets counted twice, so it has to come off once."
           }
         },
         {
@@ -2740,10 +2740,10 @@
       "layout": "text-3d",
       "steps": [
         {
-          "id": "nr43424",
+          "id": "nr4252",
           "funcId": "narrate",
           "inputs": {
-            "text": "In a right triangle, the altitude drawn from the right angle@1 cuts the hypotenuse into two pieces@2. Those three lengths are tied together@3: the altitude squared is the two pieces multiplied."
+            "text": "In a right triangle, the@1 altitude drawn from the right angle cuts@2 the hypotenuse into two pieces. Those@3 three lengths are tied together: the altitude squared is the two pieces multiplied."
           }
         },
         {
@@ -2834,10 +2834,10 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr5543",
+          "id": "nr4253",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same triangle, and now that relation becomes an equation@1: the altitude is the square root of the two pieces multiplied. Their lengths come straight from the figure@2 — we put them in and solve it to find the altitude@3, which is written back onto the drawing@4."
+            "text": "The same triangle, and now@1 that relation becomes an equation: the altitude is the square root of the two pieces multiplied. Their@2 lengths come straight from the figure — we@3 put them in and solve it to find the altitude, which@4 is written back onto the drawing."
           }
         },
         {
@@ -2924,10 +2924,10 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr5544",
+          "id": "nr4254",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two sides and the angle between them are known@1, and the third side is not. The law of cosines@2 handles it: the Pythagorean theorem plus a correction for that angle@3. The equation@4 takes the triangle's own numbers@5, we solve it to find the missing side@6, and it lands on the figure@7."
+            "text": "Two@1 sides and the angle between them are known, and the third side is not. The@2 law of cosines handles it: the Pythagorean theorem plus a correction for that@3 angle. The@4 equation takes the triangle's@5 own numbers, we@6 solve it to find the missing side, and@7 it lands on the figure."
           }
         },
         {
@@ -3025,10 +3025,10 @@
       "layout": "single-grid",
       "steps": [
         {
-          "id": "nr19050",
+          "id": "nr27890",
           "funcId": "narrate",
           "inputs": {
-            "text": "Each length unit is worth ten times the next one along the row@1. So converting is only moving the decimal point: one place for every step you take in that row."
+            "text": "Each@1 length unit is worth ten times the next one along the row. So converting is only moving the decimal point: one place for every step you take in that row."
           }
         },
         {
@@ -3051,10 +3051,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr87491",
+          "id": "nr27891",
           "funcId": "narrate",
           "inputs": {
-            "text": "From kilometres to metres there are three steps along the row, so the point moves three places to the right@1 — which is the same as multiplying by a thousand@2."
+            "text": "From@1 kilometres to metres there are three steps along the row, so the point moves three places to the right — which@2 is the same as multiplying by a thousand."
           }
         },
         {
@@ -3077,10 +3077,10 @@
       "layout": "single-grid",
       "steps": [
         {
-          "id": "nr19052",
+          "id": "nr27892",
           "funcId": "narrate",
           "inputs": {
-            "text": "Areas do not follow the same rhythm@1. Each unit is worth a hundred times the next, not ten, because a square grows in two directions at once — so one square kilometre is a hundred square hectometres."
+            "text": "Areas@1 do not follow the same rhythm. Each unit is worth a hundred times the next, not ten, because a square grows in two directions at once — so one square kilometre is a hundred square hectometres."
           }
         },
         {
@@ -3115,10 +3115,10 @@
       "correctChoice": 1,
       "steps": [
         {
-          "id": "nr19186",
+          "id": "nr27952",
           "funcId": "narrate",
           "inputs": {
-            "text": "Here is a line drawn on the graph@1. Read its equation in the question and pick the slope from the four answers."
+            "text": "Here@1 is a line drawn on the graph. Read its equation in the question and pick the slope from the four answers."
           }
         },
         {
@@ -3162,10 +3162,10 @@
       "answer": "5",
       "steps": [
         {
-          "id": "nr19188",
+          "id": "nr27953",
           "funcId": "narrate",
           "inputs": {
-            "text": "The point P sits on the graph@1. Type the value of its y coordinate."
+            "text": "The@1 point P sits on the graph. Type the value of its y coordinate."
           }
         },
         {
@@ -3188,10 +3188,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr19313",
+          "id": "nr4375",
           "funcId": "narrate",
           "inputs": {
-            "text": "An arithmetic sequence adds the same number every time@1. This one starts at three, and every arrow adds four@2 — that number is called the common difference."
+            "text": "An@1 arithmetic sequence adds the same number every time. This one starts at three, and every@2 arrow adds four — that number is called the common difference."
           }
         },
         {
@@ -3223,10 +3223,10 @@
       "layout": "text-equation",
       "steps": [
         {
-          "id": "nr19314",
+          "id": "nr4376",
           "funcId": "narrate",
           "inputs": {
-            "text": "The general term is one formula@1 with four letters, and each letter has exactly one job: the term we are looking for@2, the very first term@3, the rank of the term we want@4, and the common difference@5."
+            "text": "The@1 general term is one formula with four letters, and each letter has exactly one job: the@2 term we are looking for, the@3 very first term, the@4 rank of the term we want, and the@5 common difference."
           }
         },
         {
@@ -3298,10 +3298,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr87618",
+          "id": "nr4377",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same formula@1, with numbers taking the place of the letters@2: the first term three, the rank ten, the difference four. Then it works itself out@3 — and watch the rank minus one, because from the first term to the tenth there are nine additions, not ten."
+            "text": "Here@1 is the same formula, with@2 numbers taking the place of the letters: the first term three, the rank ten, the difference four. Then@3 it works itself out — and watch the rank minus one, because from the first term to the tenth there are nine additions, not ten."
           }
         },
         {
@@ -3331,10 +3331,10 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr19316",
+          "id": "nr4378",
           "funcId": "narrate",
           "inputs": {
-            "text": "A geometric sequence multiplies instead of adding@1. Each term is the one before it times the same number, the common ratio@2 — and plotted rank by rank, the points climb faster and faster@3."
+            "text": "A@1 geometric sequence multiplies instead of adding. Each@2 term is the one before it times the same number, the common ratio — and@3 plotted rank by rank, the points climb faster and faster."
           }
         },
         {
@@ -3379,10 +3379,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr91771",
+          "id": "nr4129",
           "funcId": "narrate",
           "inputs": {
-            "text": "A vector is a move, not a place. From A to B@1 the move goes so far across and so far up@2, and those two numbers are its components@3."
+            "text": "A vector is a move, not a place. From@1 A to B the move goes so far across and so far up: those@2 two steps are its components, and@3 they are what the vector is written with."
           }
         },
         {
@@ -3454,10 +3454,10 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr5603",
+          "id": "nr4130",
           "funcId": "narrate",
           "inputs": {
-            "text": "From one point to the other@1 the arrow is the hypotenuse of a right triangle: the step across and the step up@2 are its two legs. So its length comes straight out of the Pythagorean theorem@3 — we put the components from the graph in@4 and solve it to find the length of the arrow@5."
+            "text": "From@1 one point to the other, the arrow is the hypotenuse of a right triangle: the@2 step across and the step up are its two legs. So@3 its length comes straight out of the Pythagorean theorem — we@4 put the components from the graph in and@5 solve it to find the length of the arrow."
           }
         },
         {
@@ -3539,10 +3539,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr91773",
+          "id": "nr4131",
           "funcId": "narrate",
           "inputs": {
-            "text": "To add two vectors, the second one starts where the first one ends@1. Their sum@2 runs straight from the tail of the first to the tip of the second, and its components are simply the components added@3."
+            "text": "To add two vectors, the@1 second one starts where the first one ends. Their@2 sum runs straight from the tail of the first to the tip of the second, and@3 its components are simply the components added."
           }
         },
         {
@@ -3616,10 +3616,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr43928",
+          "id": "nr4195",
           "funcId": "narrate",
           "inputs": {
-            "text": "This is a parabola@1, and it has three things worth naming@2: the vertex where it turns around, the focus inside the curve@3, and the directrix, a line outside it. Every single point of the curve is exactly as far from the focus as it is from that line."
+            "text": "This@1 is a parabola, and it has@2 three things worth naming: the vertex where it turns around, the@3 focus inside the curve, and the directrix, a line outside it. Every single point of the curve is exactly as far from the focus as it is from that line."
           }
         },
         {
@@ -3657,10 +3657,10 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr5778",
+          "id": "nr4196",
           "funcId": "narrate",
           "inputs": {
-            "text": "The focus of this parabola@1 can be found from the equation itself. Written the standard way@2, x squared equals four p y, the number in front is what gives p@3. We solve it to find p@4, and p turns out to be the distance from the vertex up to the focus@5."
+            "text": "The@1 focus of this parabola can be found from the equation itself. Written@2 the standard way, x squared equals four p y, the@3 number in front is what gives p. We@4 solve it to find p, and@5 p turns out to be the distance from the vertex up to the focus."
           }
         },
         {
@@ -3726,10 +3726,10 @@
       "layout": "graph-equation",
       "steps": [
         {
-          "id": "nr5779",
+          "id": "nr4197",
           "funcId": "narrate",
           "inputs": {
-            "text": "An ellipse@1 has two foci@2, both on its long axis, each the same distance from the centre. That distance comes from the two radiuses@3 of the ellipse, the ones read off its equation@4: we put them in and solve it to find how far each focus sits from the centre@5 — and it lands on the drawing@6."
+            "text": "This@1 is an ellipse, and it has@2 two foci, both on its long axis, each the same distance from the centre. That@3 distance comes from the two radiuses of the ellipse, the@4 ones read off its equation: we solve it@5 to find how far each focus sits from the centre, and@6 it lands on the drawing."
           }
         },
         {
@@ -3804,10 +3804,10 @@
       "layout": "single-grid",
       "steps": [
         {
-          "id": "nr38756",
+          "id": "nr79018",
           "funcId": "narrate",
           "inputs": {
-            "text": "The bottom number says how many equal parts the whole is cut into, and the top one says how many of those parts are taken@1. Take two more parts of that same size@2 and only the top number moves: the parts already match, so they simply add."
+            "text": "The@1 bottom number says how many equal parts the whole is cut into, and the top one says how many of those parts are taken. Take@2 two more parts of that same size and only the top number moves: the parts already match, so they simply add."
           }
         },
         {
@@ -3836,10 +3836,10 @@
       "layout": "single-grid",
       "steps": [
         {
-          "id": "nr38757",
+          "id": "nr79019",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same part of a whole can be written three ways. As a fraction@1 it is three quarters. As a percentage@2 it is that same amount out of a hundred. And as a decimal@3 it is just the top number divided by the bottom one."
+            "text": "The@1 same part of a whole can be written three ways. As a fraction it is three quarters. As@2 a percentage it is that same amount out of a hundred. And@3 as a decimal it is just the top number divided by the bottom one."
           }
         },
         {
@@ -3876,10 +3876,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr38758",
+          "id": "nr79020",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two fractions can only be added once their parts are the same size@1. So both are rewritten over a common denominator — twelfths fit thirds and quarters alike — and then the top numbers add while the bottom one stays where it is."
+            "text": "Two@1 fractions can only be added once their parts are the same size. So both are rewritten over a common denominator — twelfths fit thirds and quarters alike — and then the top numbers add while the bottom one stays where it is."
           }
         },
         {
@@ -3899,10 +3899,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr67784",
+          "id": "nr79081",
           "funcId": "narrate",
           "inputs": {
-            "text": "An inequality is solved like an equation. Its boundary is where the two sides are exactly equal@1, so the five crosses over@2, both sides are divided by twelve@3, and that leaves the number where the two sides meet. Then all that is left is choosing which side of it keeps the inequality true."
+            "text": "An inequality is solved like an equation. Its@1 boundary is where the two sides are exactly equal, so@2 the five crosses over, and@3 both sides are divided by twelve. That leaves the number where the two sides meet, and all that is left is choosing which side of it keeps the inequality true."
           }
         },
         {
@@ -3934,10 +3934,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr38882",
+          "id": "nr79082",
           "funcId": "narrate",
           "inputs": {
-            "text": "Here the solutions are shaded@1: every number on that side of the boundary works. The boundary itself is drawn solid, which means it counts too — a dashed one would mean it does not. Any point inside the shading@2 is a solution."
+            "text": "Here@1 the solutions are shaded: every number on that side of the boundary works. The boundary itself is drawn solid, which means it counts too — a dashed one would mean it does not. Any@2 point inside the shading is a solution."
           }
         },
         {
@@ -3976,10 +3976,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr38883",
+          "id": "nr79083",
           "funcId": "narrate",
           "inputs": {
-            "text": "Each inequality shades half of the plane@1, and a second one shades another half@2. What satisfies both is only where the two shadings overlap, and the two boundaries meet at a corner of that region@3."
+            "text": "Each@1 inequality shades half of the plane, and@2 a second one shades another half. What satisfies both is only where the two shadings overlap, and@3 the two boundaries meet at a corner of that region."
           }
         },
         {
@@ -4045,10 +4045,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr39008",
+          "id": "nr79137",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two parallel lines@1 are crossed by a third one, the transversal@2. At each crossing the angles in matching positions@3 are called corresponding angles, and on parallel lines they always have the same measure."
+            "text": "These@1 two lines are parallel, and@2 a third one crosses them — the transversal. At@3 each crossing the angles in matching positions are called corresponding angles, and on parallel lines they always have the same measure."
           }
         },
         {
@@ -4137,10 +4137,10 @@
       "layout": "single-3d",
       "steps": [
         {
-          "id": "nr44179",
+          "id": "nr79138",
           "funcId": "narrate",
           "inputs": {
-            "text": "The altitude of a triangle runs from one vertex@1 straight down to the opposite side, and it meets that side at a right angle@2. Its length is the height used in the area formula@3."
+            "text": "The@1 altitude of a triangle runs from one vertex straight down to the opposite side, and@2 it meets that side at a right angle. Its@3 length is the height used in the area formula."
           }
         },
         {
@@ -4203,10 +4203,10 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr5658",
+          "id": "nr79139",
           "funcId": "narrate",
           "inputs": {
-            "text": "The area of a triangle is its base times its height, divided by two@1. The base is one side of the figure@2 and the height is the altitude@3, so both numbers come from the drawing itself@4 — we put them in and solve it to find the area@5."
+            "text": "The@1 area of a triangle is its base times its height, divided by two. The@2 base is one side of the figure and the@3 height is the altitude, so@4 both numbers come from the drawing itself — we@5 put them in and solve it to find the area."
           }
         },
         {
@@ -4277,10 +4277,10 @@
       "layout": "single-3d",
       "steps": [
         {
-          "id": "nr54604",
+          "id": "nr79195",
           "funcId": "narrate",
           "inputs": {
-            "text": "A translation slides a figure@1 without changing anything else: every point moves the same distance in the same direction@2. Shape, size and orientation are all kept, and the image is named vertex for vertex@3 — A prime, B prime, C prime."
+            "text": "A@1 translation slides a figure without changing anything else: every@2 point moves the same distance in the same direction. Shape, size and orientation are all kept, and@3 the image is named vertex for vertex — A prime, B prime, C prime."
           }
         },
         {
@@ -4347,10 +4347,10 @@
       "layout": "single-3d",
       "steps": [
         {
-          "id": "nr54605",
+          "id": "nr79196",
           "funcId": "narrate",
           "inputs": {
-            "text": "A rotation turns the figure@1 around a point — here a quarter turn@2. Lengths and angles survive the turn; what changes is the way the figure faces, and the names turn with it@3."
+            "text": "A@1 rotation turns the figure around a point — here@2 a quarter turn. Lengths and angles survive the turn; what changes is the way the figure faces, and@3 the names turn with it."
           }
         },
         {
@@ -4424,10 +4424,10 @@
       "layout": "single-3d",
       "steps": [
         {
-          "id": "nr28308",
+          "id": "nr79197",
           "funcId": "narrate",
           "inputs": {
-            "text": "A reflection flips the figure@1 like a mirror@2. Lengths and angles are still the same, but the vertices are read in the opposite order@3."
+            "text": "A@1 reflection flips the figure, like@2 a mirror. Lengths and angles are still the same, but@3 the vertices are read in the opposite order."
           }
         },
         {
@@ -4503,10 +4503,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr67849",
+          "id": "nr27656",
           "funcId": "narrate",
           "inputs": {
-            "text": "Operations are not done left to right. Brackets first, then the multiplications and divisions, and only then the additions and subtractions. So in this expression@1 the division and the product collapse first@2, each on its own, and the plus and the minus wait their turn."
+            "text": "Operations are not done left to right. Brackets first, then the multiplications and divisions, and only then the additions and subtractions. So@1 in this expression, the@2 division and the product collapse first, each on its own, and the plus and the minus wait their turn."
           }
         },
         {
@@ -4529,10 +4529,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr87357",
+          "id": "nr27657",
           "funcId": "narrate",
           "inputs": {
-            "text": "Brackets say: this is one number, work it out before anything else touches it. So here@1 the inside goes first@2, and only then the multiplication. Without the brackets the product would come first and the answer would not be the same."
+            "text": "Brackets say: this is one number, work it out before anything else touches it. So@1 here, the@2 inside goes first, and only then the multiplication. Without the brackets the product would come first and the answer would not be the same."
           }
         },
         {
@@ -4555,10 +4555,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr87358",
+          "id": "nr27658",
           "funcId": "narrate",
           "inputs": {
-            "text": "A longer one, the same rules@1: two products and no brackets, so both products collapse first@2, and only then the plus and the minus, left to right. A decimal changes nothing about the order."
+            "text": "Here@1 is a longer one, and the same rules hold: two@2 products and no brackets, so both products collapse first, and only then the plus and the minus, left to right. A decimal changes nothing about the order."
           }
         },
         {
@@ -4583,10 +4583,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr92849",
+          "id": "nr27714",
           "funcId": "narrate",
           "inputs": {
-            "text": "The absolute value of x minus two is the distance between x and two, so it can never be negative. Its graph is a V@1, and the point of that V@2 sits exactly where the inside is zero."
+            "text": "The absolute value of x minus two is the distance between x and two, so it can never be negative. Its@1 graph is a V, and@2 the point of that V sits exactly where the inside is zero."
           }
         },
         {
@@ -4636,10 +4636,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr92850",
+          "id": "nr27715",
           "funcId": "narrate",
           "inputs": {
-            "text": "The same V, with three numbers on sliders@1. One slides the point of the V sideways, one slides it up and down, and the last one opens it, closes it, or flips it upside down. Drag one and watch which part of the V answers."
+            "text": "Here@1 is the same V, with three numbers on sliders. One slides the point of the V sideways, one slides it up and down, and the last one opens it, closes it, or flips it upside down. Drag one and watch which part of the V answers."
           }
         },
         {
@@ -4667,10 +4667,10 @@
       "layout": "single-graph",
       "steps": [
         {
-          "id": "nr92851",
+          "id": "nr27716",
           "funcId": "narrate",
           "inputs": {
-            "text": "The floor of a number keeps only its whole part, so this graph is made of flat steps@1 that jump at every whole number. Between two whole numbers nothing moves@2: the value waits there until the next jump."
+            "text": "The floor of a number keeps only its whole part, so@1 this graph is made of flat steps that jump at every whole number. Between@2 two whole numbers nothing moves: the value waits there until the next jump."
           }
         },
         {
@@ -4712,10 +4712,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr28370",
+          "id": "nr27772",
           "funcId": "narrate",
           "inputs": {
-            "text": "Every term of the first bracket multiplies every term of the second@1, and that gives four products@2. Then the like terms among them collect together@3 into one shorter expression."
+            "text": "Every@1 term of the first bracket multiplies every term of the second, which@2 gives four products. Then@3 the like terms among them collect together into one shorter expression."
           }
         },
         {
@@ -4745,10 +4745,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr43371",
+          "id": "nr27773",
           "funcId": "narrate",
           "inputs": {
-            "text": "Only terms with the same letter at the same power can be added@1. The three x terms collect together and the plain numbers collect together@2 — nothing else is allowed to move."
+            "text": "Only@1 terms with the same letter at the same power can be added. The@2 three x terms collect together and the plain numbers collect together — nothing else is allowed to move."
           }
         },
         {
@@ -4771,10 +4771,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr43372",
+          "id": "nr27774",
           "funcId": "narrate",
           "inputs": {
-            "text": "One is a value that makes this polynomial zero, so x minus one is a factor of it. Dividing by that factor@1 shows what is left, and a remainder of zero confirms the factor was a real one."
+            "text": "One is a value that makes this polynomial zero, so x minus one is a factor of it. Dividing@1 by that factor shows what is left, and a remainder of zero confirms the factor was a real one."
           }
         },
         {
@@ -4795,10 +4795,10 @@
       "layout": "single-3d",
       "steps": [
         {
-          "id": "nr43562",
+          "id": "nr4312",
           "funcId": "narrate",
           "inputs": {
-            "text": "A cylinder is measured by two lengths only@1: the radius of its disc and its height@2. Its volume is the area of that disc times how tall the solid is."
+            "text": "A@1 cylinder is measured by two lengths only: the@2 radius of its disc and its height. Its volume is the area of that disc times how tall the solid is."
           }
         },
         {
@@ -4827,10 +4827,10 @@
       "layout": "equation-3d",
       "steps": [
         {
-          "id": "nr5719",
+          "id": "nr4313",
           "funcId": "narrate",
           "inputs": {
-            "text": "This time the volume and the radius are known@1, and the height is not@2. So the formula is turned around@3: the height is the volume divided by the area of the disc. The numbers are put in@4 and we solve it to find the height@5."
+            "text": "This@1 time the volume and the radius are known, and@2 the height is not. So@3 the formula is turned around: the height is the volume divided by the area of the disc. The@4 numbers are put in and we@5 solve it to find the height."
           }
         },
         {
@@ -4887,10 +4887,10 @@
       "layout": "single-3d",
       "steps": [
         {
-          "id": "nr43564",
+          "id": "nr4314",
           "funcId": "narrate",
           "inputs": {
-            "text": "A solid is drawn flat by looking at it from three sides. From the front@1, from above@2, and from the side@3. Each view shows two of the three dimensions, so two views together already give all three."
+            "text": "A solid is drawn flat by looking at it from three sides. From@1 the front, from@2 above, and from@3 the side. Each view shows two of the three dimensions, so two views together already give all three."
           }
         },
         {
@@ -4935,10 +4935,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr43688",
+          "id": "nr27828",
           "funcId": "narrate",
           "inputs": {
-            "text": "A number in scientific notation is a number between one and ten, times a power of ten@1. Each part has a name: the coefficient@2, which stays between one and ten, the base@3, which is always ten, and the exponent@4, which counts the places the decimal point moves."
+            "text": "A@1 number in scientific notation is a number between one and ten, times a power of ten. Each part has a name: the@2 coefficient, which stays between one and ten, the@3 base, which is always ten, and the@4 exponent, which counts the places the decimal point moves."
           }
         },
         {
@@ -4989,10 +4989,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr87428",
+          "id": "nr27829",
           "funcId": "narrate",
           "inputs": {
-            "text": "Two to the third is three twos multiplied, and two to the fourth is four of them@1. Multiplied together@2 that makes seven twos — which is exactly why the exponents add. It only works because the base is the same on both sides."
+            "text": "Two@1 to the third is three twos multiplied, and two to the fourth is four of them. Multiplied@2 together that makes seven twos — which is exactly why the exponents add. It only works because the base is the same on both sides."
           }
         },
         {
@@ -5015,10 +5015,10 @@
       "layout": "single-equation",
       "steps": [
         {
-          "id": "nr87429",
+          "id": "nr27830",
           "funcId": "narrate",
           "inputs": {
-            "text": "Powers of ten can only be added when the power is the same@1. So one of the numbers is rewritten on the other's power@2: the comma walks one way while the exponent walks the other, and then the numbers in front are what gets added."
+            "text": "Powers@1 of ten can only be added when the power is the same. So@2 one of the numbers is rewritten on the other's power: the comma walks one way while the exponent walks the other, and then the numbers in front are what gets added."
           }
         },
         {

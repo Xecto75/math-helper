@@ -361,6 +361,15 @@ export function repairLesson(compact) {
     }
 
     const narrText = String(liveSteps.find(st => bare(st[0]) === 'n')?.[1] ?? '')
+    // The voice is theoretical: it never states a value the panels work out.
+    // A live value or a piece of arithmetic in the narration is both a broken
+    // sentence (the voice would read the token aloud) and a number that can
+    // disagree with the screen, so the sentence goes back to be rewritten.
+    const spokenValue = /\{\{|\[eq-result\]|\[[^\]]{1,24}\][A-Za-z0-9]/.exec(narrText)
+    if (spokenValue) {
+      issues.push({ page: pi, kind: 'narration-states-a-value',
+        message: `the narration carries ${JSON.stringify(spokenValue[0])} — the voice never says a computed value. Rewrite the sentence so it says what happens, not what the answer is; the panels show the numbers.` })
+    }
     const spoken   = new Set([...narrText.matchAll(/@(\d+)/g)].map(m => m[1]))
     const carried  = new Set()
     liveSteps = liveSteps.map((st, si) => {

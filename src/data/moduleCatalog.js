@@ -50,6 +50,12 @@ NARRATION — EVERY PAGE HAS EXACTLY ONE n, and the page is paced by it. The voi
     shape being built, a sweep: no marker. Those either open the page or get a page of their own,
     because the voice does not wait for them and would talk over the picture.
   2 to 5 markers on a page is the usual shape: one per thing the voice points at.
+  THE VOICE NEVER SAYS A RESULT. It says what is about to happen and why — never the number the
+    panel is about to produce: "then both sides are divided by twelve", NEVER "which gives x
+    equals three point seven five". The screen owns every computed value; a spoken one can
+    disagree with it, and then the reader believes the wrong one. So no {{ }}, no [id]token and
+    no [eq-result] in n either — the voice would read the token out loud. The narration is
+    theory: the panels do the arithmetic.
 
 TEXT IS RARE NOW: the voice carries the explanation, so a text panel is only for something worth
   keeping on screen — a formula, a rule, a value. Never a paragraph of what the voice just said.

@@ -233,10 +233,15 @@ export function setFastMode(on) {
   const s = current
   if (!s) return
   if (want) {
+    // A skip means "I have seen enough": the voice stops for good, everything
+    // it still had to set off happens at once, and the session ENDS so the
+    // page can finish. Leaving it alive kept the page waiting for a voice
+    // that was never going to speak again, which is what made the forward
+    // button look dead.
     s.clearTimers()
     s.pauseAudio()
-    // Every marker still to come fires at once: this is the skip.
     s.pending().forEach(([n]) => s.fireMark(n))
+    s.finishUp()
     return
   }
   // Back to normal speed. The words pick up at the first marker still ahead of

@@ -1595,7 +1595,7 @@ export default function App() {
     // nothing at all, so a step that stops for the reader could only be got
     // past with Resume — which then runs everything left, not the one step.
     if (subGateReleaseRef.current) { handleStepForward(); return }
-    if (running) { setHurry(true); return }
+    if (running) { setHurry(true); voiceEngine.setFastMode(true); return }
     if (lessonPages) { handleLessonNav(1); return }
     handleStepForward()
   }, [running, lessonPages, handleLessonNav, handleStepForward])

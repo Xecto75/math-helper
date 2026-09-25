@@ -269,12 +269,12 @@ function makeGhostForTerm(sign, term) {
 // this, get to the end" — NOT "skip whatever is left", which would leave the
 // next beat drawing on top of shapes that were never created. So every
 // remaining step still runs; it just runs at a speed nobody waits for.
-// 10x still read as "waiting, but faster" on a long solve: a beat is a gsap
-// tween plus two or three waits, and a dozen beats of that is seconds even
-// divided by ten. At 30x a hurried beat lands in a frame or two, which is
-// what "I have seen enough" is asking for. gsap still sets every final value,
-// so nothing is skipped — it is only the time nobody wanted that goes.
-const HURRY_FACTOR = 30
+// 10x still read as "waiting, but faster" on a long solve, and even 30x left a
+// narrated page crawling for a second or two — the reader asked for the end,
+// not for a quicker middle. At 999x a whole beat lands in a frame: gsap still
+// sets every final value and every step still runs, so nothing is skipped; only
+// the time nobody wanted goes.
+const HURRY_FACTOR = 999
 let _hurry = false
 export function setHurry(on) {
   _hurry = !!on

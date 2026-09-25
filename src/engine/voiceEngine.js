@@ -40,7 +40,11 @@ export function parseMarkers(raw) {
   for (let i = 0; i < src.length;) {
     const m = MARK_AT.exec(src.slice(i))
     if (m) {
-      marks.set(Number(m[1]), text.length)
+      // The FIRST time a number appears is the one that counts. Writing @1
+      // twice is a slip, and keeping the later position fired the step when
+      // the voice reached the second one, seconds after the word meant.
+      const n = Number(m[1])
+      if (!marks.has(n)) marks.set(n, text.length)
       i += m[0].length
       continue
     }

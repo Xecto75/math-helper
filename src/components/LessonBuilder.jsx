@@ -14,6 +14,16 @@ const markerOf      = (step) => /@(\d+)$/.exec(String(step?.funcId ?? ''))?.[1] 
 const NARRATE_IDS   = new Set(['narrate', 'n', 'voice-say'])
 const isNarrateStep = (id) => NARRATE_IDS.has(bareFunc(id))
 const marksSpokenIn = (text) => new Set([...String(text ?? '').matchAll(/@(\d+)/g)].map(m => m[1]))
+// The same number written twice fires at the FIRST one, which is rarely what
+// the second was for, so the editor says so.
+const marksTwiceIn = (text) => {
+  const seen = new Set(), twice = new Set()
+  for (const m of String(text ?? '').matchAll(/@(\d+)/g)) {
+    if (seen.has(m[1])) twice.add(m[1])
+    seen.add(m[1])
+  }
+  return twice
+}
 
 // Flat funcId → inputDefs for new-style actions
 const FUNC_INPUT_DEFS = {}
@@ -1406,6 +1416,20 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                                     </div>
                                   ))}
                                 </div>
+                              )
+                            })()}
+                            {isNarrateStep(step.funcId) && (() => {
+                              const said  = [...marksSpokenIn(step.inputs?.text)]
+                              const twice = [...marksTwiceIn(step.inputs?.text)]
+                              return (
+                                <p className={`lb-narr-hint${twice.length ? ' lb-narr-hint--warn' : ''}`}>
+                                  {said.length
+                                    ? `Markers: ${said.map(n => '@' + n).join(' ')}`
+                                    : 'No markers yet — write @1, @2 … right after the word that should set a step off.'}
+                                  {twice.length
+                                    ? ` · ${twice.map(n => '@' + n).join(', ')} written twice — the step fires at the first one.`
+                                    : ''}
+                                </p>
                               )
                             })()}
                           </div>

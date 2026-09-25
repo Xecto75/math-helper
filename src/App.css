@@ -3988,6 +3988,15 @@
 /* The narration marker a step waits for: @1, @2 … Blank means it runs as the
    page opens. Orange when the narration says no such marker, because the step
    would then never be reached. */
+/* Under the narration: which markers it says, and any written twice. */
+.lb-narr-hint {
+  margin: 2px 16px 8px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-d);
+}
+.lb-narr-hint--warn { color: #f97316; }
+
 .lb-step-mark {
   width: 44px;
   flex-shrink: 0;

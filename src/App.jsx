@@ -1200,55 +1200,80 @@ export default function App() {
               .map(([n]) => n).sort((a, b) => a - b)[0] ?? null
           : null
 
+        // What each marker's steps are doing, so a plain step written after them
+        // can wait for them to finish instead of jumping the queue.
+        const slots = new Map()
+        const slotFor = (n) => {
+          let slot = slots.get(n)
+          if (!slot) { slot = {}; slot.done = new Promise(r => { slot.resolve = r }); slots.set(n, slot) }
+          return slot
+        }
+        // Steps sharing a marker belong to the same moment, but landing them all
+        // on the same frame reads as one thing happening, not three. They go off
+        // in the order they are written in the page, a fifth of a second apart —
+        // long enough to be followed, short enough to still be "as the voice says
+        // that word". A hurry drops the gap like every other wait.
+        const fireMarker = (n) => {
+          const runs = (marked.get(n) ?? []).map((si, k) => (async () => {
+            const gap = isHurrying() ? 0 : (k * MARK_STAGGER) / speed
+            if (gap) await new Promise(r => setTimeout(r, gap))
+            if (!signal.cancelled) await runStepAt(si)
+          })())
+          Promise.allSettled(runs).then(() => slotFor(n).resolve())
+        }
+
         // The narration is a step like any other: it starts WHERE IT IS WRITTEN.
         // Written first — which is where it belongs — the voice opens the page and
-        // the setting-up plays while it talks. Running every unmarked step before
-        // starting it, as this did, left the reader watching four animations in
-        // silence before a word was said.
-        // Started, not awaited: the audio has to be fetched the first time a
-        // sentence is used, and the page should not sit still while that happens.
+        // the setting-up plays while it talks. Started rather than awaited: the
+        // audio has to be fetched the first time a sentence is used, and the page
+        // should not sit still while that happens.
         let voicing = null
         const startVoice = () => {
           if (voicing || signal.cancelled) return
           voicing = voiceEngine.start(narration.inputs, {
-            lang: voiceLang, signal, fromMarker,
-            // Steps sharing a marker belong to the same moment, but landing them
-            // all on the same frame reads as one thing happening, not three. They
-            // go off in the order they are written in the page, a fifth of a
-            // second apart — long enough to be followed, short enough to still be
-            // "as the voice says that word". A hurry drops the gap like every
-            // other wait.
-            fire: (n) => (marked.get(n) ?? []).forEach((si, k) => {
-              const gap = isHurrying() ? 0 : (k * MARK_STAGGER) / speed
-              if (!gap) { void runStepAt(si); return }
-              setTimeout(() => { if (!signal.cancelled) void runStepAt(si) }, gap)
-            }),
+            lang: voiceLang, signal, fromMarker, fire: fireMarker,
+          }).then(session => {
+            // No voice — switched off, none for this language, offline, out of
+            // quota. Nothing will ever reach a marker, so each marker's steps go
+            // off in turn, one group after the previous has finished: the lesson
+            // is silent, never empty, and still in order.
+            if (!session) {
+              void (async () => {
+                for (const n of [...marked.keys()].sort((a, b) => a - b)) {
+                  if (signal.cancelled) break
+                  fireMarker(n)
+                  await slotFor(n).done
+                }
+              })()
+            }
+            return session
           })
         }
 
+        // Walking the page in order: a marked step is left to its word, and a
+        // plain step written after marked ones CONTINUES them — it goes once the
+        // last of them has finished on screen. Running it at page open, as this
+        // did, put the closing formula up before the lesson had said anything.
+        let after = []
         for (let si = 0; si < pg.steps.length; si++) {
           if (signal.cancelled || signal.pausePending) break
           const st = pg.steps[si]
           if (isNarrationStep(st.funcId)) { startVoice(); continue }
-          if (stepMarker(st)) continue          // this one waits for its word
+          const n = stepMarker(st)
+          if (n) { after.push(n); continue }
+          if (after.length) {
+            // Waiting on a marker needs the voice to be running to reach it.
+            startVoice()
+            const chain = after.map(m => slotFor(m).done)
+            after = []
+            await Promise.all(chain)
+            if (signal.cancelled || signal.pausePending) break
+          }
           await runStepAt(si)
         }
         // A narration written after the steps it paces still has to start.
         startVoice()
-        const session = voicing ? await voicing : null
-
-        // No voice — switched off, none for this language, offline, out of
-        // quota. The marked steps would then never fire and the page would show
-        // nothing but its setting-up, so it falls back to the ordinary order:
-        // the lesson is silent, never empty.
-        if (!session) {
-          for (let si = 0; si < pg.steps.length; si++) {
-            if (signal.cancelled || signal.pausePending) break
-            const st = pg.steps[si]
-            if (isNarrationStep(st.funcId) || !stepMarker(st)) continue
-            await runStepAt(si)
-          }
-        }
+        await voicing
       } else {
         for (let si = startFromStep; si < pg.steps.length; si++) {
           if (signal.cancelled) break

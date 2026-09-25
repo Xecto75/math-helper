@@ -1,18 +1,3 @@
 {
-  "quadratic-eq": true,
-  "law-of-sines": true,
-  "pythagoras": true,
-  "areas": true,
-  "volumes": true,
-  "perimeters": true,
-  "soh-cah-toa": true,
-  "exponential": true,
-  "unit-circle": true,
-  "linear-functions": true,
-  "quick-quiz": true,
-  "linear-eq": true,
-  "line-types": true,
-  "substitution": true,
-  "correlation": true,
-  "unit-conversion": true
+  "soh-cah-toa": true
 }

@@ -33,6 +33,26 @@ function extractEquationResult(state) {
 const ANIM_SCALE = 0.8
 gsap.globalTimeline.timeScale(ANIM_SCALE)
 
+// The equation panel on top of that. Its animations were written when a solve
+// was the only thing happening on the page and had all the time it wanted. It
+// is not any more: the voice sets the pace, and a term still flying to the
+// other side while the division starts reads as two animations fighting. Every
+// equation action — its tweens AND the waits between them — plays EQ_SPEED
+// times faster than it is written, which is one number to tune instead of the
+// sixty-odd durations inside these cases.
+const EQ_SPEED = 1.7
+const EQ_ACTIONS = new Set([
+  'renderEquation', 'replaceEquation', 'term-op', 'reorderEquation', 'autoReorder',
+  'combineTerms', 'autoCombine', 'sendToOtherSide', 'autoSendToOtherSide',
+  'divideBothSides', 'multiplyBothSides', 'replaceVariable', 'racineDesBords',
+  'disparitionExposant', 'applyInverseTrig', 'cross-multiply', 'rule-of-three-solve',
+  'combineInParens', 'distributeParentheses', 'full-solve-current', 'factorial-expand',
+  'sci-expand', 'chooseQuadraticBranch', 'restoreQuadraticBranch', 'outlineDegree',
+  'clearOutlines', 'eq-annotate', 'eq-annotate-remove', 'eq-annotate-clear',
+  'eq-arrow', 'eq-arrow-remove', 'eq-arrow-clear', 'eq-arrow-chain',
+])
+const eqSpeedOf = (action) => (EQ_ACTIONS.has(action?.type) ? EQ_SPEED : 1)
+
 // ── liftToBody ────────────────────────────────────────────────────────────────
 // Physically moves an element OUT of the React tree into document.body as a
 // fixed overlay.  React can no longer touch it.  Caller must call el.remove()
@@ -348,14 +368,35 @@ const SOLVES = new Set([
 ])
 
 
-async function runAction(action, state, equationRef, setState, setUI, geoRef, graphRef, tableRef, setComments, textRef, speed = 1, calcRef = null, arithRef = null, multRef = null, clockRef = null, numbersRef = null, mdasRef = null, kidRefs = {}) {
+// gsap has one global timeline, so an equation action speeds it up for exactly
+// as long as it runs and hands it back at its normal rate. A hurry that starts
+// mid-action sets its own rate (30x) and the reset below respects it.
+const timelineRate = () => ANIM_SCALE * (_hurry ? HURRY_FACTOR : 1)
+// Counted, not nested: a full solve runs equation actions of its own, and the
+// inner one finishing must not hand the timeline back while the solve around
+// it is still animating. The rate is the same at any depth — it never
+// compounds — so only the last one out resets it.
+let _eqDepth = 0
+async function runAction(action, ...rest) {
+  if (eqSpeedOf(action) === 1) return runActionTimed(action, ...rest)
+  _eqDepth += 1
+  gsap.globalTimeline.timeScale(timelineRate() * EQ_SPEED)
+  try {
+    return await runActionTimed(action, ...rest)
+  } finally {
+    _eqDepth -= 1
+    gsap.globalTimeline.timeScale(timelineRate() * (_eqDepth > 0 ? EQ_SPEED : 1))
+  }
+}
+
+async function runActionTimed(action, state, equationRef, setState, setUI, geoRef, graphRef, tableRef, setComments, textRef, speed = 1, calcRef = null, arithRef = null, multRef = null, clockRef = null, numbersRef = null, mdasRef = null, kidRefs = {}) {
   // Extra displays ride in this bundle rather than becoming yet more positional
   // parameters on a signature that already has eighteen.
   const { pizzaRef, counterRef, numberlineRef, threeRef, divisionRef, setDivisionUp } = kidRefs
   const refs    = () => equationRef.current?.cellRefs ?? { left: [], right: [] }
   const graphApi = () => graphRef?.current?.calculator ?? null
   // eslint-disable-next-line no-shadow
-  const wait = (s) => waitMs((s / speed) * 1000 / ANIM_SCALE / (_hurry ? HURRY_FACTOR : 1))
+  const wait = (s) => waitMs((s / speed) * 1000 / ANIM_SCALE / eqSpeedOf(action) / (_hurry ? HURRY_FACTOR : 1))
 
   // Shared "spotlight, then resolve" reveal used by every numeric-collapse
   // phase inside full-solve-current (factor products, exponents, fraction

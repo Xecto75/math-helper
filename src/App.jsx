@@ -638,6 +638,9 @@ export default function App() {
   const clearAll = useCallback(() => {
     if (cancelRef.current) cancelRef.current.cancelled = true
     cancelAllAnimations()
+    // Wiping the panels while a page is still talking left the voice reading a
+    // lesson that is no longer on screen — and left a fast-forward switched on.
+    voiceEngine.stop()
     graphEngine.clearAll(graphRef.current?.calculator)
     clearSavedValues()
     tableEngine.clearAll(tableRef)

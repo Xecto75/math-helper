@@ -98,7 +98,9 @@ let fastMode = false
 
 export async function start(inputs, { lang = 'en', voice = null, signal = null, fire = () => {}, fromMarker = null } = {}) {
   const from = Number(fromMarker) || null
-  stop()
+  // finishUp, not stop(): a session that is BUILT while the viewer is skipping
+  // has to still see fastMode below, and stop() is what turns it off.
+  current?.finishUp()
   let prepared
   try {
     prepared = await prepare(inputs?.text, { lang: inputs?.lang || lang, voice: inputs?.voice || voice || null })
@@ -267,4 +269,12 @@ export function finished() {
 
 export function stop() {
   current?.finishUp()
+  // A stop is the end of a beat, and a fast-forward belongs to the beat that
+  // was skipped — never to the next one. It used to be cleared only in
+  // buildPage's finally, which a CANCELLED run never reaches: pressing > and
+  // then moving on left fastMode on for the rest of the session, so every
+  // later page (and every later lesson) fired all its markers at once and
+  // never spoke. buildPage calls this before each beat, so speed is normal
+  // again the moment anything new is built.
+  fastMode = false
 }

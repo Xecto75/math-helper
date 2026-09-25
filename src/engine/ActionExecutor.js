@@ -275,6 +275,8 @@ function makeGhostForTerm(sign, term) {
 // sets every final value and every step still runs, so nothing is skipped; only
 // the time nobody wanted goes.
 const HURRY_FACTOR = 999
+// When a wait for the Desmos calculator last timed out — see graphReady.
+let _graphWaitFailed = -Infinity
 let _hurry = false
 export function setHurry(on) {
   _hurry = !!on
@@ -395,6 +397,28 @@ async function runActionTimed(action, state, equationRef, setState, setUI, geoRe
   const { pizzaRef, counterRef, numberlineRef, threeRef, divisionRef, setDivisionUp } = kidRefs
   const refs    = () => equationRef.current?.cellRefs ?? { left: [], right: [] }
   const graphApi = () => graphRef?.current?.calculator ?? null
+  // DesmosDisplay only creates the calculator once desmos.com's own script has
+  // loaded — a network fetch — so `graphApi()` is null for the first moment the
+  // graph is on screen. Every graph action used to read it, find nothing and
+  // SILENTLY DO NOTHING: a page reached before that (a skip, or a click straight
+  // into a lesson) drew no points, no line and no labels, and the comment
+  // anchored to them landed on the origin of an untouched default grid — which
+  // also left the automatic framing with nothing to frame. So wait for it. Only
+  // while the panel is actually mounted (`graphRef.current`): a graph action on
+  // a page without a graph still returns at once, as it always did.
+  const graphReady = async (ms = 3000) => {
+    // Desmos never arrived a moment ago (script blocked, offline): that page is
+    // empty whatever we do, and waiting again on every one of its graph steps
+    // would freeze the lesson for half a minute instead of 3 seconds.
+    if (performance.now() - _graphWaitFailed < 10000) return graphApi()
+    const t0 = performance.now()
+    while (!graphApi() && graphRef?.current && performance.now() - t0 < ms) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise(r => setTimeout(r, 50))
+    }
+    if (!graphApi() && graphRef?.current) _graphWaitFailed = performance.now()
+    return graphApi()
+  }
   // eslint-disable-next-line no-shadow
   const wait = (s) => waitMs((s / speed) * 1000 / ANIM_SCALE / eqSpeedOf(action) / (_hurry ? HURRY_FACTOR : 1))
 
@@ -1003,39 +1027,39 @@ async function runActionTimed(action, state, equationRef, setState, setUI, geoRe
     // ── Graph actions (Desmos) ────────────────────────────────────────────────
 
     case 'ggb-plot-function': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       const id = action.id || graphEngine.nextFuncId()
       await graphEngine.plotFunction(calc, id, action.expr, action.opts ?? {})
       break
     }
 
     case 'ggb-best-fit-line': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       const id = action.id || graphEngine.nextFuncId()
       await graphEngine.plotBestFitLine(calc, id, action.pointIds, action.opts ?? {})
       break
     }
 
     case 'ggb-remove-function': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.removeFunction(calc, action.id)
       break
     }
 
     case 'ggb-shade-area': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.shadeUnderCurve(calc, action.id, action.funcId, action.a, action.b, action.opts ?? {})
       break
     }
 
     case 'ggb-find-intersections': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.findAndMarkIntersections(calc, action.id, action.f1Id, action.f2Id, action.opts ?? {})
       break
     }
 
     case 'ggb-trig-circle': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.drawTrigCircle(calc)
       break
     }
@@ -1211,159 +1235,159 @@ case 'ggb-2d-snap': {
     }
 
     case 'ggb-add-point': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.addPoint(calc, action.id, action.x, action.y, action.opts ?? {})
       break
     }
 
     case 'ggb-remove-point': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.removePoint(calc, action.id)
       break
     }
 
     case 'ggb-scatter-plot': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.addScatterPlot(calc, action.id, action.params, action.opts ?? {})
       break
     }
 
     case 'ggb-remove-scatter-plot': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.removeScatterPlot(calc, action.id)
       break
     }
 
     case 'ggb-add-segment': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.addSegment(calc, action.id, action.x1, action.y1, action.x2, action.y2, action.opts ?? {})
       break
     }
 
     case 'ggb-remove-segment': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.removeSegment(calc, action.id)
       break
     }
 
     case 'ggb-segment-tick': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.showSegmentTick(calc, action.id, action.ticks, action.color)
       break
     }
 
     case 'ggb-remove-segment-tick': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.removeSegmentTick(calc, action.id)
       break
     }
 
     case 'ggb-divide-segment-graph': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.divideSegmentGraph(calc, action.id, action.parts, action.color, action.showLabels)
       break
     }
 
     case 'ggb-remove-divide-segment-graph': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.removeDivideSegmentGraph(calc, action.id)
       break
     }
 
     case 'ggb-vertical-line': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.addVerticalLine(calc, action.id, action.x, action.opts ?? {})
       break
     }
 
     case 'ggb-adjust-view': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.adjustView(calc, action.cx ?? 0, action.cy ?? 0, action.range ?? 10)
       break
     }
 
     case 'ggb-set-viewport': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.setViewport(calc, action.xMin, action.xMax, action.yMin, action.yMax)
       break
     }
 
     case 'ggb-set-axes': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       graphEngine.setAxesVisible(calc, action.x ?? true, action.y ?? true)
       await wait(0.2)
       break
     }
 
     case 'ggb-set-grid': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       graphEngine.setGridVisible(calc, action.visible ?? true)
       await wait(0.2)
       break
     }
 
     case 'ggb-name-func': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       graphEngine.nameFunc(calc, action.id, action.funcId, action.label ?? action.funcId, action.x, action.y, action.opts ?? {})
       await wait(0.3)
       break
     }
 
     case 'ggb-horizontal-line': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.addHorizontalLine(calc, action.id, action.y, action.opts ?? {})
       break
     }
 
     case 'ggb-mark-roots': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.markRoots(calc, action.id, action.funcId, action.opts ?? {})
       break
     }
 
     case 'ggb-conic-elements': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.showConicElements(calc, action.id, action.funcId, action.opts ?? {})
       break
     }
 
     case 'ggb-remove-conic-elements': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.removeConicElements(calc, action.id)
       break
     }
 
     case 'ggb-show-projection': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.showAxisProjection(calc, action.id, action.pointId, action.opts ?? {})
       break
     }
 
     case 'ggb-draw-vector': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.drawVector(calc, action.id, action.x1, action.y1, action.x2, action.y2, action.opts ?? {})
       break
     }
 
     case 'ggb-angle-between': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.angleBetween(calc, action.id, action.a, action.b, action.opts ?? {})
       break
     }
     case 'ggb-remove-angle': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.removeAngle(calc, action.id)
       break
     }
 
     case 'ggb-draw-angle': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.drawAngle(calc, action.id, action.ax, action.ay, action.bx, action.by, action.cx, action.cy, action.opts ?? {})
       break
     }
 
     case 'ggb-transform-function': {
-      const calc = graphApi(); if (!calc) break
+      const calc = await graphReady(); if (!calc) break
       await graphEngine.transformFunction(calc, action.id, action.funcId, action.transformType, action.value, action.opts ?? {})
       break
     }

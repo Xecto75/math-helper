@@ -224,7 +224,7 @@ export function repairLesson(compact) {
     // not exist can be spotted (a very common cause of a null deref later).
     const created = new Set()
 
-    const outSteps = steps.map((step, si) => {
+    let outSteps = steps.map((step, si) => {
       // "es@1" is "send to the other side, fired when the voice reaches @1". The
       // marker is not part of the function id: it is looked up without it and
       // handed back on, for the page player to read.
@@ -232,6 +232,13 @@ export function repairLesson(compact) {
       const mark = /@\d+$/.exec(String(rawCode))?.[0] ?? ''
       const code = mark ? String(rawCode).slice(0, -mark.length) : String(rawCode)
       const where = { page: pi, step: si, code }
+
+      // A note is for the EXAMPLES: the reader cannot see one, so a generated
+      // one is only tokens. Dropped quietly rather than sent back for repair.
+      if (code === '//') {
+        fixed.push(`p${pi}s${si}: dropped a "//" note — notes belong to the example lessons, not to a generated one`)
+        return null
+      }
 
       const defs = defsFor(code)
       if (!defs) {
@@ -339,6 +346,7 @@ export function repairLesson(compact) {
     // ── Narration ─────────────────────────────────────────────────────────
     // Every page is paced by one narration, and a marker is only real when it
     // exists on both sides: in the spoken text and on a step.
+    outSteps = outSteps.filter(Boolean)
     const bare = (c) => String(c ?? '').replace(/@\d+$/, '')
     const narrAt = outSteps.map((st, si) => (bare(st[0]) === 'n' ? si : -1)).filter(i => i >= 0)
     let liveSteps = outSteps

@@ -141,7 +141,13 @@ for (const cat of CATEGORIES) {
 
 const CLR = ['red','purple','orange','green','yellow','pink','teal','white']
 
+// An author note in a reference lesson: ["//","why this page is built this
+// way"]. Deliberately not in FUNCS — the generator is shown these but may
+// never write one, and anything it does write is dropped by the validator.
+const NOTE_CODE = '//'
+
 function expandStep([rawCode, ...vals]) {
+  if (rawCode === NOTE_CODE) return { func: 'note', inputs: { text: String(vals[0] ?? '') } }
   // A step can carry a narration marker: "eD@2" is "divide both sides, and fire
   // it when the voice reaches @2". The marker rides on the id through to the
   // page player, which is what reads it (App.jsx stepMarker).
@@ -186,6 +192,7 @@ const LAYOUTS_BY_ID = Object.fromEntries(Object.entries(LAYOUTS).map(([c, id]) =
 const CLR_BY_NAME   = Object.fromEntries(Object.entries(CLR).map(([n, name]) => [name, Number(n)]))
 
 function compactStep(step) {
+  if ((step.func ?? step.funcId) === 'note') return [NOTE_CODE, String(step.inputs?.text ?? '')]
   const withMark = String(step.func ?? step.funcId ?? '')
   const mark     = /@\d+$/.exec(withMark)?.[0] ?? ''
   const funcId   = mark ? withMark.slice(0, -mark.length) : withMark

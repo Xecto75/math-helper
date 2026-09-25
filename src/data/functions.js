@@ -1232,6 +1232,15 @@ export const CATEGORIES = [
     defaultOpen: false,
     functions: [
       {
+        id: 'note', label: 'Note for the AI', status: 'ready',
+        useAll: true,
+        description: 'An author note inside an EXAMPLE lesson: it tells the lesson generator WHY this page is built the way it is ("the voice explains every move here, so the steps are marked one by one instead of using Full Solve"). It draws nothing and the reader never sees it. The generator reads these in the reference lessons and is told never to write one itself — a note in a generated lesson would be tokens spent on something nobody can see.',
+        inputs: [
+          { id: 'text', label: 'Note (the generator reads it, the reader never sees it)', type: 'textarea',
+            default: '', placeholder: 'Why this page is built this way — what the generator should copy, and what it should not.' },
+        ],
+      },
+      {
         id: 'narrate', label: 'Narration', status: 'ready',
         useAll: true,
         description: 'What the voice says on this page — one per page, and the page is paced by it. Write @1, @2 … right after the word that should trigger something: every step whose id ends in that marker (e.g. "eq-divide@2") fires the moment the voice reaches that word, and several steps may share one marker. Steps with no marker run as the page opens. An animation a marker fires must be short and must not block — under about 400ms — because the voice does not wait for it. Plain speech only: no LaTeX, no markup, and write symbols as they are said ("x squared", "minus five").',

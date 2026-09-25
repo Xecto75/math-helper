@@ -152,6 +152,9 @@ function pagesFromJson(jsonStr) {
 // Narration. "n" is what the compact lesson format calls it; the other two are
 // names the step has had while this was being built.
 const NARRATION_FUNCS = new Set(['narrate', 'n', 'voice-say'])
+// An author note for the lesson generator. It exists in the example lessons
+// and in the Builder; on screen it is nothing at all.
+const isNoteStep = (funcId) => baseFuncId(funcId) === 'note'
 const baseFuncId = (funcId) => String(funcId ?? '').replace(/@\d+$/, '')
 const isNarrationStep = (funcId) => NARRATION_FUNCS.has(baseFuncId(funcId))
 
@@ -1156,6 +1159,7 @@ export default function App() {
       // marker fires this WITHOUT waiting for it, which is why an animation a
       // marker triggers has to be short and non-blocking.
       const runStepAt = async (si) => {
+        if (isNoteStep(pg.steps[si]?.funcId)) { pageStepIdxRef.current = si + 1; return }
         stepSnapshotsRef.current[si] = captureSnapshot()
         subPageStepRef.current = si   // where a sub-step rewind re-enters
 

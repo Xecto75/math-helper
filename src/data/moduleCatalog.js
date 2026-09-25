@@ -102,6 +102,10 @@ reads. Put the maths between $ … $ and write ordinary LaTeX (KaTeX renders it)
 n:[text] — the page's narration (see NARRATION). Exactly one per page, plain speech, @N markers
   right after the trigger word.
 
+["//","…"] in a REFERENCE LESSON is the author telling you why that page is built the way it is.
+  READ IT — it says what to copy and what not to. NEVER write one: it draws nothing, the reader
+  cannot see it, and it is thrown away.
+
 sL:[mode] — change THIS page's panels mid-script ("0" → "03"). Shared panels resize smoothly,
   others fade. Same digits as the page field. Most pages need no sL.
 `
@@ -859,6 +863,9 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', references = null) 
   // there, and leaving it out stripped every mid-page panel change from the
   // references — the steps after it then aimed at a panel the page never showed.
   const documented = new Set([
+    // The author notes in a reference lesson survive the pruning: they are the
+    // explanation of the lesson the generator is being shown.
+    '//',
     ...[...BASE_RULES.matchAll(/^([A-Za-z0-9]+):\[/gm)].map(m => m[1]),
     ...funcs.flatMap(([, f]) => [...String(f).matchAll(/^ {2}([A-Za-z0-9]+):/gm)].map(m => m[1])),
   ])

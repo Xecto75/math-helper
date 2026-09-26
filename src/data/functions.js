@@ -1539,14 +1539,14 @@ export const CATEGORIES = [
       {
         id: 'geo3d-mark-angle',
         label: 'Mark an Angle',
-        description: 'Mark ONE angle anywhere on a figure, not only at a corner of a shape: the angle at one point between two others, each given the way snapping gives them (vN = corner N, eN@0.4 = 40% along edge N, eN:2.5 = 2.5 units along edge N). On a square ABCD (v0=A … v3=D) with E on BC, the angle DEC is From v3, Vertex e1:2.54, To v2. The wedge is filled in its colour and labelled with its measure, or with a Label of your own ("-" = none). Angles that overlap at one point pull apart by themselves: the smaller one is pushed out past the wider one, its label with it.',
+        description: 'Mark ONE angle anywhere on a figure, not only at a corner of a shape: the angle at one point between two others, each given the way snapping gives them (vN = corner N, eN@0.4 = 40% along edge N, eN:2.5 = 2.5 units along edge N). On a square ABCD (v0=A … v3=D) with E on BC, the angle DEC is From v3, Vertex e1:2.54, To v2. The wedge is filled in its colour and labelled with its measure, or with a Label of your own ("-" = none). Angles that overlap at one point pull apart by themselves: the smaller one is pushed out past the wider one, its label with it. For a plain corner of the shape, leave From and To EMPTY and give only the Vertex (v0, v1, v2 …): the corner’s own two sides are taken, so the mark opens inside the figure — three angles of a triangle are just v0, v1 and v2.',
         status: 'ready', use3D: true,
         inputs: [
           { id: 'id',     label: 'Shape the points are on', type: 'text', default: 'shape1' },
           { id: 'markId', label: 'Mark ID', type: 'text', default: 'm1' },
-          { id: 'from',   label: 'From (a point on one side)', type: 'text', default: 'v1' },
+          { id: 'from',   label: 'From (blank = the side before)', type: 'text', default: '' },
           { id: 'vertex', label: 'Vertex', type: 'text', default: 'v0' },
-          { id: 'to',     label: 'To (a point on the other side)', type: 'text', default: 'v2' },
+          { id: 'to',     label: 'To (blank = the side after)', type: 'text', default: '' },
           { id: 'color',  label: 'Color (blank = reserved blue)', type: 'color-name', default: '' },
           { id: 'label',  label: 'Label (blank = the measure, "-" = none)', type: 'text', default: '' },
           { id: 'size',   label: 'Size (blank = normal)', type: 'text', default: '' },

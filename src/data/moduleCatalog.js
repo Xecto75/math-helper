@@ -454,7 +454,8 @@ A coloured edge or angle REQUIRES whatever refers to it to carry the same colour
   S2a:[id,color,showValues]            — show all interior angle arcs; showValues=true also labels each arc with its measured degrees
   S2A:[id,angleIndex,color]            — pop+recolor one angle arc
   S2Ma:[id,markId,from,vertex,to,color,label,size] — mark ONE angle between three anchors on a shape (vN / eN@t /
-                                         eN:d), e.g. angle DEC with E on edge BC; label "" = its measure, "-" = none; angles overlapping at one point pull apart by themselves (the smaller pushed out past the wider)
+                                         eN:d), e.g. angle DEC with E on edge BC; label "" = its measure, "-" = none; angles overlapping at one point pull apart by themselves (the smaller pushed out past the wider).
+                                         A CORNER of the shape needs only the vertex: leave from and to EMPTY ("","v1","") and the corner's own two sides are used, so the mark opens inside the figure
   S2E:[id,edgeIndex,color]             — animated highlight on one edge
   S2tk:[id,edgeIndex,ticks,color]      — congruent-side tick mark(s) at an edge's midpoint (ticks=1-3; use a different count for a different equal-side pair)
   S2tx:[id,edgeIndex]                  — remove tick mark(s) from an edge

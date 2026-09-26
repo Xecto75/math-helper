@@ -1502,10 +1502,31 @@ export function markAngle3D(threeRef, id, markId, fromRef, vertexRef, toRef, opt
   const display = threeRef?.current
   const entry = registry.get(id)
   if (!display || !entry?.vertices?.length) return Promise.resolve()
-  const P = resolveShapePoint(id, fromRef)
   const V = resolveShapePoint(id, vertexRef)
-  const Q = resolveShapePoint(id, toRef)
-  if (!P || !V || !Q) throw new Error('markAngle : ancrage invalide — attendu vN, eN@fraction ou eN:distance')
+  if (!V) throw new Error('markAngle : ancrage invalide — attendu vN, eN@fraction ou eN:distance')
+
+  // From and To may be left out, and a From or To that IS the vertex is the
+  // same slip: there is no direction from a point to itself. atan2(0, 0) is 0,
+  // so the wedge was drawn from the +x axis — outside the figure, pointing at
+  // nothing. When the vertex is a corner of the shape, the angle meant is the
+  // one the figure makes there, so the corner's own two neighbours stand in
+  // and the mark opens INSIDE the shape, like the arcs showAngles draws.
+  const corner  = /^v(\d+)$/.exec(String(vertexRef ?? '').trim().toLowerCase())
+  const nv      = entry.vertices.length
+  const at      = (d) => corner ? resolveShapePoint(id, `v${((Number(corner[1]) + d) % nv + nv) % nv}`) : null
+  const samePt  = (A, B) => !!A && !!B && Math.hypot(A[0] - B[0], A[1] - B[1]) < 1e-9
+  const given   = (ref) => {
+    const raw = String(ref ?? '').trim()
+    if (!raw) return null
+    const pt = resolveShapePoint(id, raw)
+    if (!pt) throw new Error('markAngle : ancrage invalide — attendu vN, eN@fraction ou eN:distance')
+    return pt
+  }
+  let P = given(fromRef)
+  let Q = given(toRef)
+  if (!P || samePt(P, V)) P = at(-1)
+  if (!Q || samePt(Q, V)) Q = at(+1)
+  if (!P || !Q) throw new Error('markAngle : donne From et To, ou mets le sommet sur un coin (vN) pour marquer l’angle du coin')
 
   // Same arc size as the shape's own corner arcs, so a marked angle and a
   // shown one read as the same kind of mark.

@@ -1,7 +1,6 @@
 // ── Narration player ──────────────────────────────────────────────────────────
-// Built to the spec of 2026-09-23. No lesson narrates yet: generation is
-// unchanged and nothing here is reachable from the AI prompts, so the only way
-// in is a "narrate" step pasted into the Builder's Preview.
+// Built to the spec of 2026-09-23. Every page narrates: one "narrate" step per
+// page, written by the generator and playable from the Builder.
 //
 // THE VOICE IS THE CLOCK. A narration carries markers — "@2" written just after
 // the word that should trigger it — and the steps marked "@2" fire the moment

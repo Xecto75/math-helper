@@ -1140,8 +1140,14 @@ export default function App() {
       cancelAllAnimations()
 
       // The page's narration is fetched now, while the first steps play, so
-      // the voice starts on time. Dormant: see voiceEngine.js.
-      const voiceLang = lessonLangRef.current ?? langRef.current ?? 'en'
+      // the voice starts on time.
+      // The voice's language is the language the page is WRITTEN in — and the
+      // INTERFACE language says nothing about that. Every example is written in
+      // English, so on a French interface this asked for a French voice of an
+      // English sentence, the server refused it ("No voice set for fr") and the
+      // page played in silence. A generated lesson carries its own language;
+      // everything else is English unless the step names one.
+      const voiceLang = lessonLangRef.current ?? 'en'
       const narration = pg.steps.find(st => isNarrationStep(st.funcId))
       // The words go on screen whether or not there is a voice to say them:
       // markers are for the animation, so they are stripped out first.

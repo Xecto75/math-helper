@@ -11,7 +11,7 @@ import {
   isAdminEmail,
 } from './src/server/auth.js'
 import { clientIp, consumeAnon, refundAnon } from './src/server/anonQuota.js'
-import { synthesize, lookupSpeech, listVoices, TTS_AUDIO_DIR } from './src/server/tts.js'
+import { synthesize, lookupSpeech, listVoices, speechEstimate, TTS_AUDIO_DIR } from './src/server/tts.js'
 
 const app  = express()
 // A host decides which port it wants the process to listen on and passes it in;
@@ -453,6 +453,16 @@ app.post('/api/generate-lesson', async (req, res) => {
       `  $${total.toFixed(4)}${total > 0.30 ? '  ⚠ OVER $0.30' : ''}` +
       `${pages < 5 ? `  ⚠ only ${pages} pages (want 5-6)` : ''}
 `)
+
+    // What the lesson will cost to SPEAK, counted the way the voice server
+    // counts it. It is not spent yet — the first play of each page pays for
+    // that sentence once — but a lesson's price is text plus voice, so the
+    // trace says both.
+    const narrations = (Array.isArray(expanded) ? expanded : [])
+      .flatMap(pg => (pg?.steps ?? [])
+        .filter(st => String(st?.funcId ?? '').startsWith('narrate'))
+        .map(st => st?.inputs?.text ?? ''))
+    trace.voice(speechEstimate(narrations, { lang: lang ?? 'en' }))
 
     trace.section('VALIDATION', [
       `auto-fixed (${fixed.length}):`,     ...fixed.map(f => '  ' + f),

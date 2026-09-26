@@ -766,7 +766,7 @@ export default function App() {
       case 'eq-distribute':        return demoEquationDistribute(inputs.eq, latestEquationSnapRef.current)
       case 'eq-send-other-side':   return demoEquationSendOtherSide(inputs.term ?? null)
       case 'eq-reorder':           return demoEquationReorder()
-      case 'eq-divide':            return demoEquationDivide(Number(inputs.divisor ?? 2))
+      case 'eq-divide':            return demoEquationDivide(inputs.divisor)
       case 'eq-multiply':          return demoEquationMultiply(Number(inputs.multiplier ?? 2))
       case 'eq-full-solve':        return demoEquationFullSolve()
       case 'quadratic-solve':      return demoQuadraticSolve()

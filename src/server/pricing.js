@@ -38,6 +38,15 @@ export function rateFor(model) {
   return r.peak && isPeak() ? r.peak : r
 }
 
+// Speechify bills the voice by the character, not the token: $10 per million
+// on the entry plan, $8 on Pro, $6 on Scale — TTS_USD_PER_M_CHARS moves it
+// without a code change. A sentence is billed once and then kept in cache/tts
+// forever, so this is what a lesson costs the FIRST time it is played.
+export function ttsCostOf(chars = 0) {
+  const perM = Number(process.env.TTS_USD_PER_M_CHARS ?? 10)
+  return ((Number(chars) || 0) * perM) / 1_000_000
+}
+
 export function costOf(model, usage = {}) {
   const r = rateFor(model)
   const inTok  = usage.input_tokens                ?? 0

@@ -80,15 +80,15 @@ export const CATEGORIES = [
       {
         id:          'eq-divide',
         label:       'Divide Both Sides',
-        description: 'Draw a division line and simplify every term',
+        description: 'Draw a division line and simplify every term. Leave the divisor blank and it divides by the number in front of x, whatever that number has become by then.',
         status:      'ready',
         inputs: [
           {
-            id:      'divisor',
-            label:   'Divisor',
-            type:    'number',
-            default: 2,
-            min:     1,
+            id:          'divisor',
+            label:       'Divisor',
+            type:        'number',
+            default:     '',
+            placeholder: 'blank = the number in front of x',
           },
         ],
       },

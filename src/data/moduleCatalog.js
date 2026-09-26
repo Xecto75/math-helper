@@ -208,7 +208,7 @@ INTENT: algebra/solve-for-x → an equation layout with eq-*.`,
   eD:[eq]                                   — distribute parentheses (provide expanded form)
   es:[term]                                 — move term at index to other side (0=first term left→right)
   eo:[]                                     — reorder so like terms are adjacent
-  ed:[divisor]                              — divide both sides by number
+  ed:[divisor?]                             — divide both sides; blank divides by the number in front of x
   em:[multiplier]                           — multiply both sides by number (clears x/2=4 style fractions)
   ef:[]                                     — animated full solve (combine→send→divide) — use for any degree-1 eq
   eQ:[]                                     — QUADRATIC (degree 2, one variable): solves the equation eq put up, terms on

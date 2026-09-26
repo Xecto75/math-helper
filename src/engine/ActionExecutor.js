@@ -379,6 +379,21 @@ const timelineRate = () => ANIM_SCALE * (_hurry ? HURRY_FACTOR : 1)
 // it is still animating. The rate is the same at any depth — it never
 // compounds — so only the last one out resets it.
 let _eqDepth = 0
+// The number standing in front of x, taken from whichever side holds it: the
+// one divisor that leaves x on its own. Nothing to find — no variable, x in
+// more than one place, a power of x, or a bare x already alone — means there is
+// nothing to divide, and the step does nothing rather than guess.
+function isolatingDivisor(state) {
+  const terms = [...(state.left ?? []), ...(state.right ?? [])]
+    .filter(t => t && !t.isParenGroup && t.variable && (t.degree ?? 1) === 1)
+  if (terms.length !== 1) return null
+  // `value` is the signed coefficient — the sign of a term is not always in
+  // `sign` (a leading −2x parses with the minus inside the coefficient), and
+  // reading the two separately divided −2x by 2 and left "−x = 4" behind.
+  const coeff = terms[0].value
+  return Number.isFinite(coeff) && coeff !== 1 ? coeff : null
+}
+
 async function runAction(action, ...rest) {
   if (eqSpeedOf(action) === 1) return runActionTimed(action, ...rest)
   _eqDepth += 1
@@ -2688,7 +2703,12 @@ case 'ggb-2d-snap': {
     // ── Divide both sides ─────────────────────────────────────────────────────
     case 'divideBothSides': {
       if (!state) break
-      const { divisor } = action
+      // A blank divisor means "the number in front of x": dividing by it is
+      // what isolates x, and the equation already carries it, so a lesson
+      // never types it a second time — nor divides by a number an earlier
+      // step has since changed.
+      const divisor = action.divisor ?? isolatingDivisor(state)
+      if (!divisor) break
 
       // One bracket-line + label per SIDE (not per term) — the line still
       // spans that whole side's terms (same "divide everything under here"

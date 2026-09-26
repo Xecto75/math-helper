@@ -10,7 +10,7 @@
 import fs   from 'fs'
 import path from 'path'
 import { exec } from 'child_process'
-import { costOf, rateFor } from './pricing.js'
+import { costOf, rateFor, ttsCostOf } from './pricing.js'
 
 const DIR       = path.join(process.cwd(), 'logs')
 const ENABLED   = process.env.LESSON_TRACE      !== '0'
@@ -61,6 +61,10 @@ export function startTrace(prompt) {
   const parts   = []
   let   nCalls  = 0
   let   total   = 0
+  // What the voice will cost the first time the lesson is played — filled in
+  // by trace.voice() once the lesson is final. A lesson is text AND speech now,
+  // so a cost that counts only the writing is not the cost of the lesson.
+  let   speech  = null
 
   const trace = {
     file: path.join(DIR, `lesson-${stamp(started)}.txt`),
@@ -72,6 +76,11 @@ export function startTrace(prompt) {
 
     note(line) {
       parts.push(line + '\n')
+    },
+
+    // { sentences, cached, chars, error } from tts.speechEstimate().
+    voice(estimate) {
+      speech = estimate ?? null
     },
 
     // Every Anthropic call goes through here, so nothing can be logged
@@ -115,10 +124,18 @@ export function startTrace(prompt) {
       if (!ENABLED) return null
       try {
         fs.mkdirSync(DIR, { recursive: true })
+        const voiceCost = speech ? ttsCostOf(speech.chars) : 0
+        const voiceLine = !speech ? ''
+          : speech.error ? `VOICE  — none: ${speech.error}\n`
+          : `VOICE  ${speech.sentences} sentence(s), ${speech.chars} new character(s)` +
+            `${speech.cached ? ` (${speech.cached} already in cache/tts, free)` : ''}` +
+            ` = $${voiceCost.toFixed(5)}, billed on first play\n`
         const header =
           `LESSON GENERATION TRACE\n${started.toISOString()}\n` +
           `${nCalls} API call(s), ${Date.now() - started.getTime()}ms, ` +
-          `TOTAL COST $${total.toFixed(5)}\n`
+          `TEXT $${total.toFixed(5)}\n` +
+          voiceLine +
+          `TOTAL COST $${(total + voiceCost).toFixed(5)}\n`
         fs.writeFileSync(trace.file, header + parts.join(''), 'utf8')
         console.log(`  trace → ${trace.file}`)
         if (AUTO_OPEN) openFile(trace.file)

@@ -104,6 +104,24 @@ export function lookupSpeech(req) {
   return { ...r, meta }
 }
 
+// What the narration of a whole lesson will cost the first time it is played:
+// every sentence normalised the way a real request will be, markers stripped
+// as the player strips them, and the ones already on disk left out — a
+// sentence is paid for once, ever. Spends nothing: it only reads the cache.
+export function speechEstimate(texts, { lang = 'en', voice = null } = {}) {
+  const out = { sentences: 0, cached: 0, chars: 0, error: null }
+  for (const raw of texts) {
+    const text = String(raw ?? '').replace(/@\d{1,2}/g, '')
+    if (!text.trim()) continue
+    const r = lookupSpeech({ text, lang, voice })
+    if (r.error) { out.error = r.error; continue }
+    out.sentences += 1
+    if (r.meta) { out.cached += 1; continue }
+    out.chars += r.clean.length
+  }
+  return out
+}
+
 export async function synthesize(req) {
   const r = resolve(req)
   if (r.error) return r

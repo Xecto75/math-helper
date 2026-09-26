@@ -68,8 +68,16 @@ export function demoEquationReorder() {
 }
 
 // ── eq-divide ─────────────────────────────────────────────────────────────────
-export function demoEquationDivide(divisor) {
-  if (!divisor || divisor === 0) throw new Error('Divisor must be non-zero.')
+// The divisor is optional. Left blank, the executor reads the number standing
+// in front of x off the equation as it is at that moment — which is the number
+// that isolates x, and the one thing a lesson should never have to type twice:
+// an earlier step may have changed the coefficient (4x − 0.5x is 3.5x), and a
+// number typed by hand then quietly divides by the wrong thing.
+export function demoEquationDivide(divisorRaw) {
+  const raw = String(divisorRaw ?? '').trim()
+  if (!raw) return { snapshot: null, script: [{ type: 'divideBothSides', divisor: null }] }
+  const divisor = Number(raw)
+  if (!divisor) throw new Error('Divisor must be non-zero.')
   return { snapshot: null, script: [{ type: 'divideBothSides', divisor }] }
 }
 

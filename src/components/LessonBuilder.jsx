@@ -773,8 +773,14 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
   }
 
   // Which markers THIS page's narration actually says, so a step waiting on a
-  // marker nobody says can be shown as such.
-  const spokenMarks = marksSpokenIn(page?.steps?.find(st => isNarrateStep(st.funcId))?.inputs?.text)
+  // marker nobody says can be shown as such. A page with no narration at all
+  // plays its steps in order, markers and all, so nothing is orphaned there.
+  const narrateStep  = page?.steps?.find(st => isNarrateStep(st.funcId))
+  const spokenMarks  = marksSpokenIn(narrateStep?.inputs?.text)
+  const orphanMark   = (step) => {
+    const n = markerOf(step)
+    return narrateStep && n && !spokenMarks.has(n) ? n : ''
+  }
 
   // Editing the marker box rewrites the step id, which is where the marker
   // lives, so it survives a copy out to the Preview JSON and back.
@@ -1367,7 +1373,7 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                               <div className="lb-step-ctrl">
                                 {!isNarrateStep(step.funcId) && (
                                   <input
-                                    className={`lb-step-mark${markerOf(step) && !spokenMarks.has(markerOf(step)) ? ' lb-step-mark--orphan' : ''}`}
+                                    className={`lb-step-mark${orphanMark(step) ? ' lb-step-mark--orphan' : ''}`}
                                     type="text"
                                     inputMode="numeric"
                                     placeholder="@"
@@ -1418,6 +1424,13 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                                 </div>
                               )
                             })()}
+                            {orphanMark(step) && (
+                              <p className="lb-narr-hint lb-narr-hint--warn">
+                                {`@${orphanMark(step)} is not in this page's narration` +
+                                 (spokenMarks.size ? ` (it says ${[...spokenMarks].sort((a, b) => a - b).map(n => '@' + n).join(' ')})` : '') +
+                                 ' — nothing sets this step off, so it never plays.'}
+                              </p>
+                            )}
                             {isNarrateStep(step.funcId) && (() => {
                               const said  = [...marksSpokenIn(step.inputs?.text)]
                               const twice = [...marksTwiceIn(step.inputs?.text)]

@@ -1506,11 +1506,11 @@ export const CATEGORIES = [
       {
         id: 'geo3d-label-sides',
         label: 'Label Sides',
-        description: 'Show computed lengths (or custom labels) on each side of a flat shape',
+        description: 'Label each side of a flat shape, one entry per side, in order: blank = its measured length, "b=" = the name AND the length ("b = 7"), "-" = no label on that side, anything else = that text. A value reference works too, so "c = [c]v" writes the number just solved for.',
         status: 'ready', use3D: true,
         inputs: [
           { id: 'id',     label: 'ID',                                      type: 'text', default: 'shape1' },
-          { id: 'labels', label: 'Custom labels (comma-sep, blank = auto)', type: 'text', default: '', placeholder: 'a=, b=, c=  (blank after "=" auto-fills the real value)' },
+          { id: 'labels', label: 'Custom labels (comma-sep, blank = auto)', type: 'text', default: '', placeholder: 'a=, b=, c=  (blank = its length, "-" = no label)' },
         ],
       },
       {
@@ -1548,8 +1548,8 @@ export const CATEGORIES = [
           { id: 'vertex', label: 'Vertex', type: 'text', default: 'v0' },
           { id: 'to',     label: 'To (blank = the side after)', type: 'text', default: '' },
           { id: 'color',  label: 'Color (blank = reserved blue)', type: 'color-name', default: '' },
-          { id: 'label',  label: 'Label (blank = the measure, "-" = none)', type: 'text', default: '' },
-          { id: 'size',   label: 'Size (blank = normal)', type: 'text', default: '' },
+          { id: 'label',  label: 'Label (blank = the measure, "A=" = both, "-" = none)', type: 'text', default: '' },
+          { id: 'size',   label: 'Size (blank = normal, 2 = twice as wide)', type: 'text', default: '' },
         ],
       },
       {

@@ -111,18 +111,18 @@
   "pythagoras": [
     {
       "title": "a² + b² = c²",
-      "id": "lb130",
+      "id": "lb313",
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr23182",
+          "id": "lb314",
           "funcId": "narrate",
           "inputs": {
-            "text": "In a right triangle, these@1 two short sides and this@2 long one, the hypotenuse, are tied together by one@3 equation: the square of the hypotenuse is the sum of the squares of the other two. So@4 when two of the sides are known, we@5 put them in and solve it to find the third one — and@6 it is written onto the figure."
+            "text": "In a right triangle, these@1 two short sides and this@2 long one, the hypotenuse, are tied together by one@3 equation: the square of the hypotenuse is the sum of the squares of the other two. So@4 when two of the sides are known, we@5 put them in and solve it to find the third on."
           }
         },
         {
-          "id": "lb131",
+          "id": "lb315",
           "funcId": "geo3d-create-2d",
           "inputs": {
             "id": "tri",
@@ -133,7 +133,7 @@
           }
         },
         {
-          "id": "lb132",
+          "id": "lb316",
           "funcId": "geo3d-set-view",
           "inputs": {
             "zoom": "1.5",
@@ -141,15 +141,15 @@
           }
         },
         {
-          "id": "lb133",
-          "funcId": "geo3d-label-sides@6",
+          "id": "lb317",
+          "funcId": "geo3d-label-sides",
           "inputs": {
             "id": "tri",
             "labels": "a,b,c"
           }
         },
         {
-          "id": "lb134",
+          "id": "lb318",
           "funcId": "geo3d-highlight-edge@1",
           "inputs": {
             "id": "tri",
@@ -158,7 +158,7 @@
           }
         },
         {
-          "id": "lb135",
+          "id": "lb319",
           "funcId": "geo3d-highlight-edge@1",
           "inputs": {
             "id": "tri",
@@ -167,7 +167,7 @@
           }
         },
         {
-          "id": "lb136",
+          "id": "lb320",
           "funcId": "geo3d-highlight-edge@2",
           "inputs": {
             "id": "tri",
@@ -176,14 +176,14 @@
           }
         },
         {
-          "id": "lb137",
+          "id": "lb321",
           "funcId": "eq-create@3",
           "inputs": {
-            "eq": "|a|{green}^2 + |b|{orange}^2 = |c|{purple}^2"
+            "eq": "|a|{orange}^2 + |b|{green}^2 = |c|{purple}^2"
           }
         },
         {
-          "id": "lb1",
+          "id": "lb322",
           "funcId": "geo3d-label-sides@4",
           "inputs": {
             "id": "tri",
@@ -191,7 +191,7 @@
           }
         },
         {
-          "id": "lb139",
+          "id": "lb323",
           "funcId": "eq-replace-variable@4",
           "inputs": {
             "var_a": "3",
@@ -200,13 +200,13 @@
           }
         },
         {
-          "id": "lb140",
+          "id": "lb324",
           "funcId": "eq-full-solve@5",
           "inputs": {}
         },
         {
-          "id": "lb141",
-          "funcId": "geo3d-label-sides@6",
+          "id": "lb325",
+          "funcId": "geo3d-label-sides",
           "inputs": {
             "id": "tri",
             "labels": ",,5"
@@ -1913,18 +1913,18 @@
   "law-of-sines": [
     {
       "title": "The Triangle — Sides and Angles",
-      "id": "lb142",
+      "id": "lb217",
       "layout": "text-geo",
       "steps": [
         {
-          "id": "nr23315",
+          "id": "lb218",
           "funcId": "narrate",
           "inputs": {
-            "text": "In@1 any triangle, every side has one angle facing it. The@2 law of sines says that a side divided by the sine of the angle facing it gives the same number for all three, whatever shape the triangle has."
+            "text": "In@1 any triangle, every side@2 has one angle facing it. The@3 law of sines says that a side divided by the sine of the angle facing it gives the same number for all three, whatever shape the triangle has."
           }
         },
         {
-          "id": "lb143",
+          "id": "lb219",
           "funcId": "geo3d-create-2d",
           "inputs": {
             "id": "tri",
@@ -1936,56 +1936,133 @@
           }
         },
         {
-          "id": "lb144",
+          "id": "lb220",
           "funcId": "geo3d-set-view",
           "inputs": {
-            "zoom": "1.5",
+            "zoom": "1.2",
             "duration": "0.3"
           }
         },
         {
-          "id": "lb145",
-          "funcId": "geo3d-show-angles@1",
+          "id": "lb221",
+          "funcId": "geo3d-highlight-edge@2",
           "inputs": {
             "id": "tri",
-            "color": "yellow",
-            "showValues": "true"
+            "edgeIndex": "1",
+            "color": "cyan"
           }
         },
         {
-          "id": "lb146",
-          "funcId": "geo3d-label-sides@1",
+          "id": "lb222",
+          "funcId": "geo3d-show-arrow@2",
           "inputs": {
             "id": "tri",
-            "labels": "a=,b=,c="
+            "arrowId": "arr1",
+            "from": "E1",
+            "to": "V0",
+            "color": "cyan"
           }
         },
         {
-          "id": "lb147",
-          "funcId": "text-create@2",
+          "id": "lb223",
+          "funcId": "geo3d-highlight-angle@2",
+          "inputs": {
+            "id": "tri",
+            "angleIndex": "0",
+            "color": "cyan"
+          }
+        },
+        {
+          "id": "lb224",
+          "funcId": "geo3d-remove-arrow@3",
+          "inputs": {
+            "id": "tri",
+            "arrowId": "arr1"
+          }
+        },
+        {
+          "id": "lb225",
+          "funcId": "geo3d-clear-highlights@3",
+          "inputs": {
+            "id": "tri"
+          }
+        },
+        {
+          "id": "lb226",
+          "funcId": "text-create@3",
           "inputs": {
             "boxId": "sines",
             "title": "The Law of Sines",
             "content": "Every side, divided by the sine of the angle facing it, gives the same number:|$$\\dfrac{a}{\\sin A} = \\dfrac{b}{\\sin B} = \\dfrac{c}{\\sin C}$$|$$\\dfrac{5}{\\sin([tri]a2^\\circ)} = \\dfrac{7}{\\sin([tri]a0^\\circ)} = \\dfrac{9}{\\sin([tri]a1^\\circ)} = {{ 5/sin([tri]a2 deg) }}$$",
             "isList": "false"
           }
+        },
+        {
+          "id": "lb227",
+          "funcId": "geo3d-label-sides@3",
+          "inputs": {
+            "id": "tri",
+            "labels": "a,b,c"
+          }
+        },
+        {
+          "id": "lb228",
+          "funcId": "geo3d-mark-angle@3",
+          "inputs": {
+            "id": "tri",
+            "markId": "m1",
+            "from": "",
+            "vertex": "v0",
+            "to": "",
+            "color": "",
+            "label": "B",
+            "size": ""
+          }
+        },
+        {
+          "id": "lb229",
+          "funcId": "geo3d-mark-angle",
+          "inputs": {
+            "id": "tri",
+            "markId": "m2",
+            "from": "",
+            "vertex": "v2",
+            "to": "",
+            "color": "",
+            "label": "A",
+            "size": ""
+          }
+        },
+        {
+          "id": "lb230",
+          "funcId": "geo3d-mark-angle",
+          "inputs": {
+            "id": "tri",
+            "markId": "m3",
+            "from": "v1",
+            "vertex": "v1",
+            "to": "v2",
+            "color": "",
+            "label": "C",
+            "size": ""
+          }
         }
       ]
     },
     {
-      "title": "Find b: a=7, A=60°, B=45°",
-      "id": "lb148",
+      "title": "Find b: one side and two angles",
+      "id": "lb231",
       "layout": "geo-equation",
       "steps": [
         {
-          "id": "nr23316",
+          "id": "nr75320",
           "funcId": "narrate",
           "inputs": {
-            "text": "Here@1 two of the angles and one side are known, and the side facing the second angle is not. The@2 law of sines becomes a single equation for it: the known side times the sine of its facing angle, divided by the sine of the other. We@3 put the triangle's own numbers in and@4 solve it to find that side, which@5 then appears on the figure."
+            "text": "Here@1 two angles and one side are known, and the side facing the second angle is not. Each@2 side over the sine of the angle facing it gives the same number, and that equality is the law of sines. Once@3 the triangle's own numbers are in, we@4 solve it to find the missing side, and@5 its value lands on the figure."
           }
         },
         {
-          "id": "lb149",
+          "id": "nr75321",
           "funcId": "geo3d-create-2d",
           "inputs": {
             "id": "tri2",
@@ -1997,7 +2074,7 @@
           }
         },
         {
-          "id": "lb150",
+          "id": "nr75322",
           "funcId": "geo3d-set-view",
           "inputs": {
             "zoom": "1.5",
@@ -2005,49 +2082,87 @@
           }
         },
         {
-          "id": "lb151",
-          "funcId": "geo3d-show-angles@1",
+          "id": "nr75323",
+          "funcId": "geo3d-highlight-edge@1",
           "inputs": {
             "id": "tri2",
-            "color": "yellow"
+            "edgeIndex": "0",
+            "color": "cyan"
           }
         },
         {
-          "id": "lb152",
+          "id": "nr75324",
           "funcId": "geo3d-label-sides@1",
           "inputs": {
             "id": "tri2",
-            "labels": "a=,b=?,c="
+            "labels": "a=,b = ?,-"
           }
         },
         {
-          "id": "lb153",
+          "id": "nr75325",
+          "funcId": "geo3d-mark-angle@1",
+          "inputs": {
+            "id": "tri2",
+            "markId": "mA",
+            "from": "",
+            "vertex": "v2",
+            "to": "",
+            "color": "cyan",
+            "label": "A=",
+            "size": ""
+          }
+        },
+        {
+          "id": "nr75326",
+          "funcId": "geo3d-highlight-edge@1",
+          "inputs": {
+            "id": "tri2",
+            "edgeIndex": "1",
+            "color": "orange"
+          }
+        },
+        {
+          "id": "nr75327",
+          "funcId": "geo3d-mark-angle@1",
+          "inputs": {
+            "id": "tri2",
+            "markId": "mB",
+            "from": "",
+            "vertex": "v0",
+            "to": "",
+            "color": "orange",
+            "label": "B=",
+            "size": ""
+          }
+        },
+        {
+          "id": "nr75328",
           "funcId": "eq-create@2",
           "inputs": {
-            "eq": "b = |a| * sin(|B|) / sin(|A|)"
+            "eq": "b{orange} / sin(|B|{orange}) = |a|{cyan} / sin(|A|{cyan})"
           }
         },
         {
-          "id": "lb198",
+          "id": "nr75329",
           "funcId": "eq-replace-variable@3",
           "inputs": {
             "replacements": "a=2,b=-3,c=1",
             "var_a": "[tri2]0",
-            "var_B": "[tri2]a0",
-            "var_A": "[tri2]a2"
+            "var_A": "[tri2]a2",
+            "var_B": "[tri2]a0"
           }
         },
         {
-          "id": "lb154",
+          "id": "nr75330",
           "funcId": "eq-full-solve@4",
           "inputs": {}
         },
         {
-          "id": "lb155",
+          "id": "nr75331",
           "funcId": "geo3d-label-sides@5",
           "inputs": {
             "id": "tri2",
-            "labels": "a=,b=,c="
+            "labels": "a=,b=,-"
           }
         }
       ]

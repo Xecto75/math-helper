@@ -770,11 +770,17 @@ export async function labelSides3D(threeRef, id, customLabels = []) {
 
     const custom = newCustoms[i]
     const len    = parseFloat(Math.sqrt((x2-x1)**2 + (y2-y1)**2).toFixed(2))
-    const text   = custom === ''
-      ? String(len)
-      : custom.endsWith('=')
-        ? `${custom.slice(0, -1).trim()} = ${len}`
-        : custom
+    // "-" = leave this side unlabelled, the same thing it means on an angle
+    // mark. A figure often has a side that is none of the problem's business —
+    // the third side of a triangle solved from two angles — and an empty slot
+    // cannot say so: empty means "label it with its length".
+    const text   = custom === '-'
+      ? ''
+      : custom === ''
+        ? String(len)
+        : custom.endsWith('=')
+          ? `${custom.slice(0, -1).trim()} = ${len}`
+          : custom
 
     const edgeColor = entry.edgeColors?.[i] ?? '#a5b4fc'
     const fontSize  = Math.round(Math.max(14, Math.min(36, avgEdge * ppu * 0.16)))
@@ -793,14 +799,16 @@ export async function labelSides3D(threeRef, id, customLabels = []) {
     const offsetPx = halfW * Math.abs(nx) + halfH * Math.abs(ny) + 6
     const offset   = offsetPx / ppu
 
-    display.addLabel3D(
-      `sl_${id}_${i}`,
-      lx + gx + sign * nx * offset,
-      ly + gy + sign * ny * offset,
-      0.05,
-      text,
-      { color: edgeColor, fontSize, fadeIn: animMs(400) },
-    )
+    if (text) {
+      display.addLabel3D(
+        `sl_${id}_${i}`,
+        lx + gx + sign * nx * offset,
+        ly + gy + sign * ny * offset,
+        0.05,
+        text,
+        { color: edgeColor, fontSize, fadeIn: animMs(400) },
+      )
+    }
 
     if (!entry.storedLabels) entry.storedLabels = []
     entry.storedLabels[i] = custom
@@ -1595,7 +1603,11 @@ export function markAngle3D(threeRef, id, markId, fromRef, vertexRef, toRef, opt
 
   const growDur = animMs(360)
   const raw  = String(opts.label ?? '').trim()
-  const text = raw === '-' ? '' : (raw || `${+deg.toFixed(1)}°`)
+  // Blank = the measure, "-" = nothing, and "A=" = "A = 60°" — the name AND
+  // the measure, which is the shorthand a side label already takes.
+  const text = raw === '-' ? ''
+    : raw.endsWith('=') ? `${raw.slice(0, -1).trim()} = ${+deg.toFixed(1)}°`
+    : (raw || `${+deg.toFixed(1)}°`)
   const shapeGroup = display.getObject(id)
   const gx = shapeGroup?.position.x ?? 0, gy = shapeGroup?.position.y ?? 0
   const wedge = registerWedge(id, `m:${markId}`, {

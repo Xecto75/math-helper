@@ -122,6 +122,32 @@ n:[text] — the page's narration (see NARRATION). Exactly one per page, plain s
 
 sL:[mode] — change THIS page's panels mid-script ("0" → "03"). Shared panels resize smoothly,
   others fade. Same digits as the page field. Most pages need no sL.
+
+?:[question,kind,answers,correct] — a QUESTION PAGE. Its panels play as usual, then the question
+  waits underneath with its answer buttons and the page STOPS there until the reader answers.
+  One "?" per page, written last among that page's steps.
+    kind "choices4" — answers = the FOUR answers, comma-separated · correct = the right one's index, 0-3
+    kind "choices2" — answers = the TWO answers · correct = 0 or 1
+    kind "input"    — answers = the answer itself, which the reader types · no index
+      ["?","What is the slope of y = 2x + 1?","choices4","1,2,3,4",1]
+      ["?","Does y = 3x + 2 grow or shrink as x grows?","choices2","Grows,Shrinks",0]
+      ["?","Type the y coordinate of P.","input","5"]
+  A question page may have NO panel at all — write "" for its panels and the question stands on its
+  own. With panels, they must give the reader what is needed to answer: the line plotted, the shape
+  labelled with what is known, the table filled. Never the answer.
+  THE VOICE SETS THE TASK AND STOPS: what to read, what to decide. Never the answer, never a hint
+  that hands it over. "Read its equation in the question and pick the slope from the four answers."
+  Every NARRATION rule still holds — one n, markers on the setting-up.
+  The answer has to be RIGHT and checkable from the page: work it out before writing it. No commas
+  inside an answer, since the list is comma-separated.
+
+WHEN TO ASK — from the request itself:
+  asks for exercises ("des exercices", "donne moi des questions", "practice", "quiz") → the WHOLE
+    lesson is question pages, 3 to 5 of them, no theory pages: that is what was asked for. Vary the
+    kind (four choices, two choices, typed) and what each one is about.
+  says they cannot do it ("je comprends pas comment résoudre", "explain it then give me exercises")
+    → the theory first, pages as usual, then 1 or 2 question pages at the END, on that same thing.
+  anything else → no question page. A lesson nobody asked to be tested on is not improved by a quiz.
 `
 
 // ── LAYOUTS ───────────────────────────────────────────────────────────────────
@@ -756,6 +782,9 @@ no lesson of its own → areas or pythagoras (a shape, labelled and annotated). 
 correlation. Always something. A second or third is added only when it is related to the subject and
 shows part of what this lesson needs that the first does not; one that fits beats three that half-fit.
 If two fit, the one whose STRUCTURE matches goes first, not the one sharing a keyword.
+A request for EXERCISES, or one saying they cannot do it yet ("je comprends pas comment résoudre"),
+also gets quick-quiz — it is the only worked model of a question page, and without it the generator
+has never seen one. It goes last: the lesson is about the subject first, questions second.
 
 COVERAGE — judged on the TOPIC, separately from which example fits:
   IN  — arithmetic and fractions, order of operations, algebra (linear, quadratic, systems), plane
@@ -881,6 +910,11 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', references = null) 
     // The author notes in a reference lesson survive the pruning: they are the
     // explanation of the lesson the generator is being shown.
     '//',
+    // "?" is a page's question. Its doc line starts with a character the regex
+    // below cannot match, and without it here the pruning stripped the question
+    // out of every page of the quiz reference — leaving pages that ask nothing
+    // as the model of how to ask something.
+    '?',
     ...[...BASE_RULES.matchAll(/^([A-Za-z0-9]+):\[/gm)].map(m => m[1]),
     ...funcs.flatMap(([, f]) => [...String(f).matchAll(/^ {2}([A-Za-z0-9]+):/gm)].map(m => m[1])),
   ])
@@ -912,18 +946,17 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', references = null) 
     parts.push(
       `\n# REFERENCE LESSON\n` +
       `Verified, in the exact output format. Copy its structure/pacing/step use; ` +
-      `NOT its topic or numbers. It was written BEFORE the lesson had a voice, so it carries ` +
-      `no n step and leans on a text panel: add the narration the rules above require, and drop ` +
-      `the text the voice now says.\n` +
+      `NOT its topic or numbers. Its n step and its @N markers are the model for yours: where they ` +
+      `sit, how many, and how little the voice says — read them as closely as the steps.\n` +
       JSON.stringify(pruneToDocumented(refs[0], documented))
     )
   } else if (refs.length > 1) {
     parts.push(
       `\n# REFERENCE LESSONS\n` +
       `${refs.length} verified lessons related to this subject, the closest first, in the exact output ` +
-      `format. Copy their structure/pacing/step use; NOT their topics or numbers. They were ` +
-      `written BEFORE the lesson had a voice, so they carry no n step and lean on text panels: ` +
-      `add the narration the rules above require, and drop the text the voice now says.\n` +
+      `format. Copy their structure/pacing/step use; NOT their topics or numbers. Their n steps and ` +
+      `@N markers are the model for yours: where they sit, how many, and how little the voice says — ` +
+      `read them as closely as the steps.\n` +
       refs.map((r, i) => `## ${i + 1}\n` + JSON.stringify(pruneToDocumented(r, documented))).join('\n')
     )
   }
@@ -943,6 +976,11 @@ export function docForCode(code) {
     for (const line of String(funcs ?? '').split('\n')) {
       if (re.test(line)) return line.trim()
     }
+  }
+  // The codes every prompt carries — n, sL, "?" — live in BASE_RULES, not in a
+  // module, so a repair pass on one of those was sent out with no signature.
+  for (const line of BASE_RULES.split('\n')) {
+    if (re.test(line)) return line.trim()
   }
   return null
 }

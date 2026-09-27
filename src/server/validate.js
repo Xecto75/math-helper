@@ -233,6 +233,35 @@ export function repairLesson(compact) {
       const code = mark ? String(rawCode).slice(0, -mark.length) : String(rawCode)
       const where = { page: pi, step: si, code }
 
+      // "?" is the page's own question (see codec.js): it is written among the
+      // steps because that is the only list a compact page has, and the codec
+      // lifts it back out into the page's fields. Checked here, not looked up
+      // in FUNCS — there is no such function.
+      if (code === '?') {
+        const kind = String(rest[1] ?? '').trim()
+        if (!String(rest[0] ?? '').trim()) {
+          issues.push({ ...where, kind: 'quiz-no-question', message: 'the "?" step has no question text', fatal: true })
+        }
+        if (!['choices4', 'choices2', 'input'].includes(kind)) {
+          issues.push({ ...where, kind: 'quiz-kind', message: `"?" kind must be choices4, choices2 or input, not ${JSON.stringify(kind)}`, fatal: true })
+        } else if (kind === 'input') {
+          if (!String(rest[2] ?? '').trim()) {
+            issues.push({ ...where, kind: 'quiz-no-answer', message: 'a typed-answer question needs the answer as its 4th argument', fatal: true })
+          }
+        } else {
+          const choices = String(rest[2] ?? '').split(',').map(c => c.trim()).filter(Boolean)
+          const want = kind === 'choices2' ? 2 : 4
+          const idx = Number(rest[3])
+          if (choices.length !== want) {
+            issues.push({ ...where, kind: 'quiz-choices', message: `${kind} needs exactly ${want} answers, comma-separated — got ${choices.length}`, fatal: true })
+          }
+          if (!Number.isFinite(idx) || idx < 0 || idx >= choices.length) {
+            issues.push({ ...where, kind: 'quiz-correct', message: `the correct answer is its index in that list (0-${Math.max(0, choices.length - 1)}), got ${JSON.stringify(rest[3])}`, fatal: true })
+          }
+        }
+        return step
+      }
+
       // A note is for the EXAMPLES: the reader cannot see one, so a generated
       // one is only tokens. Dropped quietly rather than sent back for repair.
       if (code === '//') {

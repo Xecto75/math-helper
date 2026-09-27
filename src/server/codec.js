@@ -146,6 +146,46 @@ const CLR = ['red','purple','orange','green','yellow','pink','teal','white']
 // never write one, and anything it does write is dropped by the validator.
 const NOTE_CODE = '//'
 
+// ── Exercise pages ───────────────────────────────────────────────────────────
+// A question belongs to the PAGE, not to a step: the panels play as usual and
+// the question waits underneath with its answer buttons. Compact form has only
+// one list per page though, so it is written among the steps with its own code
+// and lifted back out into the page's own fields here.
+//   ["?","What is the slope?","choices4","1,2,3,4",1]
+//   ["?","Does it grow or shrink?","choices2","Grows,Shrinks",0]
+//   ["?","Type the y of P","input","5"]
+const QUIZ_CODE = '?'
+
+function exerciseFromVals(vals) {
+  const kind = String(vals[1] ?? '').trim()
+  const out = {
+    type: 'exercise',
+    question: String(vals[0] ?? '').trim(),
+    exerciseType: kind === 'input' || kind === 'choices2' ? kind : 'choices4',
+  }
+  const raw = String(vals[2] ?? '').trim()
+  if (out.exerciseType === 'input') {
+    out.answer = raw
+  } else {
+    out.choices = raw.split(',').map(c => c.trim()).filter(Boolean)
+    const want = out.exerciseType === 'choices2' ? 2 : 4
+    while (out.choices.length < want) out.choices.push('')
+    const idx = Number(vals[3])
+    out.correctChoice = Number.isFinite(idx) ? Math.max(0, Math.min(out.choices.length - 1, Math.trunc(idx))) : 0
+  }
+  return out
+}
+
+function exerciseToVals(pg) {
+  const kind = pg.exerciseType === 'input' || pg.exerciseType === 'choices2' ? pg.exerciseType : 'choices4'
+  return kind === 'input'
+    ? [QUIZ_CODE, pg.question ?? '', kind, String(pg.answer ?? '')]
+    : [QUIZ_CODE, pg.question ?? '', kind, (pg.choices ?? []).join(','), Number(pg.correctChoice) || 0]
+}
+
+const isQuizEntry = (s) =>
+  Array.isArray(s) && String(s[0] ?? '').replace(/@\d+$/, '') === QUIZ_CODE
+
 function expandStep([rawCode, ...vals]) {
   if (rawCode === NOTE_CODE) return { func: 'note', inputs: { text: String(vals[0] ?? '') } }
   // A step can carry a narration marker: "eD@2" is "divide both sides, and fire
@@ -175,11 +215,19 @@ function expandStep([rawCode, ...vals]) {
 }
 
 function expandCompact(compact) {
-  return compact.map(([title, layoutCode, steps]) => ({
-    title:  title ?? '',
-    layout: resolveLayout(layoutCode) ?? LAYOUTS[layoutCode] ?? layoutCode,
-    steps:  (steps ?? []).map(expandStep),
-  }))
+  return compact.map(([title, layoutCode, steps]) => {
+    const list = steps ?? []
+    const quiz = list.find(isQuizEntry)
+    const page = {
+      title:  title ?? '',
+      steps:  list.filter(s => !isQuizEntry(s)).map(expandStep),
+    }
+    // An exercise page may have no panel at all — a question on its own is a
+    // page — so an empty layout code stays absent rather than becoming null.
+    const layout = resolveLayout(layoutCode) ?? LAYOUTS[layoutCode] ?? layoutCode
+    if (layout) page.layout = layout
+    return quiz ? { ...page, ...exerciseFromVals(quiz.slice(1)) } : page
+  })
 }
 
 // ── Compact (inverse of expandCompact) ────────────────────────────────────────
@@ -226,11 +274,15 @@ function panelSpecFor(layout) {
 }
 
 function compactLesson(pages) {
-  return (pages ?? []).map(pg => [
-    pg.title ?? '',
-    panelSpecFor(pg.layout) ?? LAYOUTS_BY_ID[pg.layout] ?? pg.layout,
-    (pg.steps ?? []).map(compactStep).filter(Boolean),
-  ])
+  return (pages ?? []).map(pg => {
+    const steps = (pg.steps ?? []).map(compactStep).filter(Boolean)
+    if (pg.type === 'exercise') steps.push(exerciseToVals(pg))
+    return [
+      pg.title ?? '',
+      panelSpecFor(pg.layout) ?? LAYOUTS_BY_ID[pg.layout] ?? pg.layout ?? null,
+      steps,
+    ]
+  })
 }
 
 // ── JSON repair ───────────────────────────────────────────────────────────────
@@ -317,6 +369,7 @@ function parseCompact(rawText) {
 // Case matters: tc/ti/tf are text boxes, Tc/Ta/TR are the grid.
 function moduleForCode(code) {
   if (code === 'sL') return null                        // set-layout: always available
+  if (code === QUIZ_CODE) return null                   // the page's question, not a panel
   if (code === 'Mx' || code.startsWith('C')) return 'calc'   // calc lines, order of operations
   if (code.startsWith('S3')) return 'geo3d'
   if (code.startsWith('S2')) return 'geo2d'

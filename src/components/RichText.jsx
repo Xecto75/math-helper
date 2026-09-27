@@ -73,16 +73,31 @@ function FitKatex({ html, block }) {
       return cur
     }
     const fit = () => {
+      if (!el.isConnected) return
       el.style.zoom = 1
       const container = blockAncestor()
       if (!container) return
       const cs = getComputedStyle(container)
       const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
       const available = container.clientWidth - padX
-      const natural = el.scrollWidth
+      // DISPLAY math ($$…$$) renders as block boxes inside: they take the
+      // width they are given and their glyphs overflow from within, so the
+      // wrapper's own scrollWidth reports no overflow at all and a long
+      // chained equality spilled out of its text box unshrunk. Measured at
+      // width:max-content every box sizes to its content instead, which gives
+      // the real natural width for both $…$ and $$…$$.
+      const prevWidth = el.style.width
+      el.style.width = 'max-content'
+      const natural = Math.max(el.scrollWidth, el.offsetWidth)
+      el.style.width = prevWidth
       if (available > 0 && natural > available) el.style.zoom = Math.max(0.4, available / natural)
     }
     fit()
+    // KaTeX's own fonts may still be loading when the formula is first
+    // measured, and the glyphs they bring are wider than the fallback's — so
+    // a formula that fit at mount can overflow a moment later, and nothing
+    // was watching the CONTENT, only the container.
+    document.fonts?.ready?.then(fit).catch(() => {})
     const container = blockAncestor()
     if (!container) return
     const ro = new ResizeObserver(fit)

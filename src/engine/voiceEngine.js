@@ -139,14 +139,22 @@ export async function start(inputs, { lang = 'en', voice = null, signal = null, 
 
   // Only markers still AHEAD are scheduled; one already passed is left alone
   // rather than fired late, which is what keeps a resume from repeating itself.
+  //
+  // AHEAD includes NOW, and that matters more than it looks: a marker written
+  // on the very first word of the narration — which is where a marker belongs,
+  // right at the start of the phrase that describes the thing — sits at 0.000s,
+  // and the schedule starts from 0 too. Skipping "at <= fromSec" dropped it
+  // outright, so on every page whose first word carries @1 that step simply
+  // never ran once a voice was playing. It only ever worked without one, where
+  // the silent fallback fires every marker itself.
   s.scheduleFrom = (fromSec) => {
     s.clearTimers()
     for (const [n, at] of s.pending()) {
-      if (at <= fromSec) continue
+      if (at < fromSec) continue
       const id = setTimeout(() => {
         if (s.paused || fastMode || s.over) return
         s.fireMark(n)
-      }, (at - fromSec) * 1000)
+      }, Math.max(0, (at - fromSec) * 1000))
       s.timers.push(id)
     }
   }

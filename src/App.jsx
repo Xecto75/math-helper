@@ -132,7 +132,20 @@ function pagesFromJson(jsonStr) {
   return arr.map(p => ({
     id:     appUid(),
     title:  p.title  ?? '',
-    layout: p.layout ?? 'single-graph',
+    // An exercise page may have no panel at all — a question on its own is a
+    // page — so it is not given one here.
+    layout: p.layout ?? (p.type === 'exercise' ? null : 'single-graph'),
+    // A generated page can BE a question (see codec.js). Rebuilding a page
+    // field by field dropped all of this, so a lesson of exercises arrived as
+    // a lesson of ordinary pages and nothing ever asked anything.
+    ...(p.type === 'exercise' ? {
+      type:          'exercise',
+      question:      p.question ?? '',
+      exerciseType:  p.exerciseType ?? 'choices4',
+      choices:       p.choices ?? ['', '', '', ''],
+      correctChoice: p.correctChoice ?? 0,
+      answer:        p.answer ?? '',
+    } : {}),
     steps:  (p.steps ?? []).map(s => {
       // A step id may carry a narration marker ("eq-divide@2"); the defaults
       // belong to the function, not to the marker.
@@ -1383,9 +1396,12 @@ export default function App() {
     try {
       const { lesson: raw, lang: lessonLang } = await generateLesson(trimmed, langRef.current)
       const loaded = pagesFromJson(raw)
-      const draft  = loaded.map(p => ({
-        title: p.title, layout: p.layout,
-        steps: p.steps.map(s => ({ funcId: s.funcId, inputs: s.inputs })),
+      // The Builder's draft is this same lesson: a question page has to reach it
+      // as a question page, or opening the Builder on a generated quiz turns
+      // every page back into an ordinary one.
+      const draft  = loaded.map(({ id, steps, ...page }) => ({
+        ...page,
+        steps: steps.map(s => ({ funcId: s.funcId, inputs: s.inputs })),
       }))
       localStorage.setItem('math-engine-draft', JSON.stringify(draft))
       // That was the free one. Remember it, so the next prompt meets the sheet

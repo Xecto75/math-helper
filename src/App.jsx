@@ -1551,8 +1551,13 @@ export default function App() {
     // 6px of slack: a hand never holds perfectly still on a click.
     if (from && Math.hypot(e.clientX - from.x, e.clientY - from.y) > 6) return
     if (e.target.closest('button, input, textarea, select, a, [role="button"], .desmos-container, .slider-panel')) return
+    // A question page is not a slide. A click on the picture may hurry what is
+    // still playing — the same thing it does everywhere else — but it must not
+    // carry the reader past a question they have not answered. Leaving one
+    // unanswered stays possible, and stays deliberate: that is the › button.
+    if (exercise && !running) return
     handleLessonNav(1)
-  }, [lessonPages, handleLessonNav])
+  }, [lessonPages, handleLessonNav, exercise, running])
 
   const handleReplay = useCallback(() => {
     const seg = lessonPages ? lessonPages[lessonPageIdx] : null

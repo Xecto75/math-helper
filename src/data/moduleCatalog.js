@@ -440,15 +440,32 @@ S2l blank=auto lengths; literal text only for unknowns ("c = ?"). S2a=all arcs, 
 angle value in text = {{ [id]aN }}°. S2w anchors: "v0","v1"…=vertices, "e0","e1"…=edge midpoints;
 arrowId unique per shape; use it for relationships (v2 is opposite e0 in a right-triangle).
 
+A FIGURE OF SEVERAL TRIANGLES IS NOT SEVERAL SHAPES. "Three right triangles stuck together", a
+triangle split by a line from a vertex, two triangles sharing a side: that is ONE outer shape plus
+the lines drawn INSIDE it, snapped on with S2s. This is the ordinary textbook figure and it is
+fully buildable — do not fall back to one lonely triangle per page, and do not try to place a
+second shape by coordinates. EVERY shape is re-centred on its own centre of gravity (S2c AND S2p),
+so two of them never touch however their corners were typed: coordinates that look adjacent give
+two floating triangles.
+
 SNAPPING (S2s) — the ONLY way to draw a figure whose parts touch: a triangle cut by a line parallel
-to one side, a median, a segment along part of an edge. S2c always CENTRES what it builds, so two
-S2c shapes can never meet. S2s takes its corners from a shape that already exists:
+to one side, a median, a cevian, a segment along part of an edge. S2s takes its corners from a
+shape that already exists:
   vN     = corner N        eN@0.4 = 40% along edge N        eN:7.2 = 7.2 units along edge N
   Edge N runs from corner N to corner N+1. Prefer eN:distance — the problem hands you lengths, not
   fractions, and the figure then measures EXACTLY right ([id]N comes back as the true length).
-  A snapped shape is an ordinary shape: S2l/S2a/S2n/S2E/[id]N all work on it.
+  A snapped shape is an ordinary shape: S2l/S2a/S2n/S2E/S2Ma/S2tk/[id]N all work on it.
   Triangle ABC cut at D on BC and E on CA, small triangle CDE:
     S2c big triangle AB,BC,CA  then  S2s small big "v2,e1:BD,e2:CE"   (v2=C, then D, then E)
+  Triangle NMQ with P on NQ and the segment MP drawn in — the figure half of every "find the
+  missing angle/side across two triangles" problem, and the whole pattern in four steps:
+    ["S2c","nmq","triangle","9","5","6"]            the outer triangle, N=v0 Q=v1 M=v2
+    ["S2s","mp","nmq","v2,e0:4"]                    MP: two anchors = a SEGMENT, P is 4 along NQ
+    ["S2tk","nmq","0","1"] ["S2tk","mp","0","1"]    one tick on each of an equal pair
+    ["S2Ma","nmq","aQ","","v1","",4,""]             the known angle at Q, its measure written
+  Each sub-triangle is then worked inside that same figure: S2E/S2A/S2Ma highlight the parts of it
+  the page is about, and the equation panel does the arithmetic beside it. The figure is built ONCE,
+  on the first page, and every later page adds to it — never a new drawing per page.
 
 NAMING (S2n) — letters go on the CORNERS, lengths on the SIDES (S2l). Where two shapes share a
 corner, name it on ONE of them and put "-" in the other, or the letter is drawn twice on itself.
@@ -461,9 +478,12 @@ A coloured edge or angle REQUIRES whatever refers to it to carry the same colour
   S2c:[id,type,a,b,c,color]            — create flat 2D shape. a/b/c are SEPARATE
                                                           numeric args (not one "6,4" string) and
                                                           there is ONE color. Flip/rotate are S2f/S2r.
-  S2p:[shapeId,points,color,fill]      — polygon from its CORNERS: "x,y;x,y;…" in
+  S2p:[shapeId,points,color,fill]      — ONE polygon from its CORNERS: "x,y;x,y;…" in
                                                           order, not closed. For the figure a problem
-                                                          draws when it is nobody's named shape.
+                                                          draws when it is nobody's named shape. It is
+                                                          re-centred like every shape, so a SECOND S2p
+                                                          never touches the first — parts that meet are
+                                                          one S2p plus S2s (see SNAPPING).
                                      fill "no" = outline only, nothing tinting the inside
   S2s:[shapeId,parentId,anchors,color] — NEW shape whose corners sit ON an existing
                                                           one. anchors = ONE comma string; 2 = segment,

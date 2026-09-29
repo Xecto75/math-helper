@@ -1284,6 +1284,46 @@ export const EXAMPLE_LESSONS = [
     ],
   },
   {
+    id: 'angle-chase',
+    emoji: '🧩',
+    title: 'Angle Chase — Three Equal Segments',
+    desc: 'Three equal segments cutting a triangle into two isosceles ones: the given angle read live off the figure, the unknown angle marked with a question mark, then the angle chase written as ONE equation — the unknown twice plus the angle at P, that angle computed from the straight line, the sum combined, sent across and divided, and the answer written back onto the figure',
+    color: '#fbbf24',
+    pages: [
+      {
+        id: u(), title: 'Find the angle at the top', layout: 'geo-equation',
+        steps: [
+          { id: u(), funcId: 'narrate', inputs: { text: 'Three@1 equal segments cut this triangle into two isosceles ones, and only@2 one angle is given. The@3 angle we are after is the one at the top, between the long side and the cut. Each@4 isosceles triangle has two equal angles, so in the small one the unknown appears twice, and the three of them add up to a hundred and eighty. The@5 angle at P is what is left of a straight line once the given angle is taken off, and the sum is then solved for the angle we want.' } },
+          // ONE figure: the outer triangle, then the two cuts snapped onto it. N=v0, Q=v1, M=v2,
+          // and P sits 3 along NQ — the sides are what make NP = PM = MQ and the angle at Q 35°.
+          { id: u(), funcId: 'geo3d-create-2d', inputs: { id: 'nmq', type: 'triangle', a: '7.9149122657', b: '3', c: '5.7223017045', color: 'blue' } },
+          { id: u(), funcId: 'geo3d-set-view', inputs: { zoom: '3', duration: '0.3' } },
+          { id: u(), funcId: 'geo3d-name-vertices', inputs: { shapeId: 'nmq', names: 'N,Q,M' } },
+          { id: u(), funcId: 'geo3d-snap-shape', inputs: { shapeId: 'np', parentId: 'nmq', anchors: 'v0,e0:3', color: 'green' } },
+          { id: u(), funcId: 'geo3d-snap-shape', inputs: { shapeId: 'mp', parentId: 'nmq', anchors: 'v2,e0:3', color: 'green' } },
+          { id: u(), funcId: 'geo3d-show-tick@1', inputs: { id: 'np', edgeIndex: '0', ticks: '1', color: 'green' } },
+          { id: u(), funcId: 'geo3d-show-tick@1', inputs: { id: 'mp', edgeIndex: '0', ticks: '1', color: 'green' } },
+          { id: u(), funcId: 'geo3d-show-tick@1', inputs: { id: 'nmq', edgeIndex: '1', ticks: '1', color: 'green' } },
+          // The given angle: a blank label writes the figure's OWN measure, never a typed number.
+          { id: u(), funcId: 'geo3d-mark-angle@2', inputs: { id: 'nmq', markId: 'aQ', from: '', vertex: 'v1', to: '', color: 'yellow', label: '', size: '' } },
+          // The unknown: the angle at M between MN and the cut MP — "?" until the equation finds it.
+          { id: u(), funcId: 'geo3d-mark-angle@3', inputs: { id: 'nmq', markId: 'aM', from: 'v0', vertex: 'v2', to: 'e0:3', color: 'orange', label: '-', size: '' } },
+          // The chase as ONE equation: the unknown twice (the isosceles pair) plus the angle at P.
+          { id: u(), funcId: 'cmt-geo@3', inputs: { cmtId: 'found', text: '?', shapeId: 'nmq', vertexIndex: '2', color: 'orange' } },
+          { id: u(), funcId: 'eq-create@4', inputs: { eq: 'x{orange} + x{orange} + 180 - |Q|{yellow} = 180' } },
+          // The angle at Q comes off the FIGURE, never typed — so the panel shows the straight
+          // line being spent (180 minus the given angle) instead of a number nobody saw arrive.
+          { id: u(), funcId: 'eq-replace-variable@5', inputs: { replacements: '', var_Q: '[nmq]a1' } },
+          { id: u(), funcId: 'eq-combine', inputs: {} },
+          { id: u(), funcId: 'eq-send-other-side', inputs: { term: '' } },
+          { id: u(), funcId: 'eq-divide', inputs: { divisor: '' } },
+          // cmt-update is what resolves [eq-result]; the comment above is what it updates.
+          { id: u(), funcId: 'cmt-update', inputs: { cmtId: 'found', text: '[eq-result]°', color: 'orange' } },
+        ],
+      },
+    ],
+  },
+  {
     id: 'metric-relations',
     emoji: '🔺',
     title: 'Metric Relations and the Law of Cosines',

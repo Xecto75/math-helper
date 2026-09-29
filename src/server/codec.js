@@ -288,6 +288,15 @@ function compactLesson(pages) {
 // ── JSON repair ───────────────────────────────────────────────────────────────
 // Repair lone backslashes that the model forgot to double.
 function repairBackslashes(raw) {
+  // An argument written in ESCAPED quotes — ,\"steps\"] — where a plain
+  // string belongs. It is valid inside a string and meaningless in a value slot, and it
+  // threw a whole lesson away over two characters: the model had built the figure right
+  // and the parse died on the last page's isList. Only a quote that FOLLOWS a comma or a
+  // bracket and is FOLLOWED by one is touched, so an escaped quote inside a text box's
+  // own content is left alone.
+  raw = String(raw).replace(
+    /([[,]\s*)\\"([^"\\]*)\\"(\s*[\],])/g,
+    '$1"$2"$3')
   const PH = '\x00'
   let s = raw
   s = s.replace(/\\\\/g, PH)

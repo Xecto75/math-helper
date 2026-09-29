@@ -93,6 +93,18 @@ function markerTimes(marks, words) {
 let current = null
 let fastMode = false
 
+// The voice reads a shade slower than the provider's own default. A lesson is
+// FOLLOWED, not listened to: the reader is watching a figure being built while
+// the words explain it, and a tenth off the pace is the difference between
+// keeping up and going back. Pitch is preserved by the browser, so it is the
+// same voice, just less hurried.
+//
+// It applies to the audio AND to every marker's delay: the word timings the
+// provider returns are positions in the RECORDING, and at 0.9 they arrive
+// later in real time by exactly that factor. Slowing one without the other is
+// what would pull the words and the picture apart.
+const RATE = 0.9
+
 // ── The session ───────────────────────────────────────────────────────────────
 
 export async function start(inputs, { lang = 'en', voice = null, signal = null, fire = () => {}, fromMarker = null } = {}) {
@@ -112,6 +124,10 @@ export async function start(inputs, { lang = 'en', voice = null, signal = null, 
   const words = prepared.data.words ?? []
   const audio = new Audio(apiUrl(prepared.data.url))
   audio.preload = 'auto'
+  audio.playbackRate = RATE
+  // Chrome/Safari keep the pitch by default and Firefox needs asking; without
+  // it a slower rate sounds like a different, deeper voice.
+  audio.preservesPitch = true
 
   const s = {
     audio, signal, fire,
@@ -128,7 +144,7 @@ export async function start(inputs, { lang = 'en', voice = null, signal = null, 
   s.done = new Promise(r => { s.finish = r })
   current = s
 
-  s.now = () => (s.silent ? Math.max(0, ((s.stoppedAt ?? performance.now()) - s.t0) / 1000) : audio.currentTime)
+  s.now = () => (s.silent ? Math.max(0, ((s.stoppedAt ?? performance.now()) - s.t0) * RATE / 1000) : audio.currentTime)
   s.clearTimers = () => { s.timers.forEach(clearTimeout); s.timers = [] }
   s.fireMark = (n) => {
     if (s.fired.has(n)) return
@@ -154,7 +170,7 @@ export async function start(inputs, { lang = 'en', voice = null, signal = null, 
       const id = setTimeout(() => {
         if (s.paused || fastMode || s.over) return
         s.fireMark(n)
-      }, Math.max(0, (at - fromSec) * 1000))
+      }, Math.max(0, ((at - fromSec) * 1000) / RATE))
       s.timers.push(id)
     }
   }
@@ -163,7 +179,7 @@ export async function start(inputs, { lang = 'en', voice = null, signal = null, 
     // Our own pause() cutting off a play() that had not started is not a failure.
     if (e?.name === 'AbortError' || s.silent) return
     s.silent = true
-    s.t0 = performance.now() - (audio.currentTime || 0) * 1000
+    s.t0 = performance.now() - ((audio.currentTime || 0) * 1000) / RATE
     if (s.paused || fastMode) s.stoppedAt = performance.now()
   }
   s.playAudio = () => {
@@ -176,7 +192,7 @@ export async function start(inputs, { lang = 'en', voice = null, signal = null, 
   }
   s.seek = (sec) => {
     if (!s.silent) audio.currentTime = sec
-    else s.t0 = performance.now() - sec * 1000
+    else s.t0 = performance.now() - (sec * 1000) / RATE
   }
   s.finishUp = () => {
     if (s.over) return

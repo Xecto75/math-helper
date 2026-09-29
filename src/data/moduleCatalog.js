@@ -930,8 +930,12 @@ export function buildGeneratorPrompt(moduleIds, lang = 'en', references = null) 
     : LANG_NAMES[lang] ?? 'English'
   parts.push(
     `\n# LANGUAGE\n` +
-    `Learner-visible strings (page titles, panel titles and content, comment text) in ${langName}. ` +
-    `Never translate structure: func/layout codes, ids, colour names, math notation.`
+    `EVERY string a learner reads or HEARS is in ${langName}: the narration n first of all — it is ` +
+    `the lesson now, and a page that speaks English over a French lesson is the one thing nobody ` +
+    `can ignore — then page titles, panel titles and content, comment text, annotation notes, ` +
+    `question text and its answers. Write the maths the way it is SAID in that language too ` +
+    `("douze x plus cinq", "x au carré"). Never translate structure: func/layout codes, ids, ` +
+    `colour names, math notation.`
   )
 
   // The router picked 1 to 3 hand-built lessons, closest first; show them in

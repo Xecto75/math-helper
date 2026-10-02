@@ -1243,10 +1243,12 @@ export const CATEGORIES = [
       {
         id: 'narrate', label: 'Narration', status: 'ready',
         useAll: true,
-        description: 'What the voice says on this page — one per page, and the page is paced by it. Write @1, @2 … at the START of the phrase that describes what appears, right after its first word or two — never at the end of that phrase, or the animation only starts once the voice has finished describing it and moved on. So: every step whose id ends in that marker (e.g. "eq-divide@2") fires the moment the voice reaches that word, and several steps may share one marker. Steps with no marker run as the page opens. An animation a marker fires must be short and must not block — under about 400ms — because the voice does not wait for it. Plain speech only: no LaTeX, no markup, and write symbols as they are said ("x squared", "minus five").',
+        description: 'What the voice says, and what paces the page. A page may hold SEVERAL narrations: each one speaks, the steps its own markers name play, and only once all of that is finished does the next one start — so two of them must not use the same marker number, or the second fires the first one\u2019s steps again. Write @1, @2 … at the START of the phrase that describes what appears, right after its first word or two — never at the end of that phrase, or the animation only starts once the voice has finished describing it and moved on. So: every step whose id ends in that marker (e.g. "eq-divide@2") fires the moment the voice reaches that word, and several steps may share one marker. Steps with no marker run as the page opens. An animation a marker fires must be short and must not block — under about 400ms — because the voice does not wait for it. Plain speech only: no LaTeX, no markup, and write symbols as they are said ("x squared", "minus five").',
         inputs: [
           { id: 'text', label: 'What the voice says', type: 'textarea',
             default: '', placeholder: 'The five@1 moves to the other side, then both sides are divided@2 by twelve.' },
+          { id: 'gap', label: 'Wait before this one (s)', type: 'text',
+            default: '', placeholder: 'blank = 0.6 \u2014 only used after another narration' },
         ],
       },
       {

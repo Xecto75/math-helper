@@ -169,6 +169,15 @@ const NARRATION_FUNCS = new Set(['narrate', 'n', 'voice-say'])
 // and in the Builder; on screen it is nothing at all.
 const isNoteStep = (funcId) => baseFuncId(funcId) === 'note'
 
+// The breath between one narration and the next on the same page, in seconds.
+// A page that speaks twice should not start its second sentence on the last
+// syllable of the first; the step's own "gap" field overrides it.
+const NARRATION_GAP = 0.6
+const narrationGap = (step) => {
+  const v = Number(step?.inputs?.gap)
+  return Number.isFinite(v) && v >= 0 ? v : NARRATION_GAP
+}
+
 // How far apart steps that share one marker are let go, in ms.
 const MARK_STAGGER = 200
 const baseFuncId = (funcId) => String(funcId ?? '').replace(/@\d+$/, '')
@@ -1165,9 +1174,11 @@ export default function App() {
       // The words go on screen whether or not there is a voice to say them:
       // markers are for the animation, so they are stripped out first.
       setNarrationText(narration ? voiceEngine.parseMarkers(narration.inputs?.text).text : '')
-      if (narration) {
-        voiceEngine.prepare(narration.inputs?.text, { lang: narration.inputs?.lang || voiceLang, voice: narration.inputs?.voice || null }).catch(() => {})
-      }
+      // Every sentence of the page is fetched now, while the first steps play —
+      // including a second narration, so its turn does not begin with a wait.
+      pg.steps.filter(st => isNarrationStep(st.funcId)).forEach(st => {
+        voiceEngine.prepare(st.inputs?.text, { lang: st.inputs?.lang || voiceLang, voice: st.inputs?.voice || null }).catch(() => {})
+      })
       // Which steps a narration marker fires. "@2" on a step (its own field or
       // the end of its funcId) means "fire when the voice reaches @2"; several
       // steps may share one marker and then fire together.
@@ -1244,32 +1255,83 @@ export default function App() {
           Promise.allSettled(runs).then(() => slotFor(n).resolve())
         }
 
-        // The narration is a step like any other: it starts WHERE IT IS WRITTEN.
-        // Written first — which is where it belongs — the voice opens the page and
-        // the setting-up plays while it talks. Started rather than awaited: the
-        // audio has to be fetched the first time a sentence is used, and the page
-        // should not sit still while that happens.
-        let voicing = null
-        const startVoice = () => {
-          if (voicing || signal.cancelled) return
-          voicing = voiceEngine.start(narration.inputs, {
-            lang: voiceLang, signal, fromMarker, fire: fireMarker,
-          }).then(session => {
-            // No voice — switched off, none for this language, offline, out of
-            // quota. Nothing will ever reach a marker, so each marker's steps go
-            // off in turn, one group after the previous has finished: the lesson
-            // is silent, never empty, and still in order.
-            if (!session) {
-              void (async () => {
-                for (const n of [...marked.keys()].sort((a, b) => a - b)) {
-                  if (signal.cancelled) break
-                  fireMarker(n)
-                  await slotFor(n).done
-                }
-              })()
+        // A narration is a step like any other: it starts WHERE IT IS WRITTEN,
+        // and the setting-up plays while it talks. A page may hold SEVERAL, one
+        // after another — the voice says its piece, the steps its own markers
+        // name play, and only when all of that is done (plus a breath) does the
+        // next one begin. Each narration fires ONLY the markers its own text
+        // says, so two of them on one page must not reuse a number.
+        const narrations = []
+        pg.steps.forEach((st, si) => { if (isNarrationStep(st.funcId)) narrations.push({ st, si }) })
+        let nextNarr = 0
+        let live = null          // the narration speaking right now
+
+        // With no voice nothing ever reaches a marker, so they are fired here
+        // instead: in order, each group once the previous has finished — silent,
+        // never empty. It waits to be ASKED, though. Fired the moment the fetch
+        // failed, it overtook the page's own opening steps, and the first marked
+        // step landed before the shape it was labelling — then the shape's own
+        // label overwrote it.
+        const silentRun = (marks) => {
+          void (async () => {
+            for (const n of marks) {
+              if (signal.cancelled) break
+              fireMarker(n)
+              await slotFor(n).done
             }
-            return session
+          })()
+        }
+
+        const startNext = () => {
+          if (nextNarr >= narrations.length || signal.cancelled) return
+          const { st } = narrations[nextNarr]
+          const first = nextNarr === 0
+          nextNarr += 1
+          const { text, marks } = voiceEngine.parseMarkers(st.inputs?.text)
+          const mine = [...marks.keys()].sort((a, b) => a - b)
+          setNarrationText(text)
+          let asked = false
+          const session = voiceEngine.start(st.inputs, {
+            lang: st.inputs?.lang || voiceLang, signal, fire: fireMarker,
+            fromMarker: first ? fromMarker : null,
           })
+          live = {
+            ask: () => { if (!asked) { asked = true; session.then(s => { if (!s) silentRun(mine) }) } },
+            done: async () => {
+              await session
+              await voiceEngine.finished()
+              await Promise.all(mine.map(n => slotFor(n).done))
+            },
+          }
+        }
+
+        // Everything the voice still speaking set off has to be finished, and
+        // said, before the next voice starts.
+        const finishLive = async () => {
+          if (!live) return
+          const l = live
+          l.ask()
+          await l.done()
+          live = null
+        }
+
+        // The page's own setting-up: every step before the first marked one.
+        // It plays while the first voice talks, and it has to be on screen
+        // before any marker fires — a page written "both narrations first" has
+        // its shape created after them, and with no voice to wait for the first
+        // narration ends at once, so its labels would land on an empty panel
+        // and the shape's own labels would then overwrite them.
+        const ran = new Set()
+        const setUpPage = async () => {
+          for (let j = 0; j < pg.steps.length; j++) {
+            const st = pg.steps[j]
+            if (isNarrationStep(st.funcId)) continue
+            if (stepMarker(st)) break
+            if (ran.has(j)) continue
+            ran.add(j)
+            await runStepAt(j)
+            if (signal.cancelled || signal.pausePending) return
+          }
         }
 
         // Walking the page in order: a marked step is left to its word, and a
@@ -1280,22 +1342,42 @@ export default function App() {
         for (let si = 0; si < pg.steps.length; si++) {
           if (signal.cancelled || signal.pausePending) break
           const st = pg.steps[si]
-          if (isNarrationStep(st.funcId)) { startVoice(); continue }
+          if (isNarrationStep(st.funcId)) {
+            if (live) {
+              await setUpPage()
+              if (signal.cancelled || signal.pausePending) break
+              await finishLive()
+              if (signal.cancelled || signal.pausePending) break
+              const gap = narrationGap(st) / speed
+              if (gap > 0) await new Promise(r => setTimeout(r, gap * 1000))
+              if (signal.cancelled || signal.pausePending) break
+            }
+            startNext()
+            continue
+          }
           const n = stepMarker(st)
           if (n) { after.push(n); continue }
+          if (ran.has(si)) continue
           if (after.length) {
-            // Waiting on a marker needs the voice to be running to reach it.
-            startVoice()
+            // Waiting on a marker needs a voice running to reach it — the page
+            // may have been written with its steps before its narration.
+            if (!live) startNext()
+            live?.ask()
             const chain = after.map(m => slotFor(m).done)
             after = []
             await Promise.all(chain)
             if (signal.cancelled || signal.pausePending) break
           }
+          ran.add(si)
           await runStepAt(si)
         }
-        // A narration written after the steps it paces still has to start.
-        startVoice()
-        await voicing
+        // A narration written after the steps it paces still has to start, and
+        // every one of them has to finish before the beat is over.
+        while (!signal.cancelled && (live || nextNarr < narrations.length)) {
+          if (!live) startNext()
+          await setUpPage()
+          await finishLive()
+        }
       } else {
         for (let si = startFromStep; si < pg.steps.length; si++) {
           if (signal.cancelled) break

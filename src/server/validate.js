@@ -381,15 +381,30 @@ export function repairLesson(compact) {
     let liveSteps = outSteps
     if (!narrAt.length) {
       issues.push({ page: pi, kind: 'missing-narration',
-        message: 'no n step: every page needs exactly one narration, and its @N markers are what fire the steps that carry them' })
-    } else if (narrAt.length > 1) {
-      // Two voices on one page would talk over each other; the first is kept.
-      const drop = new Set(narrAt.slice(1))
-      liveSteps = outSteps.filter((_, si) => !drop.has(si))
-      fixed.push(`p${pi}: ${narrAt.length} narrations on one page — kept the first, dropped ${narrAt.length - 1}`)
+        message: 'no n step: every page is paced by its narration, and its @N markers are what fire the steps that carry them' })
     }
 
-    const narrText = String(liveSteps.find(st => bare(st[0]) === 'n')?.[1] ?? '')
+    // SEVERAL narrations on one page are played one after another: each one
+    // speaks, the steps its own markers name play, and only then does the next
+    // begin. They do not talk over each other — but a number said by two of
+    // them would fire the same steps twice, which nothing can repair.
+    const saidBy = new Map()
+    narrAt.forEach(si => {
+      for (const m of String(outSteps[si]?.[1] ?? '').matchAll(/@(\d+)/g)) {
+        if (!saidBy.has(m[1])) saidBy.set(m[1], [])
+        if (!saidBy.get(m[1]).includes(si)) saidBy.get(m[1]).push(si)
+      }
+    })
+    for (const [n, where] of saidBy) {
+      if (where.length > 1) {
+        issues.push({ page: pi, kind: 'marker-said-twice',
+          message: `@${n} is said by ${where.length} of this page's narrations — a marker belongs to one voice, or its steps fire again on the second. Renumber one of them.` })
+      }
+    }
+
+    // Every sentence of the page, so a marker said by the second one counts as
+    // said and a value spoken in it is caught like any other.
+    const narrText = narrAt.map(si => String(outSteps[si]?.[1] ?? '')).join(' ')
     // The voice is theoretical: it never states a value the panels work out.
     // A live value or a piece of arithmetic in the narration is both a broken
     // sentence (the voice would read the token aloud) and a number that can

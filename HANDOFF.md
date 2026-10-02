@@ -247,6 +247,156 @@ Appui long (2s) sur une carte Examples (pas un clic — ne doit jamais entrer en
 
 ---
 
+## Session 2026-09-23 → 10-02 — LA NARRATION EST LE PRODUIT MAINTENANT (lire en premier)
+
+L'app a changé de nature pendant cette session : **chaque page parle**, et la voix est l'horloge de la page.
+L'utilisateur a dit « on fait le switch, la narration est un point très important pour que l'application
+fonctionne, ignore les anciennes consignes » — donc le texte à l'écran est devenu RARE (une formule, une
+règle, une valeur qui doit rester ; jamais un paragraphe que la voix redit).
+
+### Comment une page narrée joue (App.jsx, `buildPage`)
+- Une étape `narrate` porte le texte. `@1` … `@10` écrits DANS ce texte déclenchent les étapes dont le
+  funcId finit par le même marqueur (`eq-divide@2`). Le marqueur se déclenche au **début du mot qui le
+  précède**.
+- **Le marqueur va au DÉBUT de la phrase qui décrit la chose**, jamais à la fin : une anim prend une
+  seconde, donc un marqueur en fin de phrase démarre l'image quand la voix est déjà passée à autre chose.
+  61 des 78 pages ont leur premier marqueur sur le premier mot — et ça ne marchait pas, voir la régression
+  plus bas.
+- Plusieurs étapes peuvent partager un marqueur : elles partent dans l'ordre d'écriture, 200 ms d'écart
+  (`MARK_STAGGER`). Un `@1` écrit deux fois dans le texte : la PREMIÈRE position compte.
+- Une étape SANS marqueur écrite avant le premier marqueur joue à l'ouverture de la page (le décor) ;
+  écrite APRÈS des étapes marquées, elle attend que la dernière d'entre elles soit visuellement finie.
+- **La voix ne dit JAMAIS un résultat calculé** (règle explicite, non négociable) : pas de `{{ }}`, pas de
+  `[id]token`, pas de `[eq-result]` dans `n`. La narration est théorique, les panneaux font l'arithmétique.
+  Le validateur refuse une narration qui en contient un.
+- **Plusieurs narrations par page** (2026-10-02) : chacune parle, les étapes de SES marqueurs jouent, et la
+  suivante ne démarre qu'ensuite, après un souffle réglable (champ « Wait before this one », défaut 0,6 s).
+  Deux narrations ne doivent pas réutiliser un numéro de marqueur — le validateur le refuse. Et la page
+  monte son décor AVANT la deuxième voix (sinon, sans audio, la première finit instantanément et ses
+  étiquettes tombent sur un panneau vide).
+
+### La voix (Speechify) — et l'argent
+- `src/server/tts.js` : `POST /v1/audio/speech`, mp3 + `speech_marks` (timings de chaque mot, en
+  millisecondes malgré la doc). Cache **permanent** par phrase : `cache/tts/<sha256>.mp3|.json` — une
+  phrase est payée UNE fois. Journal de dépense : `logs/tts-YYYY-MM-DD.txt`, une ligne par synthèse réelle.
+- `.env` : `TTS_ENABLED=1`, `TTS_LOCAL_OPEN=1` (jamais sur Render), `TTS_DAILY_CHAR_LIMIT=50000`
+  (monté de 3000 le 2026-09-25 à sa demande), `TTS_VOICE_EN=monica`, `TTS_VOICE_FR=adeline`.
+  **Le serveur lit `.env` au démarrage** : après un changement, il FAUT redémarrer `node server.js`,
+  sinon l'ancien plafond s'applique et les phrases neuves sont refusées en 429 → page muette.
+- 🔴 **Le plafond est pour SES tests, pas les miens.** Ne jamais synthétiser un lot (« je joue les 31
+  exemples pour vérifier »), même une seule page, sans demander. Pour tester une page narrée : bloquer
+  `/api/tts` avec un espion `window.fetch` — la voix retombe sur une horloge silencieuse et les marqueurs
+  se déclenchent quand même, donc tout est testable gratuitement.
+- La voix lit à **0,9×** (`RATE` dans `voiceEngine.js`), pitch préservé. Le ralentissement s'applique AUSSI
+  au minutage des marqueurs : les timings du fournisseur sont des positions dans l'ENREGISTREMENT, donc
+  `delay / RATE`. Ralentir l'un sans l'autre décale la voix et l'image.
+- La langue de la voix = la langue de la LEÇON, jamais celle de l'interface (`lessonLangRef ?? 'en'`).
+  Avant, une interface française demandait une voix française pour un texte anglais → 422 → silence.
+- Reste ouvert : `/api/tts` n'est ouvert qu'à l'admin/localhost, et le disque de Render est éphémère —
+  un visiteur public n'aurait aucun son. Pour une démo publique : pré-synthétiser et servir en statique.
+
+### La régression la plus grave de la session (et sa leçon)
+Un marqueur sur le PREMIER mot vaut 0,000 s, et l'ordonnanceur partait de 0 en ignorant tout ce qui était
+`<= fromSec` → **ces étapes ne jouaient jamais** dès qu'une voix parlait. Invisible dans tous mes tests
+parce que je bloquais toujours l'API vocale, et sans voix le repli silencieux déclenche lui-même tous les
+marqueurs. 61 pages sur 78 touchées. Corrigé (`at < fromSec` + délai borné à 0). **Leçon : un chemin de
+code que le harnais de test contourne systématiquement n'est pas testé** — ici, tester AVEC le son au moins
+une fois (une phrase déjà en cache = gratuit) l'aurait attrapé tout de suite.
+
+### Pages d'exercice générables (2026-09-28)
+- Une question est une propriété de la PAGE (`type:"exercise"`, `question`, `exerciseType` =
+  `choices4|choices2|input`, `choices`, `correctChoice`, `answer`), et le lecteur les gère depuis
+  toujours — mais rien ne pouvait les ÉCRIRE. Maintenant : le code `?` dans le format compact,
+  `["?","Quelle est la pente ?","choices4","1,2,3,4",1]`, écrit parmi les étapes et remonté dans les champs
+  de la page par `expandCompact`. Ça fait l'aller-retour, donc `quick-quiz` sert enfin de modèle au
+  générateur (il fallait compter `?` comme « documenté », sinon l'élagage retirait la question).
+- Le validateur refuse : question vide, type inconnu, mauvais nombre de réponses, index hors liste,
+  réponse tapée sans corrigé.
+- Politique dans le prompt (« WHEN TO ASK ») : demande d'exercices → QUE des questions, 3 à 5 ;
+  « je comprends pas comment résoudre » → la théorie puis 1 ou 2 questions à la fin ; sinon aucune.
+- Côté client, `pagesFromJson` (App.jsx) reconstruisait la page en `{id,title,layout,steps}` et jetait les
+  cinq champs → une leçon d'exercices arrivait en leçon normale. Corrigé, brouillon du Builder inclus.
+- Un clic sur l'écran d'une page-question ne fait QU'accélérer ce qui joue : seule la flèche `›` permet de
+  partir sans avoir répondu.
+
+### Figures composées (géométrie) — ce que l'IA ignorait
+- **Une figure de plusieurs triangles n'est pas plusieurs formes** : c'est UNE forme extérieure plus les
+  traits accrochés dedans avec `S2s`. Toute forme est recentrée sur son centre de gravité (`S2c` ET
+  `S2p`), donc deux formes ne se touchent JAMAIS, quelles que soient les coordonnées tapées. C'est
+  maintenant écrit en tête de la section SNAPPING du prompt, avec le motif complet (triangle NMQ + la
+  cévienne MP + les tirets + l'angle connu) — vérifié dans l'app avant d'être documenté.
+- Conventions d'étiquettes ajoutées : `"-"` sur un côté = pas d'étiquette (une case vide veut dire
+  « étiquette-le avec sa longueur »), et `"A="` sur un marquage d'angle = le nom ET la mesure.
+- `S2Ma` (Mark an Angle) : From et To sont optionnels, et un From/To égal au sommet compte comme vide →
+  les deux côtés du coin sont pris, donc l'arc ouvre à l'intérieur. Avant, `atan2(0,0)` valait 0 et l'arc
+  était dessiné depuis l'axe des x, dehors.
+- Mise à jour d'étiquettes **éparse** (`labelSides3D`) : `"a = ?,,"` ne touche que la première case,
+  `",b=,c="` que les deux autres — rien ne clignote sur ce qui ne change pas. Vérifié image par image.
+- `geo3d-label-sides` ne trouve rien si la forme n'existe pas encore : `S2c` AVANT `S2l`, toujours.
+
+### Nouvel exemple (demandé explicitement) — `angle-chase`
+« Angle Chase — Three Equal Segments », 1 page, 32 exemples au total. Démontre le motif qu'aucun exemple
+ne montrait : figure composée + chasse aux angles écrite comme UNE équation
+(`x + x + 180 - |Q| = 180`), `Q` remplacé par l'angle lu sur la figure, combiné, envoyé, divisé
+(diviseur vide), et la réponse réécrite dans la bulle. Deux pièges trouvés en le construisant :
+`|x|` entre pipes est une ÉTIQUETTE, pas une variable (le panneau refuse d'en combiner deux :
+« No like terms to combine »), et `[eq-result]` n'est résolu que par `cmt-update`, jamais par `cmt-geo`.
+
+### Autres correctifs de la session
+- `eq-divide` : diviseur vide = le nombre devant x, lu sur l'équation au moment où l'étape joue
+  (signé : `−2x = 8` → `x = −4`). Refuse de deviner si x est des deux côtés ou à une puissance.
+- Avance rapide : `voiceEngine.stop()` éteint le mode rapide, et `buildPage` l'appelle avant chaque beat.
+  Avant, il n'était éteint que dans le `finally`, qu'un run ANNULÉ n'atteint jamais → tout le reste de la
+  session jouait en accéléré et muet.
+- Les étapes de graphe attendent que le calculateur Desmos existe (son script est un fetch réseau) : avant,
+  elles lisaient `null` et ne faisaient RIEN en silence — aucun point, aucune droite, et le cadrage
+  automatique n'avait rien à cadrer.
+- Les maths d'affichage (`$…$`) se réduisent aussi pour tenir dans leur boîte : la mesure ne marchait
+  que pour les maths en ligne, parce qu'un bloc prend la largeur qu'on lui donne et débordait par l'intérieur.
+- La trace de génération chiffre la voix : `TEXT`, `VOICE` (caractères neufs, phrases déjà en cache
+  gratuites, 10 $/M) et un total réel.
+- Le Builder dit en une phrase quand un marqueur d'étape n'est dans aucune narration de la page
+  (« @1 n'est pas dans la narration — rien ne déclenche cette étape »).
+- `repairBackslashes` : un argument écrit en guillemets échappés (`,\"steps\"]`) ne tue plus la leçon
+  entière au `JSON.parse`.
+
+### Ce qui reste à faire, par ordre d'impact sur la qualité des leçons générées
+1. **Le panneau manquant n'est qu'un avertissement.** Une page qui déclare `"4"` (géométrie) puis lance
+   `eq`/`ef` résout HORS ÉCRAN : c'est arrivé sur 2 pages d'une génération réelle. Ajouter le chiffre
+   manquant (`"4"` → `"34"`) est mécanique — promouvoir ce contrôle en réparation automatique.
+2. **Les valeurs calculées tapées à la main ne sont pas contrôlées** : `er "b^2=25-12.25"`, des angles
+   écrits en commentaire au lieu d'être lus sur la forme. `er` RECRÉE l'équation depuis sa chaîne
+   (`parseEquation(eqText)`), donc la règle « ne jamais taper un résultat » est *impossible* à suivre avec
+   lui : lui faire accepter un champ vide (comme `ed` maintenant) puis refuser l'autre cas au validateur.
+3. **Le routeur ne reconnaît pas une figure composée** : pour « plein de triangles rectangles collés » il a
+   pris soh-cah-toa + pythagoras alors que `metric-relations` et maintenant `angle-chase` SONT ça.
+4. Pages sans narration dans les exemples : `central-tendency` (3 pages) et `quick-quiz` p4.
+5. Voix française jamais écoutée : `adeline` est configurée mais personne ne l'a entendue ; 6 voix
+   existent (adeline, agathe, aline, anais, alexandre, amir), chaque essai coûte ~60 caractères.
+
+### Pièges de test découverts cette session (coûteux, à savoir avant de douter du code)
+- **La Browser pane est souvent `document.hidden`** → `requestAnimationFrame` ne tourne PAS, et gsap a
+  capturé le rAF natif à l'import. Résultat : toute animation 3D/géométrie ou tout tween gsap reste en
+  suspens pour toujours, la page « ne finit jamais », `running` reste vrai et `›` n'avance plus — ça
+  ressemble exactement à un bug produit. Remède : piloter rAF depuis un Worker ET
+  `gsap.ticker.tick()` depuis un autre (`import` de `/node_modules/.vite/deps/gsap.js?v=…`, même instance
+  que l'app). J'ai perdu deux diagnostics complets à cause de ça.
+- Le port annoncé par `preview_start` est faux dès que 5173/5174 sont pris — lire `preview_logs`.
+- Le Builder garde un brouillon dans `localStorage` (`math-engine-draft`) : après avoir édité un exemple
+  dans le FICHIER, il faut le recharger depuis l'onglet Examples, sinon l'app rejoue l'ancienne version —
+  l'utilisateur a passé deux échanges à me dire « ça ne marche pas » pour cette raison.
+- Pour rejouer une génération sans la payer : prendre la sortie brute dans `logs/lesson-*.txt`, la passer
+  dans `parseCompact` → `repairLesson` → `expandCompact`, et servir le résultat au client en interceptant
+  `/api/generate-lesson` avec l'espion `fetch`. Tout le vrai chemin du prompt est exercé, zéro centime.
+
+### Le projet côté utilisateur (contexte, pas une tâche)
+Il suit un cours d'entrepreneuriat et doit faire approuver le projet. Plan annoncé : construire à la main
+une leçon de trigo, filmer une vidéo où l'on voit un prompt « générer » cette leçon (démo truquée, il le
+sait et l'assume après que j'aie soulevé le risque une fois), puis la poster sur des forums pour mesurer
+l'intérêt. Conseils donnés : vidéo en contenu natif plutôt qu'un lien, sous-titres incrustés, pas de mur
+d'inscription, viser profs et parents, et fixer le seuil de succès AVANT de publier. Ne pas relancer le
+débat sur la démo truquée : la décision est prise.
+
 ## Bugs connus, PAS corrigés (mentionnés à l'utilisateur, hors scope ou pas assez d'info)
 - Persistance des sliders : voir section 6 — correctifs appliqués mais pas de reproduction en direct obtenue pour confirmer 100%. Redemander une séquence de clics exacte si ça revient.
 - Parseur : toujours pas de support pour `baseˣ` (exposant variable) — pré-existant, non touché.

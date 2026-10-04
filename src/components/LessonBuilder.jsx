@@ -772,14 +772,16 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
     return fn ? fn.label : id
   }
 
-  // Which markers THIS page's narration actually says, so a step waiting on a
-  // marker nobody says can be shown as such. A page with no narration at all
-  // plays its steps in order, markers and all, so nothing is orphaned there.
-  const narrateStep  = page?.steps?.find(st => isNarrateStep(st.funcId))
-  const spokenMarks  = marksSpokenIn(narrateStep?.inputs?.text)
+  // Which markers THIS page says, across EVERY narration on it — a page may
+  // hold several, played one after another, and a marker said by the second one
+  // is said. Reading only the first reported those as spoken by nobody.
+  // A page with no narration at all plays its steps in order, markers and all,
+  // so nothing is orphaned there.
+  const narrateSteps = (page?.steps ?? []).filter(st => isNarrateStep(st.funcId))
+  const spokenMarks  = new Set(narrateSteps.flatMap(st => [...marksSpokenIn(st.inputs?.text)]))
   const orphanMark   = (step) => {
     const n = markerOf(step)
-    return narrateStep && n && !spokenMarks.has(n) ? n : ''
+    return narrateSteps.length && n && !spokenMarks.has(n) ? n : ''
   }
 
   // Editing the marker box rewrites the step id, which is where the marker
@@ -1378,7 +1380,7 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                                     inputMode="numeric"
                                     placeholder="@"
                                     title={spokenMarks.size
-                                      ? `Fires when the voice reaches this marker. The narration says ${[...spokenMarks].map(n => '@' + n).join(' ')}. Blank = as the page opens.`
+                                      ? `Fires when the voice reaches this marker. This page says ${[...spokenMarks].sort((a, b) => a - b).map(n => '@' + n).join(' ')}. Blank = as the page opens.`
                                       : 'Write @1, @2 … in the narration first, then put the same number here. Blank = as the page opens.'}
                                     value={markerOf(step) ? `@${markerOf(step)}` : ''}
                                     onChange={e => setStepMarker(step.id, e.target.value)}
@@ -1426,7 +1428,7 @@ export default function LessonBuilder({ onClose, onBuildPage, onBuildAll, editin
                             })()}
                             {orphanMark(step) && (
                               <p className="lb-narr-hint lb-narr-hint--warn">
-                                {`@${orphanMark(step)} is not in this page's narration` +
+                                {`@${orphanMark(step)} is said by no narration on this page` +
                                  (spokenMarks.size ? ` (it says ${[...spokenMarks].sort((a, b) => a - b).map(n => '@' + n).join(' ')})` : '') +
                                  ' — nothing sets this step off, so it never plays.'}
                               </p>

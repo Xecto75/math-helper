@@ -1651,7 +1651,6 @@ export function highlightAngle3D(threeRef, id, angleIndex, colorRaw = 'cyan') {
   const entry = registry.get(id)
   const i = Number(angleIndex)
   const newColor   = new THREE.Color(resolveHex(colorRaw))
-  const flashColor = new THREE.Color(0xffffff)
 
   let arcGroup = shapeGroup.userData.children?.[`ang_${id}_${i}`]
   let mat
@@ -1741,7 +1740,10 @@ export function highlightAngle3D(threeRef, id, angleIndex, colorRaw = 'cyan') {
         : 1 + 0.38 * s
       const kk = wedge?.k ?? 1
       arcGroup.scale.set(targetScale * kk, targetScale * kk, 1)
-      mat.color.copy(newColor).lerp(flashColor, s * 0.7)
+      // The mark pops and brightens, but it KEEPS ITS COLOUR: this used to lerp
+      // 70% of the way to white at the top of the pulse, and a right angle
+      // appearing read as a white flash rather than as the angle being marked.
+      mat.color.copy(newColor)
       mat.opacity = 0.35 + 0.45 * s
       if (t < 1) requestAnimationFrame(tick)
       else {
